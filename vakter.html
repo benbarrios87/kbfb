@@ -6,27 +6,37 @@
   <title>Vakter | KBFB Personal</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <div class="layout">
-    <aside class="sidebar">
-      <h2>🌲 KBFB</h2>
+    <aside class="sidebar nature-sidebar">
+      <div class="brand">
+        <div class="brand-icon">🌲</div>
+        <h2>KBFB</h2>
+        <p>Personalrommet</p>
+      </div>
+
       <nav>
-        <a href="dashboard.html">Dashboard</a>
-        <a class="active" href="vakter.html">Vakter</a>
-        <a href="ferieogavspasering.html">Ferie og avspasering</a>
-        <a href="filarkiv.html">Filarkiv</a>
-        <a href="aarshjul.html">Årshjul</a>
-        <a href="turbank.html">Turbank</a>
-        <a href="admin.html">Admin</a>
+        <a href="dashboard.html">🏠 Hjem</a>
+        <a class="active" href="vakter.html">📅 Vakter</a>
+        <a href="ferieogavspasering.html">🌴 Ferie og avspasering</a>
+        <a href="filarkiv.html">📁 Filarkiv</a>
+        <a href="aarshjul.html">🗓️ Årshjul</a>
+        <a href="turbank.html">🏕️ Turbank</a>
+        <a href="admin.html">⚙️ Admin</a>
       </nav>
     </aside>
 
     <main class="main">
-      <section class="topbar">
+      <section class="forest-hero">
         <div>
           <p class="eyebrow">Vaktplan</p>
           <h1>Uke 23</h1>
-          <p class="muted">07:30–17:00 • Mandag–fredag</p>
+          <p class="muted">01.06–05.06 · Åpningstid 07:30–17:00</p>
+        </div>
+
+        <div class="hero-badge">
+          🌿 Friluftsbarnehage med oversikt
         </div>
       </section>
 
@@ -37,118 +47,217 @@
             <select id="employeeFilter">
               <option value="all">Alle ansatte</option>
               <option value="Benjamin">Benjamin</option>
-              <option value="Mari">Mari</option>
               <option value="Imelda">Imelda</option>
               <option value="Nika">Nika</option>
               <option value="Irina">Irina</option>
+              <option value="Lola">Lola</option>
+              <option value="Mari">Mari</option>
               <option value="Marianne R">Marianne R</option>
               <option value="Marianne L">Marianne L</option>
               <option value="Valantis">Valantis</option>
+              <option value="Britt">Britt</option>
+              <option value="Vikar">Vikar</option>
             </select>
           </label>
 
           <label>
             Avdeling
             <select id="departmentFilter">
-              <option value="all">Alle</option>
-              <option value="Regnbuen">Regnbuen</option>
+              <option value="all">Begge avdelinger</option>
               <option value="Sommerfuglen">Sommerfuglen</option>
+              <option value="Regnbuen">Regnbuen</option>
               <option value="Admin">Admin</option>
             </select>
           </label>
         </div>
 
-        <div class="legend">
-          <span>TV = tidligvakt</span>
-          <span>TM = tidlig-mellom</span>
-          <span>MV = mellomvakt</span>
-          <span>SM = sen-mellom</span>
-          <span>SV = senvakt</span>
-          <span>PT = plantid</span>
+        <div class="shift-legend">
+          <span class="badge tv">TV</span> Tidligvakt
+          <span class="badge tm">TM</span> Tidlig-mellom
+          <span class="badge mv">MV</span> Mellomvakt
+          <span class="badge sm">SM</span> Sen-mellom
+          <span class="badge sv">SV</span> Senvakt
+          <span class="badge pt">PT</span> Plantid
+        </div>
+      </section>
+
+      <section class="my-week card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Min uke</p>
+            <h2>Benjamin</h2>
+          </div>
+          <span class="small-pill">Eksempelvisning</span>
         </div>
 
-        <section class="alerts">
-  <div class="alert success">
-    ✅ Uke 23 ser bra ut
-  </div>
+        <div class="week-cards">
+          <div class="day-card">
+            <span>Mandag</span>
+            <strong>Fri / ute</strong>
+          </div>
+          <div class="day-card">
+            <span>Tirsdag</span>
+            <strong>Kontor</strong>
+          </div>
+          <div class="day-card">
+            <span>Onsdag</span>
+            <strong>Kontor</strong>
+          </div>
+          <div class="day-card">
+            <span>Torsdag</span>
+            <strong>SF 11:45–15</strong>
+          </div>
+          <div class="day-card">
+            <span>Fredag</span>
+            <strong>Maxi</strong>
+          </div>
+        </div>
+      </section>
 
-  <div class="alert warning">
-    ⚠️ Marianne L mangler vakt fredag
-  </div>
+      <section class="department-section butterfly">
+        <div class="department-header">
+          <div>
+            <p class="eyebrow">Avdeling</p>
+            <h2>🦋 Sommerfuglen</h2>
+          </div>
+          <span>Småbarn</span>
+        </div>
 
-  <div class="alert danger">
-    🚨 Ingen senvakt registrert torsdag på Regnbuen
-  </div>
-</section>
-
-<section class="my-shifts card">
-  <h2>Mine vakter</h2>
-
-  <div class="week-cards">
-    <div class="day-card">
-      <span>Mandag</span>
-      <strong>TV</strong>
-    </div>
-
-    <div class="day-card">
-      <span>Tirsdag</span>
-      <strong>TM</strong>
-    </div>
-
-    <div class="day-card">
-      <span>Onsdag</span>
-      <strong>SV</strong>
-    </div>
-
-    <div class="day-card">
-      <span>Torsdag</span>
-      <strong>PT</strong>
-    </div>
-
-    <div class="day-card">
-      <span>Fredag</span>
-      <strong>TV</strong>
-    </div>
-  </div>
-</section>
-        
         <div class="table-wrap">
-          <table class="shift-table" id="shiftTable">
+          <table class="shift-table department-table">
             <thead>
               <tr>
                 <th>Ansatt</th>
-                <th>Avdeling</th>
-                <th>Mandag</th>
-                <th>Tirsdag</th>
-                <th>Onsdag</th>
-                <th>Torsdag</th>
-                <th>Fredag</th>
+                <th>Mandag 01.06</th>
+                <th>Tirsdag 02.06</th>
+                <th>Onsdag 03.06</th>
+                <th>Torsdag 04.06</th>
+                <th>Fredag 05.06</th>
               </tr>
             </thead>
             <tbody>
-              <tr data-employee="Benjamin" data-department="Admin">
-                <td>Benjamin</td><td>Admin</td><td>Kontor</td><td></td><td>Kontor</td><td>Møte</td><td></td>
-              </tr>
-              <tr data-employee="Mari" data-department="Regnbuen">
-                <td>Mari</td><td>Regnbuen</td><td>TV</td><td>MV</td><td>SV</td><td>PT 12–16</td><td>TV</td>
-              </tr>
-              <tr data-employee="Valantis" data-department="Regnbuen">
-                <td>Valantis</td><td>Regnbuen</td><td>SV</td><td>TV</td><td>MV</td><td>SV</td><td>MV</td>
-              </tr>
-              <tr data-employee="Marianne R" data-department="Regnbuen">
-                <td>Marianne R</td><td>Regnbuen</td><td>MV</td><td>SV</td><td>TV</td><td>MV</td><td>SV</td>
-              </tr>
               <tr data-employee="Imelda" data-department="Sommerfuglen">
-                <td>Imelda</td><td>Sommerfuglen</td><td>TV</td><td>SV</td><td>TM</td><td>PT 08–11:45</td><td>MV</td>
+                <td class="person">Imelda</td>
+                <td><span class="badge tv">TV</span></td>
+                <td><span class="badge sv">SV</span></td>
+                <td><span class="badge tv">TV</span></td>
+                <td><span class="badge tm">TM</span> <small>til 11:45 / PD</small></td>
+                <td><span class="badge mv">MV</span></td>
               </tr>
               <tr data-employee="Nika" data-department="Sommerfuglen">
-                <td>Nika</td><td>Sommerfuglen</td><td>TM</td><td>TV</td><td>SV</td><td>TV</td><td>TM</td>
+                <td class="person">Nika</td>
+                <td><span class="badge tm">TM</span></td>
+                <td><span class="badge tv">TV</span> <small>Ekorn overnatting</small></td>
+                <td><small>Ekorn overnatting</small></td>
+                <td><span class="badge tv">TV</span></td>
+                <td><span class="badge tm">TM</span></td>
               </tr>
               <tr data-employee="Irina" data-department="Sommerfuglen">
-                <td>Irina</td><td>Sommerfuglen</td><td>SV</td><td>AVS</td><td>TV</td><td>SV</td><td>TV</td>
+                <td class="person">Irina</td>
+                <td><span class="badge sv">SV</span></td>
+                <td><span class="badge free">AVS</span></td>
+                <td><span class="badge tv">TV</span></td>
+                <td><span class="badge sv">SV</span></td>
+                <td><span class="badge tv">TV</span></td>
               </tr>
-              <tr data-employee="Marianne L" data-department="Sommerfuglen">
-                <td>Marianne L</td><td>Sommerfuglen</td><td></td><td>SV</td><td>MV / Maxi</td><td>TM</td><td></td>
+              <tr data-employee="Lola" data-department="Sommerfuglen">
+                <td class="person">Lola</td>
+                <td></td>
+                <td><span class="badge tm">TM</span></td>
+                <td><span class="badge sv">SV</span></td>
+                <td><span class="badge mv">MV</span></td>
+                <td><span class="badge sv">SV</span></td>
+              </tr>
+              <tr data-employee="Vikar" data-department="Sommerfuglen">
+                <td class="person">Vikar</td>
+                <td></td>
+                <td><small>Sharlene M</small></td>
+                <td><small>Sharlene TM</small></td>
+                <td></td>
+                <td></td>
+              </tr>
+              <tr data-employee="Benjamin" data-department="Admin">
+                <td class="person">Benjamin</td>
+                <td></td>
+                <td></td>
+                <td><span class="badge office">Kontor</span></td>
+                <td><span class="badge office">Kontor</span><small> / SF 11:45–15</small></td>
+                <td><small>Maxi</small></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="department-section rainbow">
+        <div class="department-header">
+          <div>
+            <p class="eyebrow">Avdeling</p>
+            <h2>🌈 Regnbuen</h2>
+          </div>
+          <span>Storbarn</span>
+        </div>
+
+        <div class="table-wrap">
+          <table class="shift-table department-table">
+            <thead>
+              <tr>
+                <th>Ansatt</th>
+                <th>Mandag 01.06</th>
+                <th>Tirsdag 02.06</th>
+                <th>Onsdag 03.06</th>
+                <th>Torsdag 04.06</th>
+                <th>Fredag 05.06</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-employee="Mari" data-department="Regnbuen">
+                <td class="person">Mari</td>
+                <td><span class="badge sv">SV</span></td>
+                <td><span class="badge mv">MV</span> <small>Ekorn overnatting</small></td>
+                <td><small>Ekorn overnatting</small></td>
+                <td><span class="badge pt">PT</span> <small>09:30–13</small></td>
+                <td><span class="badge tv">TV</span></td>
+              </tr>
+              <tr data-employee="Marianne R" data-department="Regnbuen">
+                <td class="person">Marianne R</td>
+                <td><span class="badge mv">MV</span></td>
+                <td><span class="badge tv">TV</span></td>
+                <td><span class="badge sv">SV</span></td>
+                <td><span class="badge sv">SV</span></td>
+                <td><span class="badge mv">MV</span></td>
+              </tr>
+              <tr data-employee="Valantis" data-department="Regnbuen">
+                <td class="person">Valantis</td>
+                <td><span class="badge tv">TV</span></td>
+                <td><span class="badge mv">MV</span></td>
+                <td><span class="badge pt">PT</span></td>
+                <td><span class="badge pt">PT</span></td>
+                <td><span class="badge sv">SV</span></td>
+              </tr>
+              <tr data-employee="Marianne L" data-department="Regnbuen">
+                <td class="person">Marianne L</td>
+                <td></td>
+                <td><span class="badge sv">SV</span></td>
+                <td><small>08:15–15:45 SF / Maxi</small></td>
+                <td><span class="badge tv">TV</span></td>
+                <td></td>
+              </tr>
+              <tr data-employee="Britt" data-department="Regnbuen">
+                <td class="person">Britt</td>
+                <td><small>Britt M</small></td>
+                <td></td>
+                <td><span class="badge tv">TV</span></td>
+                <td><span class="badge mv">MV</span></td>
+                <td></td>
+              </tr>
+              <tr data-employee="Vikar" data-department="Regnbuen">
+                <td class="person">Foreldre / vikar</td>
+                <td></td>
+                <td><small>Vetle 08:30–16</small></td>
+                <td><small>Albert / Jonathan</small></td>
+                <td></td>
+                <td></td>
               </tr>
             </tbody>
           </table>
@@ -156,21 +265,21 @@
       </section>
 
       <section class="grid">
-        <article class="card">
+        <article class="card forest-card">
           <h2>Ukens aktiviteter</h2>
           <ul class="clean-list">
             <li>Mandag: Trygg i vann</li>
-            <li>Tirsdag: Ekornovernatting</li>
-            <li>Onsdag: Kontordag Benjamin</li>
+            <li>Tirsdag–onsdag: Ekornovernatting</li>
+            <li>Torsdag: Klubbdag</li>
           </ul>
         </article>
 
-        <article class="card">
+        <article class="card forest-card">
           <h2>Kjøkkenboka</h2>
           <ul class="clean-list">
-            <li>Irina tannlege tirsdag 13.00</li>
-            <li>Benjamin møte torsdag 10.00</li>
-            <li>Husk ekstra tøy til tur</li>
+            <li>Benjamin kontor onsdag og torsdag</li>
+            <li>Sharlene vikar tirsdag og onsdag</li>
+            <li>Husk ekstra tursekker til overnatting</li>
           </ul>
         </article>
       </section>
