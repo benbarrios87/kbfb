@@ -283,3 +283,57 @@ select {
     flex-direction: column;
   }
 }
+.alerts {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.alert {
+  padding: 14px 18px;
+  border-radius: 16px;
+  font-weight: 700;
+}
+
+.success {
+  background: #e9f7ec;
+  color: #206a34;
+}
+
+.warning {
+  background: #fff6dd;
+  color: #9b6a00;
+}
+
+.danger {
+  background: #ffe4e4;
+  color: #a00000;
+}
+
+.my-shifts {
+  margin-bottom: 24px;
+}
+
+.week-cards {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+.day-card {
+  background: #f7fbf7;
+  border: 1px solid #dfe8df;
+  border-radius: 18px;
+  padding: 18px;
+  text-align: center;
+}
+
+.day-card span {
+  display: block;
+  color: #647366;
+  margin-bottom: 8px;
+}
+
+.day-card strong {
+  font-size: 1.3rem;
+}
