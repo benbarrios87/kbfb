@@ -1,1 +1,86 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KBFB Personal</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <h2>🌲 KBFB</h2>
+      <nav>
+        <a class="active" href="dashboard.html">Dashboard</a>
+        <a href="vakter.html">Vakter</a>
+        <a href="ferieogavspasering.html">Ferie og avspasering</a>
+        <a href="filarkiv.html">Filarkiv</a>
+        <a href="aarshjul.html">Årshjul</a>
+        <a href="turbank.html">Turbank</a>
+        <a href="admin.html">Admin</a>
+      </nav>
+    </aside>
 
+    <main class="main">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">Kirkerudbakken Personal</p>
+          <h1 id="greeting">God dag</h1>
+          <p class="muted" id="todayText"></p>
+        </div>
+        <a class="primary-btn" href="vakter.html">Se vaktplan</a>
+      </section>
+
+      <section class="grid">
+        <article class="card wide">
+          <h2>Dagens oversikt</h2>
+          <div class="today-list">
+            <div><strong>Regnbuen</strong><span>Mari, Valantis, Marianne R</span></div>
+            <div><strong>Sommerfuglen</strong><span>Imelda, Nika, Irina</span></div>
+            <div><strong>Benjamin</strong><span>Kontor / møter</span></div>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Beskjeder</h2>
+          <ul class="clean-list">
+            <li>Husk å sjekke tursekker før avgang.</li>
+            <li>Sommerfest nærmer seg.</li>
+            <li>Gi beskjed om ferieønsker tidlig.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>Kjøkkenboka</h2>
+          <ul class="clean-list">
+            <li><strong>Man:</strong> Benjamin møte 10.00</li>
+            <li><strong>Tir:</strong> Irina tannlege 13.00</li>
+            <li><strong>Ons:</strong> Maxi på tur</li>
+          </ul>
+        </article>
+
+        <article class="card wide">
+          <h2>Hurtigknapper</h2>
+          <div class="shortcut-grid">
+            <a href="vakter.html">📅 Vakter</a>
+            <a href="ferieogavspasering.html">🌴 Ferie / avspasering</a>
+            <a href="filarkiv.html">📁 Filarkiv</a>
+            <a href="aarshjul.html">🗓️ Årshjul</a>
+            <a href="turbank.html">🏕️ Turbank</a>
+            <a href="admin.html">⚙️ Admin</a>
+          </div>
+        </article>
+
+        <article class="card wide">
+          <h2>Benjamin sin kalender</h2>
+          <div class="calendar-wrap">
+            <iframe src="https://calendar.google.com/calendar/embed?src=gsh5amtjd3jsk1cslt2t8n7mnk%40group.calendar.google.com&ctz=Europe%2FBrussels" frameborder="0" scrolling="no"></iframe>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
