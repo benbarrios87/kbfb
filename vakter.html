@@ -1,1 +1,137 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vakter | KBFB Personal</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <h2>🌲 KBFB</h2>
+      <nav>
+        <a href="dashboard.html">Dashboard</a>
+        <a class="active" href="vakter.html">Vakter</a>
+        <a href="ferieogavspasering.html">Ferie og avspasering</a>
+        <a href="filarkiv.html">Filarkiv</a>
+        <a href="aarshjul.html">Årshjul</a>
+        <a href="turbank.html">Turbank</a>
+        <a href="admin.html">Admin</a>
+      </nav>
+    </aside>
 
+    <main class="main">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">Vaktplan</p>
+          <h1>Uke 23</h1>
+          <p class="muted">07:30–17:00 • Mandag–fredag</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="filters">
+          <label>
+            Vis ansatt
+            <select id="employeeFilter">
+              <option value="all">Alle ansatte</option>
+              <option value="Benjamin">Benjamin</option>
+              <option value="Mari">Mari</option>
+              <option value="Imelda">Imelda</option>
+              <option value="Nika">Nika</option>
+              <option value="Irina">Irina</option>
+              <option value="Marianne R">Marianne R</option>
+              <option value="Marianne L">Marianne L</option>
+              <option value="Valantis">Valantis</option>
+            </select>
+          </label>
+
+          <label>
+            Avdeling
+            <select id="departmentFilter">
+              <option value="all">Alle</option>
+              <option value="Regnbuen">Regnbuen</option>
+              <option value="Sommerfuglen">Sommerfuglen</option>
+              <option value="Admin">Admin</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="legend">
+          <span>TV = tidligvakt</span>
+          <span>TM = tidlig-mellom</span>
+          <span>MV = mellomvakt</span>
+          <span>SM = sen-mellom</span>
+          <span>SV = senvakt</span>
+          <span>PT = plantid</span>
+        </div>
+
+        <div class="table-wrap">
+          <table class="shift-table" id="shiftTable">
+            <thead>
+              <tr>
+                <th>Ansatt</th>
+                <th>Avdeling</th>
+                <th>Mandag</th>
+                <th>Tirsdag</th>
+                <th>Onsdag</th>
+                <th>Torsdag</th>
+                <th>Fredag</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-employee="Benjamin" data-department="Admin">
+                <td>Benjamin</td><td>Admin</td><td>Kontor</td><td></td><td>Kontor</td><td>Møte</td><td></td>
+              </tr>
+              <tr data-employee="Mari" data-department="Regnbuen">
+                <td>Mari</td><td>Regnbuen</td><td>TV</td><td>MV</td><td>SV</td><td>PT 12–16</td><td>TV</td>
+              </tr>
+              <tr data-employee="Valantis" data-department="Regnbuen">
+                <td>Valantis</td><td>Regnbuen</td><td>SV</td><td>TV</td><td>MV</td><td>SV</td><td>MV</td>
+              </tr>
+              <tr data-employee="Marianne R" data-department="Regnbuen">
+                <td>Marianne R</td><td>Regnbuen</td><td>MV</td><td>SV</td><td>TV</td><td>MV</td><td>SV</td>
+              </tr>
+              <tr data-employee="Imelda" data-department="Sommerfuglen">
+                <td>Imelda</td><td>Sommerfuglen</td><td>TV</td><td>SV</td><td>TM</td><td>PT 08–11:45</td><td>MV</td>
+              </tr>
+              <tr data-employee="Nika" data-department="Sommerfuglen">
+                <td>Nika</td><td>Sommerfuglen</td><td>TM</td><td>TV</td><td>SV</td><td>TV</td><td>TM</td>
+              </tr>
+              <tr data-employee="Irina" data-department="Sommerfuglen">
+                <td>Irina</td><td>Sommerfuglen</td><td>SV</td><td>AVS</td><td>TV</td><td>SV</td><td>TV</td>
+              </tr>
+              <tr data-employee="Marianne L" data-department="Sommerfuglen">
+                <td>Marianne L</td><td>Sommerfuglen</td><td></td><td>SV</td><td>MV / Maxi</td><td>TM</td><td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Ukens aktiviteter</h2>
+          <ul class="clean-list">
+            <li>Mandag: Trygg i vann</li>
+            <li>Tirsdag: Ekornovernatting</li>
+            <li>Onsdag: Kontordag Benjamin</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>Kjøkkenboka</h2>
+          <ul class="clean-list">
+            <li>Irina tannlege tirsdag 13.00</li>
+            <li>Benjamin møte torsdag 10.00</li>
+            <li>Husk ekstra tøy til tur</li>
+          </ul>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
