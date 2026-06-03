@@ -337,3 +337,232 @@ select {
 .day-card strong {
   font-size: 1.3rem;
 }
+.nature-sidebar {
+  background:
+    linear-gradient(rgba(18, 54, 33, 0.93), rgba(18, 54, 33, 0.96)),
+    radial-gradient(circle at top, #5f8f56, #173420);
+  color: white;
+}
+
+.brand {
+  margin-bottom: 30px;
+}
+
+.brand-icon {
+  font-size: 2.4rem;
+  margin-bottom: 6px;
+}
+
+.brand h2 {
+  color: white;
+  margin-bottom: 4px;
+}
+
+.brand p {
+  margin: 0;
+  color: #dcebd7;
+}
+
+.nature-sidebar a {
+  color: #f4fff0;
+}
+
+.nature-sidebar a:hover,
+.nature-sidebar a.active {
+  background: rgba(255, 255, 255, 0.14);
+  color: white;
+}
+
+.forest-hero {
+  background:
+    linear-gradient(120deg, rgba(28, 73, 43, 0.92), rgba(72, 111, 60, 0.78)),
+    radial-gradient(circle at top right, #d9b56d, transparent 36%),
+    linear-gradient(135deg, #244d31, #7b9a65);
+  border-radius: 34px;
+  color: white;
+  padding: 34px;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.forest-hero::after {
+  content: "🌲 🌿 🪵 🔥";
+  position: absolute;
+  right: 22px;
+  bottom: 16px;
+  font-size: 2rem;
+  opacity: 0.25;
+}
+
+.forest-hero h1 {
+  color: white;
+}
+
+.forest-hero .muted,
+.forest-hero .eyebrow {
+  color: #ecf7e8;
+}
+
+.hero-badge {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 999px;
+  padding: 12px 18px;
+  font-weight: 800;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+}
+
+.section-heading,
+.department-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.department-section {
+  border-radius: 30px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--line);
+}
+
+.department-section.butterfly {
+  background: linear-gradient(135deg, #f7fbff, #eef7ff);
+}
+
+.department-section.rainbow {
+  background: linear-gradient(135deg, #fff9ef, #f4fbef);
+}
+
+.department-header h2 {
+  margin: 0;
+  font-size: 1.9rem;
+}
+
+.department-header span,
+.small-pill {
+  background: rgba(47, 107, 63, 0.12);
+  color: var(--green-dark);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.shift-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  line-height: 2.2;
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 900;
+  font-size: 0.88rem;
+  color: #203225;
+  margin-right: 4px;
+}
+
+.badge.tv {
+  background: #d7efcf;
+}
+
+.badge.tm {
+  background: #d8ecff;
+}
+
+.badge.mv {
+  background: #eadcff;
+}
+
+.badge.sm {
+  background: #ffe6c7;
+}
+
+.badge.sv {
+  background: #ffd8d8;
+}
+
+.badge.pt {
+  background: #e6e6e6;
+}
+
+.badge.free {
+  background: #fff1b8;
+}
+
+.badge.office {
+  background: #d7f3e5;
+}
+
+.department-table {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.department-table th {
+  background: rgba(47, 107, 63, 0.08);
+}
+
+.department-table td {
+  vertical-align: top;
+  min-height: 58px;
+}
+
+.person {
+  font-weight: 900;
+  color: var(--green-dark);
+  white-space: nowrap;
+}
+
+.shift-table small {
+  display: block;
+  margin-top: 5px;
+  color: #657568;
+  font-weight: 650;
+}
+
+.forest-card {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.9), rgba(245,250,241,0.9));
+}
+
+@media (max-width: 850px) {
+  .forest-hero,
+  .section-heading,
+  .department-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .hero-badge {
+    white-space: normal;
+  }
+
+  .week-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .department-section {
+    padding: 16px;
+  }
+}
