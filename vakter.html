@@ -19,6 +19,8 @@
       <nav>
         <a href="dashboard.html">🏠 Hjem</a>
         <a class="active" href="vakter.html">📅 Vakter</a>
+        <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
+        <a href="vikarer.html">🕒 Vikarer</a>
         <a href="ferieogavspasering.html">🌴 Ferie og avspasering</a>
         <a href="filarkiv.html">📁 Filarkiv</a>
         <a href="aarshjul.html">🗓️ Årshjul</a>
@@ -36,14 +38,19 @@
         </div>
 
         <div class="week-controls">
-          <button id="prevWeek">← Forrige uke</button>
-          <button id="currentWeek">Denne uka</button>
-          <button id="nextWeek">Neste uke →</button>
+          <button id="prevWeek" type="button">← Forrige uke</button>
+          <button id="currentWeek" type="button">Denne uka</button>
+          <button id="nextWeek" type="button">Neste uke →</button>
         </div>
       </section>
 
       <section class="card">
         <div class="filters">
+          <label>
+            Gå til dato
+            <input id="dateSearch" type="date" />
+          </label>
+
           <label>
             Vis ansatt
             <select id="employeeFilter">
@@ -62,8 +69,6 @@
               <option value="Foreldreinnsats">Foreldreinnsats</option>
             </select>
           </label>
-
-          <div class="edit-toolbar">
 
           <label>
             Avdeling
@@ -84,11 +89,11 @@
           <span class="badge sv">SV</span> Senvakt
           <span class="badge pt">PT</span> Plantid
           <span class="badge free">F/AVS</span> Ferie/avspasering
-          <span class="badge custom">11–14</span> Manuell tid
+          <span class="badge custom">Annet</span> Manuell tekst
         </div>
 
         <p class="muted edit-help">
-          Klikk i en celle for å endre. Dette lagres foreløpig bare i nettleseren din.
+          Velg vakt i nedtrekksmenyen. Velg “ANNET” for egne notater som 11–14, Maxi eller Sharlene.
         </p>
       </section>
 
@@ -102,7 +107,7 @@
         </div>
 
         <div class="table-wrap">
-          <table class="shift-table department-table editable-shifts">
+          <table class="shift-table department-table">
             <thead>
               <tr>
                 <th>Ansatt</th>
@@ -116,73 +121,56 @@
             <tbody>
               <tr data-employee="Imelda" data-department="Sommerfuglen">
                 <td class="person"><span class="avatar">I</span>Imelda</td>
-                <td>
-  <select class="shift-select">
-    <option value=""></option>
-    <option value="TV">TV</option>
-    <option value="TM">TM</option>
-    <option value="MV">MV</option>
-    <option value="SM">SM</option>
-    <option value="SV">SV</option>
-    <option value="PT">PT</option>
-    <option value="F">F</option>
-    <option value="AVS">AVS</option>
-    <option value="KONTOR">KONTOR</option>
-    <option value="MØTE">MØTE</option>
-    <option value="ANNET">ANNET...</option>
-  </select>
-
-  <input
-    class="custom-shift"
-    type="text"
-    placeholder="11–14, Maxi, Sharlene..."
-    style="display:none;"
-  >
-</td>
+                <td class="shift-cell" data-default="TV"></td>
                 <td class="shift-cell" data-default="SV"></td>
                 <td class="shift-cell" data-default="TV"></td>
-                <td contenteditable="true">TM til 11:45 / PT</td>
+                <td class="shift-cell" data-default="TM til 11:45 / PT"></td>
                 <td class="shift-cell" data-default="MV"></td>
               </tr>
+
               <tr data-employee="Nika" data-department="Sommerfuglen">
                 <td class="person"><span class="avatar">N</span>Nika</td>
                 <td class="shift-cell" data-default="TM"></td>
-                <td contenteditable="true">TV Ekorn overnatting</td>
-                <td contenteditable="true">Ekorn overnatting</td>
+                <td class="shift-cell" data-default="TV Ekorn overnatting"></td>
+                <td class="shift-cell" data-default="Ekorn overnatting"></td>
                 <td class="shift-cell" data-default="TV"></td>
                 <td class="shift-cell" data-default="TM"></td>
               </tr>
+
               <tr data-employee="Irina" data-department="Sommerfuglen">
                 <td class="person"><span class="avatar">I</span>Irina</td>
                 <td class="shift-cell" data-default="SV"></td>
-                <td contenteditable="true">AVS</td>
+                <td class="shift-cell" data-default="AVS"></td>
                 <td class="shift-cell" data-default="TV"></td>
                 <td class="shift-cell" data-default="SV"></td>
                 <td class="shift-cell" data-default="TV"></td>
               </tr>
+
               <tr data-employee="Lola" data-department="Sommerfuglen">
                 <td class="person"><span class="avatar">L</span>Lola</td>
-                <td contenteditable="true"></td>
+                <td class="shift-cell" data-default=""></td>
                 <td class="shift-cell" data-default="TM"></td>
                 <td class="shift-cell" data-default="SV"></td>
                 <td class="shift-cell" data-default="MV"></td>
                 <td class="shift-cell" data-default="SV"></td>
               </tr>
+
               <tr data-employee="Vikar" data-department="Sommerfuglen" class="support-row">
                 <td class="person">Vikar</td>
-                <td contenteditable="true"></td>
-                <td contenteditable="true">Sharlene 08:30–16</td>
-                <td contenteditable="true">Sharlene TM</td>
-                <td contenteditable="true"></td>
-                <td contenteditable="true"></td>
+                <td class="shift-cell" data-default=""></td>
+                <td class="shift-cell" data-default="Sharlene 08:30–16"></td>
+                <td class="shift-cell" data-default="Sharlene TM"></td>
+                <td class="shift-cell" data-default=""></td>
+                <td class="shift-cell" data-default=""></td>
               </tr>
+
               <tr data-employee="Foreldreinnsats" data-department="Sommerfuglen" class="support-row">
                 <td class="person">Foreldreinnsats</td>
-                <td contenteditable="true"></td>
-                <td contenteditable="true"></td>
-                <td contenteditable="true"></td>
-                <td contenteditable="true"></td>
-                <td contenteditable="true"></td>
+                <td class="shift-cell" data-default=""></td>
+                <td class="shift-cell" data-default=""></td>
+                <td class="shift-cell" data-default=""></td>
+                <td class="shift-cell" data-default=""></td>
+                <td class="shift-cell" data-default=""></td>
               </tr>
             </tbody>
           </table>
@@ -199,7 +187,7 @@
         </div>
 
         <div class="table-wrap">
-          <table class="shift-table department-table editable-shifts">
+          <table class="shift-table department-table">
             <thead>
               <tr>
                 <th>Ansatt</th>
@@ -214,11 +202,12 @@
               <tr data-employee="Mari" data-department="Regnbuen">
                 <td class="person"><span class="avatar">M</span>Mari</td>
                 <td class="shift-cell" data-default="SV"></td>
-                <td contenteditable="true">MV Ekorn overnatting</td>
-                <td contenteditable="true">Ekorn overnatting</td>
-                <td contenteditable="true">PT 09:30–13</td>
+                <td class="shift-cell" data-default="MV Ekorn overnatting"></td>
+                <td class="shift-cell" data-default="Ekorn overnatting"></td>
+                <td class="shift-cell" data-default="PT 09:30–13"></td>
                 <td class="shift-cell" data-default="TV"></td>
               </tr>
+
               <tr data-employee="Marianne R" data-department="Regnbuen">
                 <td class="person"><span class="avatar">MR</span>Marianne R</td>
                 <td class="shift-cell" data-default="MV"></td>
@@ -227,72 +216,54 @@
                 <td class="shift-cell" data-default="SV"></td>
                 <td class="shift-cell" data-default="MV"></td>
               </tr>
+
               <tr data-employee="Valantis" data-department="Regnbuen">
                 <td class="person"><span class="avatar">V</span>Valantis</td>
                 <td class="shift-cell" data-default="TV"></td>
                 <td class="shift-cell" data-default="MV"></td>
-                <td contenteditable="true">PT</td>
-                <td contenteditable="true">PT</td>
+                <td class="shift-cell" data-default="PT"></td>
+                <td class="shift-cell" data-default="PT"></td>
                 <td class="shift-cell" data-default="SV"></td>
               </tr>
+
               <tr data-employee="Marianne L" data-department="Regnbuen">
                 <td class="person"><span class="avatar">ML</span>Marianne L</td>
-                <td contenteditable="true"></td>
+                <td class="shift-cell" data-default=""></td>
                 <td class="shift-cell" data-default="SV"></td>
-                <td contenteditable="true">08:15–15:45 SF / Maxi</td>
+                <td class="shift-cell" data-default="08:15–15:45 SF / Maxi"></td>
                 <td class="shift-cell" data-default="TV"></td>
-                <td contenteditable="true"></td>
+                <td class="shift-cell" data-default=""></td>
               </tr>
+
               <tr data-employee="Britt" data-department="Regnbuen">
                 <td class="person"><span class="avatar">B</span>Britt</td>
-                <td contenteditable="true">Britt M</td>
-                <td contenteditable="true"></td>
+                <td class="shift-cell" data-default="Britt M"></td>
+                <td class="shift-cell" data-default=""></td>
                 <td class="shift-cell" data-default="TV"></td>
                 <td class="shift-cell" data-default="MV"></td>
-                <td contenteditable="true"></td>
+                <td class="shift-cell" data-default=""></td>
               </tr>
+
               <tr data-employee="Vikar" data-department="Regnbuen" class="support-row">
                 <td class="person">Vikar</td>
-                <td contenteditable="true"></td>
-                <td contenteditable="true"></td>
-                <td contenteditable="true">Sharlene 08:00–14:30</td>
-                <td contenteditable="true"></td>
-                <td contenteditable="true">Lola 11–14</td>
+                <td class="shift-cell" data-default=""></td>
+                <td class="shift-cell" data-default=""></td>
+                <td class="shift-cell" data-default="Sharlene 08:00–14:30"></td>
+                <td class="shift-cell" data-default=""></td>
+                <td class="shift-cell" data-default="Lola 11–14"></td>
               </tr>
+
               <tr data-employee="Foreldreinnsats" data-department="Regnbuen" class="support-row">
                 <td class="person">Foreldreinnsats</td>
-                <td contenteditable="true"></td>
-                <td contenteditable="true">Vetle 08:30–16</td>
-                <td contenteditable="true">Albert / Jonathan</td>
-                <td contenteditable="true"></td>
-                <td contenteditable="true"></td>
+                <td class="shift-cell" data-default=""></td>
+                <td class="shift-cell" data-default="Vetle 08:30–16"></td>
+                <td class="shift-cell" data-default="Albert / Jonathan"></td>
+                <td class="shift-cell" data-default=""></td>
+                <td class="shift-cell" data-default=""></td>
               </tr>
             </tbody>
           </table>
         </div>
-      </section>
-
-      <section class="grid">
-        <article class="card forest-card">
-          <h2>Ukens aktiviteter</h2>
-          <ul class="clean-list">
-            <li>Mandag: Trygg i vann</li>
-            <li>Tirsdag–onsdag: Ekornovernatting</li>
-            <li>Torsdag: Klubbdag</li>
-          </ul>
-        </article>
-
-        <article class="card forest-card">
-          <h2>Min uke</h2>
-          <p class="muted">Denne kan senere vise automatisk filtrerte vakter for innlogget ansatt.</p>
-          <div class="mini-week">
-            <span>Man: Kontor</span>
-            <span>Tir: Fri</span>
-            <span>Ons: Kontor</span>
-            <span>Tor: SF 11:45–15</span>
-            <span>Fre: Maxi</span>
-          </div>
-        </article>
       </section>
     </main>
   </div>
