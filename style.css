@@ -1017,3 +1017,54 @@ select {
     grid-template-columns: 1fr;
   }
 }
+/* ===== FERIE OG AVSPASERING ===== */
+
+.simple-filter {
+  display: grid;
+  gap: 7px;
+  font-weight: 800;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+
+.status-pill {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 900;
+  font-size: 0.85rem;
+}
+
+.status-registrert {
+  background: #eef2f0;
+  color: #46524a;
+}
+
+.status-onsket {
+  background: #fff3d4;
+  color: #8a6200;
+}
+
+.status-godkjent {
+  background: #e1f5e6;
+  color: #1f6b35;
+}
+
+.status-avslatt {
+  background: #ffe1e1;
+  color: #8f1717;
+}
+
+.absence-type {
+  font-weight: 900;
+}
+
+.summary-mini {
+  display: grid;
+  gap: 4px;
+}
+
+.summary-mini span {
+  color: var(--muted);
+  font-weight: 750;
+}
