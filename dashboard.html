@@ -3,80 +3,135 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KBFB Personal</title>
+  <title>Dashboard | KBFB Personal</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <div class="layout">
-    <aside class="sidebar">
-      <h2>🌲 KBFB</h2>
+    <aside class="sidebar nature-sidebar">
+      <div class="brand">
+        <div class="brand-icon">🌲</div>
+        <h2>KBFB</h2>
+        <p>Personalrommet</p>
+      </div>
+
       <nav>
-        <a class="active" href="dashboard.html">Dashboard</a>
-        <a href="vakter.html">Vakter</a>
+        <a class="active" href="dashboard.html">🏠 Hjem</a>
+        <a href="vakter.html">📅 Vakter</a>
         <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
         <a href="vikarer.html">🕒 Vikarer</a>
-        <a href="ferieogavspasering.html">Ferie og avspasering</a>
-        <a href="filarkiv.html">Filarkiv</a>
-        <a href="aarshjul.html">Årshjul</a>
-        <a href="turbank.html">Turbank</a>
-        <a href="admin.html">Admin</a>
+        <a href="ferieogavspasering.html">🌴 Ferie og avspasering</a>
+        <a href="filarkiv.html">📁 Filarkiv</a>
+        <a href="aarshjul.html">🗓️ Årshjul</a>
+        <a href="turbank.html">🏕️ Turbank</a>
+        <a href="admin.html">⚙️ Admin</a>
       </nav>
     </aside>
 
     <main class="main">
-      <section class="topbar">
+      <section class="forest-hero compact">
         <div>
-          <p class="eyebrow">Kirkerudbakken Personal</p>
-          <h1 id="greeting">God dag</h1>
-          <p class="muted" id="todayText"></p>
+          <p class="eyebrow">Ukeoversikt</p>
+          <h1 id="dashboardWeekTitle">Uke</h1>
+          <p class="muted" id="dashboardWeekDates">Laster...</p>
         </div>
-        <a class="primary-btn" href="vakter.html">Se vaktplan</a>
+
+        <div class="week-controls">
+          <button id="dashboardPrevWeek">← Forrige uke</button>
+          <button id="dashboardCurrentWeek">Denne uka</button>
+          <button id="dashboardNextWeek">Neste uke →</button>
+        </div>
       </section>
 
-      <section class="grid">
-        <article class="card wide">
-          <h2>Dagens oversikt</h2>
-          <div class="today-list">
-            <div><strong>Regnbuen</strong><span>Mari, Valantis, Marianne R</span></div>
-            <div><strong>Sommerfuglen</strong><span>Imelda, Nika, Irina</span></div>
-            <div><strong>Benjamin</strong><span>Kontor / møter</span></div>
+      <section class="dashboard-grid">
+        <article class="card dash-card large">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Denne uka</p>
+              <h2>📖 Kjøkkenboka</h2>
+            </div>
+            <a class="mini-link" href="kjokkenboka.html">Åpne</a>
+          </div>
+          <div id="dashboardKitchenNotes" class="compact-feed">
+            <p class="muted">Ingen beskjeder denne uka.</p>
           </div>
         </article>
 
-        <article class="card">
-          <h2>Beskjeder</h2>
-          <ul class="clean-list">
-            <li>Husk å sjekke tursekker før avgang.</li>
-            <li>Sommerfest nærmer seg.</li>
-            <li>Gi beskjed om ferieønsker tidlig.</li>
-          </ul>
+        <article class="card dash-card">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Denne uka</p>
+              <h2>🕒 Vikarer</h2>
+            </div>
+            <a class="mini-link" href="vikarer.html">Åpne</a>
+          </div>
+          <div id="dashboardSubs" class="compact-feed">
+            <p class="muted">Ingen vikarvakter denne uka.</p>
+          </div>
         </article>
 
-        <article class="card">
-          <h2>Kjøkkenboka</h2>
-          <ul class="clean-list">
-            <li><strong>Man:</strong> Benjamin møte 10.00</li>
-            <li><strong>Tir:</strong> Irina tannlege 13.00</li>
-            <li><strong>Ons:</strong> Maxi på tur</li>
-          </ul>
+        <article class="card dash-card">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Denne uka</p>
+              <h2>🌴 Fravær</h2>
+            </div>
+            <a class="mini-link" href="ferieogavspasering.html">Åpne</a>
+          </div>
+          <div id="dashboardAbsences" class="compact-feed">
+            <p class="muted">Ingen fravær registrert denne uka.</p>
+          </div>
         </article>
 
-        <article class="card wide">
-          <h2>Hurtigknapper</h2>
-          <div class="shortcut-grid">
+        <article class="card dash-card large">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Oversikt</p>
+              <h2>📅 Vaktplan</h2>
+            </div>
+            <a class="mini-link" href="vakter.html">Åpne</a>
+          </div>
+
+          <div class="department-snapshot">
+            <div>
+              <h3>🦋 Sommerfuglen</h3>
+              <p>Imelda · Nika · Irina · Lola</p>
+            </div>
+            <div>
+              <h3>🌈 Regnbuen</h3>
+              <p>Mari · Marianne R · Valantis · Marianne L</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="card dash-card">
+          <h2>🏕️ Aktiviteter</h2>
+          <div class="compact-feed">
+            <div class="compact-item">
+              <strong>Tirsdag</strong>
+              <span>Ekornovernatting</span>
+            </div>
+            <div class="compact-item">
+              <strong>Onsdag</strong>
+              <span>Kontordag Benjamin</span>
+            </div>
+            <div class="compact-item">
+              <strong>Torsdag</strong>
+              <span>Klubbdag</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="card dash-card">
+          <h2>⚡ Hurtigknapper</h2>
+          <div class="dash-shortcuts">
             <a href="vakter.html">📅 Vakter</a>
-            <a href="ferieogavspasering.html">🌴 Ferie / avspasering</a>
+            <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
+            <a href="vikarer.html">🕒 Vikarer</a>
+            <a href="ferieogavspasering.html">🌴 Ferie</a>
             <a href="filarkiv.html">📁 Filarkiv</a>
-            <a href="aarshjul.html">🗓️ Årshjul</a>
             <a href="turbank.html">🏕️ Turbank</a>
-            <a href="admin.html">⚙️ Admin</a>
-          </div>
-        </article>
-
-        <article class="card wide">
-          <h2>Benjamin sin kalender</h2>
-          <div class="calendar-wrap">
-            <iframe src="https://calendar.google.com/calendar/embed?src=gsh5amtjd3jsk1cslt2t8n7mnk%40group.calendar.google.com&ctz=Europe%2FBrussels" frameborder="0" scrolling="no"></iframe>
           </div>
         </article>
       </section>
