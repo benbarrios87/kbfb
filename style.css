@@ -1271,7 +1271,233 @@ textarea {
   font-weight: 900;
   cursor: pointer;
 }
+/* ===== DASHBOARD 2.0 ===== */
 
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.dash-card.large {
+  grid-column: span 2;
+}
+
+.mini-link {
+  background: var(--green-soft);
+  color: var(--green-dark);
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.compact-feed {
+  display: grid;
+  gap: 10px;
+}
+
+.compact-item {
+  background: #fffdf7;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 13px 14px;
+  display: grid;
+  gap: 4px;
+}
+
+.compact-item strong {
+  color: var(--green-dark);
+}
+
+.compact-item span {
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.department-snapshot {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.department-snapshot div {
+  background: var(--sand);
+  border-radius: 20px;
+  padding: 18px;
+}
+
+.department-snapshot h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.department-snapshot p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+.dash-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dash-shortcuts a {
+  background: var(--green-soft);
+  color: var(--green-dark);
+  text-decoration: none;
+  border-radius: 16px;
+  padding: 14px;
+  font-weight: 900;
+}
+
+@media (max-width: 850px) {
+  .dashboard-grid,
+  .department-snapshot,
+  .dash-shortcuts {
+    grid-template-columns: 1fr;
+  }
+
+  .dash-card.large {
+    grid-column: span 1;
+  }
+}
+/* ===== DASHBOARD 2.0 ===== */
+
+const dashboardWeekTitle = document.getElementById("dashboardWeekTitle");
+const dashboardWeekDates = document.getElementById("dashboardWeekDates");
+const dashboardPrevWeek = document.getElementById("dashboardPrevWeek");
+const dashboardNextWeek = document.getElementById("dashboardNextWeek");
+const dashboardCurrentWeek = document.getElementById("dashboardCurrentWeek");
+
+const dashboardKitchenNotes = document.getElementById("dashboardKitchenNotes");
+const dashboardSubs = document.getElementById("dashboardSubs");
+const dashboardAbsences = document.getElementById("dashboardAbsences");
+
+let dashboardViewedWeekStart = getMonday(new Date());
+const dashboardRealWeekStart = getMonday(new Date());
+
+function dateIsInDashboardWeek(dateString) {
+  if (!dateString) return false;
+
+  const date = new Date(dateString + "T12:00:00");
+  const start = new Date(dashboardViewedWeekStart);
+  const end = addDays(start, 4);
+
+  return date >= start && date <= end;
+}
+
+function dateRangeTouchesDashboardWeek(startDate, endDate) {
+  if (!startDate || !endDate) return false;
+
+  const start = new Date(startDate + "T12:00:00");
+  const end = new Date(endDate + "T12:00:00");
+  const weekStart = new Date(dashboardViewedWeekStart);
+  const weekEnd = addDays(weekStart, 4);
+
+  return start <= weekEnd && end >= weekStart;
+}
+
+function updateDashboardWeek() {
+  if (!dashboardWeekTitle || !dashboardWeekDates) return;
+
+  const weekNumber = getWeekNumber(dashboardViewedWeekStart);
+  const friday = addDays(dashboardViewedWeekStart, 4);
+
+  dashboardWeekTitle.textContent = `Uke ${weekNumber}`;
+  dashboardWeekDates.textContent = `${formatShortDate(dashboardViewedWeekStart)}–${formatShortDate(friday)} · Ukas oversikt`;
+
+  renderDashboardKitchenNotes();
+  renderDashboardSubs();
+  renderDashboardAbsences();
+}
+
+function renderDashboardKitchenNotes() {
+  if (!dashboardKitchenNotes) return;
+
+  const notes = JSON.parse(localStorage.getItem("kbfb-quick-kjokkenbok") || "[]")
+    .filter(note => dateIsInDashboardWeek(note.date))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  if (!notes.length) {
+    dashboardKitchenNotes.innerHTML = `<p class="muted">Ingen beskjeder denne uka.</p>`;
+    return;
+  }
+
+  dashboardKitchenNotes.innerHTML = notes.map(note => `
+    <div class="compact-item">
+      <strong>${formatKitchenDate(note.date)} · ${note.author}</strong>
+      <span>${note.text}</span>
+    </div>
+  `).join("");
+}
+
+function renderDashboardSubs() {
+  if (!dashboardSubs) return;
+
+  const subs = JSON.parse(localStorage.getItem("kbfb-vikarvakter") || "[]")
+    .filter(sub => dateIsInDashboardWeek(sub.date))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  if (!subs.length) {
+    dashboardSubs.innerHTML = `<p class="muted">Ingen vikarvakter denne uka.</p>`;
+    return;
+  }
+
+  dashboardSubs.innerHTML = subs.map(sub => `
+    <div class="compact-item">
+      <strong>${formatKitchenDate(sub.date)} · ${sub.name}</strong>
+      <span>${sub.department} · ${sub.start}–${sub.end} · ${sub.hours} timer</span>
+    </div>
+  `).join("");
+}
+
+function renderDashboardAbsences() {
+  if (!dashboardAbsences) return;
+
+  const absences = JSON.parse(localStorage.getItem("kbfb-absence-records") || "[]")
+    .filter(record => dateRangeTouchesDashboardWeek(record.startDate, record.endDate))
+    .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+
+  if (!absences.length) {
+    dashboardAbsences.innerHTML = `<p class="muted">Ingen fravær registrert denne uka.</p>`;
+    return;
+  }
+
+  dashboardAbsences.innerHTML = absences.map(record => `
+    <div class="compact-item">
+      <strong>${record.name} · ${record.type}</strong>
+      <span>${formatDateRange(record.startDate, record.endDate)} ${record.hours ? `· ${record.hours} timer` : ""}</span>
+    </div>
+  `).join("");
+}
+
+if (dashboardPrevWeek) {
+  dashboardPrevWeek.addEventListener("click", () => {
+    dashboardViewedWeekStart = addWeeks(dashboardViewedWeekStart, -1);
+    updateDashboardWeek();
+  });
+}
+
+if (dashboardNextWeek) {
+  dashboardNextWeek.addEventListener("click", () => {
+    dashboardViewedWeekStart = addWeeks(dashboardViewedWeekStart, 1);
+    updateDashboardWeek();
+  });
+}
+
+if (dashboardCurrentWeek) {
+  dashboardCurrentWeek.addEventListener("click", () => {
+    dashboardViewedWeekStart = new Date(dashboardRealWeekStart);
+    updateDashboardWeek();
+  });
+}
+
+updateDashboardWeek();
 @media (max-width: 850px) {
   .quick-row {
     grid-template-columns: 1fr;
