@@ -1647,3 +1647,67 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .shift-select.free { background: #fff1b8; }
 .shift-select.office { background: #d7f3e5; }
 .shift-select.custom { background: #f8f5ef; }
+
+                                                                   /* ===== DATOER ===== */
+
+.date-list {
+  display: grid;
+  gap: 12px;
+}
+
+.date-item {
+  border: 1px solid var(--line);
+  border-left: 8px solid var(--green);
+  background: #fffdf7;
+  border-radius: 18px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 6px;
+}
+
+.date-item-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.date-item strong {
+  color: var(--green-dark);
+}
+
+.date-item span {
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.date-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.date-actions button {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.date-edit {
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+
+.date-delete {
+  background: #ffe1e1;
+  color: #8d1c1c;
+}
+
+.date-general { border-left-color: #999; }
+.date-personal { border-left-color: #f29b38; }
+.date-plandager { border-left-color: #e85c5c; }
+.date-overnatting { border-left-color: #4f8edb; }
+.date-foreldre { border-left-color: #e6ca42; }
+.date-styre { border-left-color: #6bd36b; }
+.date-su { border-left-color: #a46be0; }
