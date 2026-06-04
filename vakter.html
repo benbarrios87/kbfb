@@ -28,15 +28,17 @@
     </aside>
 
     <main class="main">
-      <section class="forest-hero">
+      <section class="forest-hero compact">
         <div>
           <p class="eyebrow">Vaktplan</p>
-          <h1>Uke 23</h1>
-          <p class="muted">01.06–05.06 · Åpningstid 07:30–17:00</p>
+          <h1 id="weekTitle">Uke</h1>
+          <p class="muted" id="weekDates">Laster datoer...</p>
         </div>
 
-        <div class="hero-badge">
-          🌿 Friluftsbarnehage med oversikt
+        <div class="week-controls">
+          <button id="prevWeek">← Forrige uke</button>
+          <button id="currentWeek">Denne uka</button>
+          <button id="nextWeek">Neste uke →</button>
         </div>
       </section>
 
@@ -57,6 +59,7 @@
               <option value="Valantis">Valantis</option>
               <option value="Britt">Britt</option>
               <option value="Vikar">Vikar</option>
+              <option value="Foreldreinnsats">Foreldreinnsats</option>
             </select>
           </label>
 
@@ -78,40 +81,13 @@
           <span class="badge sm">SM</span> Sen-mellom
           <span class="badge sv">SV</span> Senvakt
           <span class="badge pt">PT</span> Plantid
-        </div>
-      </section>
-
-      <section class="my-week card">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Min uke</p>
-            <h2>Benjamin</h2>
-          </div>
-          <span class="small-pill">Eksempelvisning</span>
+          <span class="badge free">F/AVS</span> Ferie/avspasering
+          <span class="badge custom">11–14</span> Manuell tid
         </div>
 
-        <div class="week-cards">
-          <div class="day-card">
-            <span>Mandag</span>
-            <strong>Fri / ute</strong>
-          </div>
-          <div class="day-card">
-            <span>Tirsdag</span>
-            <strong>Kontor</strong>
-          </div>
-          <div class="day-card">
-            <span>Onsdag</span>
-            <strong>Kontor</strong>
-          </div>
-          <div class="day-card">
-            <span>Torsdag</span>
-            <strong>SF 11:45–15</strong>
-          </div>
-          <div class="day-card">
-            <span>Fredag</span>
-            <strong>Maxi</strong>
-          </div>
-        </div>
+        <p class="muted edit-help">
+          Klikk i en celle for å endre. Dette lagres foreløpig bare i nettleseren din.
+        </p>
       </section>
 
       <section class="department-section butterfly">
@@ -124,65 +100,65 @@
         </div>
 
         <div class="table-wrap">
-          <table class="shift-table department-table">
+          <table class="shift-table department-table editable-shifts">
             <thead>
               <tr>
                 <th>Ansatt</th>
-                <th>Mandag 01.06</th>
-                <th>Tirsdag 02.06</th>
-                <th>Onsdag 03.06</th>
-                <th>Torsdag 04.06</th>
-                <th>Fredag 05.06</th>
+                <th class="day-head" data-day="0">Mandag</th>
+                <th class="day-head" data-day="1">Tirsdag</th>
+                <th class="day-head" data-day="2">Onsdag</th>
+                <th class="day-head" data-day="3">Torsdag</th>
+                <th class="day-head" data-day="4">Fredag</th>
               </tr>
             </thead>
             <tbody>
               <tr data-employee="Imelda" data-department="Sommerfuglen">
-                <td class="person">Imelda</td>
-                <td><span class="badge tv">TV</span></td>
-                <td><span class="badge sv">SV</span></td>
-                <td><span class="badge tv">TV</span></td>
-                <td><span class="badge tm">TM</span> <small>til 11:45 / PD</small></td>
-                <td><span class="badge mv">MV</span></td>
+                <td class="person"><span class="avatar">I</span>Imelda</td>
+                <td contenteditable="true">TV</td>
+                <td contenteditable="true">SV</td>
+                <td contenteditable="true">TV</td>
+                <td contenteditable="true">TM til 11:45 / PT</td>
+                <td contenteditable="true">MV</td>
               </tr>
               <tr data-employee="Nika" data-department="Sommerfuglen">
-                <td class="person">Nika</td>
-                <td><span class="badge tm">TM</span></td>
-                <td><span class="badge tv">TV</span> <small>Ekorn overnatting</small></td>
-                <td><small>Ekorn overnatting</small></td>
-                <td><span class="badge tv">TV</span></td>
-                <td><span class="badge tm">TM</span></td>
+                <td class="person"><span class="avatar">N</span>Nika</td>
+                <td contenteditable="true">TM</td>
+                <td contenteditable="true">TV Ekorn overnatting</td>
+                <td contenteditable="true">Ekorn overnatting</td>
+                <td contenteditable="true">TV</td>
+                <td contenteditable="true">TM</td>
               </tr>
               <tr data-employee="Irina" data-department="Sommerfuglen">
-                <td class="person">Irina</td>
-                <td><span class="badge sv">SV</span></td>
-                <td><span class="badge free">AVS</span></td>
-                <td><span class="badge tv">TV</span></td>
-                <td><span class="badge sv">SV</span></td>
-                <td><span class="badge tv">TV</span></td>
+                <td class="person"><span class="avatar">I</span>Irina</td>
+                <td contenteditable="true">SV</td>
+                <td contenteditable="true">AVS</td>
+                <td contenteditable="true">TV</td>
+                <td contenteditable="true">SV</td>
+                <td contenteditable="true">TV</td>
               </tr>
               <tr data-employee="Lola" data-department="Sommerfuglen">
-                <td class="person">Lola</td>
-                <td></td>
-                <td><span class="badge tm">TM</span></td>
-                <td><span class="badge sv">SV</span></td>
-                <td><span class="badge mv">MV</span></td>
-                <td><span class="badge sv">SV</span></td>
+                <td class="person"><span class="avatar">L</span>Lola</td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true">TM</td>
+                <td contenteditable="true">SV</td>
+                <td contenteditable="true">MV</td>
+                <td contenteditable="true">SV</td>
               </tr>
-              <tr data-employee="Vikar" data-department="Sommerfuglen">
+              <tr data-employee="Vikar" data-department="Sommerfuglen" class="support-row">
                 <td class="person">Vikar</td>
-                <td></td>
-                <td><small>Sharlene M</small></td>
-                <td><small>Sharlene TM</small></td>
-                <td></td>
-                <td></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true">Sharlene 08:30–16</td>
+                <td contenteditable="true">Sharlene TM</td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
               </tr>
-              <tr data-employee="Benjamin" data-department="Admin">
-                <td class="person">Benjamin</td>
-                <td></td>
-                <td></td>
-                <td><span class="badge office">Kontor</span></td>
-                <td><span class="badge office">Kontor</span><small> / SF 11:45–15</small></td>
-                <td><small>Maxi</small></td>
+              <tr data-employee="Foreldreinnsats" data-department="Sommerfuglen" class="support-row">
+                <td class="person">Foreldreinnsats</td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
               </tr>
             </tbody>
           </table>
@@ -199,65 +175,73 @@
         </div>
 
         <div class="table-wrap">
-          <table class="shift-table department-table">
+          <table class="shift-table department-table editable-shifts">
             <thead>
               <tr>
                 <th>Ansatt</th>
-                <th>Mandag 01.06</th>
-                <th>Tirsdag 02.06</th>
-                <th>Onsdag 03.06</th>
-                <th>Torsdag 04.06</th>
-                <th>Fredag 05.06</th>
+                <th class="day-head" data-day="0">Mandag</th>
+                <th class="day-head" data-day="1">Tirsdag</th>
+                <th class="day-head" data-day="2">Onsdag</th>
+                <th class="day-head" data-day="3">Torsdag</th>
+                <th class="day-head" data-day="4">Fredag</th>
               </tr>
             </thead>
             <tbody>
               <tr data-employee="Mari" data-department="Regnbuen">
-                <td class="person">Mari</td>
-                <td><span class="badge sv">SV</span></td>
-                <td><span class="badge mv">MV</span> <small>Ekorn overnatting</small></td>
-                <td><small>Ekorn overnatting</small></td>
-                <td><span class="badge pt">PT</span> <small>09:30–13</small></td>
-                <td><span class="badge tv">TV</span></td>
+                <td class="person"><span class="avatar">M</span>Mari</td>
+                <td contenteditable="true">SV</td>
+                <td contenteditable="true">MV Ekorn overnatting</td>
+                <td contenteditable="true">Ekorn overnatting</td>
+                <td contenteditable="true">PT 09:30–13</td>
+                <td contenteditable="true">TV</td>
               </tr>
               <tr data-employee="Marianne R" data-department="Regnbuen">
-                <td class="person">Marianne R</td>
-                <td><span class="badge mv">MV</span></td>
-                <td><span class="badge tv">TV</span></td>
-                <td><span class="badge sv">SV</span></td>
-                <td><span class="badge sv">SV</span></td>
-                <td><span class="badge mv">MV</span></td>
+                <td class="person"><span class="avatar">MR</span>Marianne R</td>
+                <td contenteditable="true">MV</td>
+                <td contenteditable="true">TV</td>
+                <td contenteditable="true">SV</td>
+                <td contenteditable="true">SV</td>
+                <td contenteditable="true">MV</td>
               </tr>
               <tr data-employee="Valantis" data-department="Regnbuen">
-                <td class="person">Valantis</td>
-                <td><span class="badge tv">TV</span></td>
-                <td><span class="badge mv">MV</span></td>
-                <td><span class="badge pt">PT</span></td>
-                <td><span class="badge pt">PT</span></td>
-                <td><span class="badge sv">SV</span></td>
+                <td class="person"><span class="avatar">V</span>Valantis</td>
+                <td contenteditable="true">TV</td>
+                <td contenteditable="true">MV</td>
+                <td contenteditable="true">PT</td>
+                <td contenteditable="true">PT</td>
+                <td contenteditable="true">SV</td>
               </tr>
               <tr data-employee="Marianne L" data-department="Regnbuen">
-                <td class="person">Marianne L</td>
-                <td></td>
-                <td><span class="badge sv">SV</span></td>
-                <td><small>08:15–15:45 SF / Maxi</small></td>
-                <td><span class="badge tv">TV</span></td>
-                <td></td>
+                <td class="person"><span class="avatar">ML</span>Marianne L</td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true">SV</td>
+                <td contenteditable="true">08:15–15:45 SF / Maxi</td>
+                <td contenteditable="true">TV</td>
+                <td contenteditable="true"></td>
               </tr>
               <tr data-employee="Britt" data-department="Regnbuen">
-                <td class="person">Britt</td>
-                <td><small>Britt M</small></td>
-                <td></td>
-                <td><span class="badge tv">TV</span></td>
-                <td><span class="badge mv">MV</span></td>
-                <td></td>
+                <td class="person"><span class="avatar">B</span>Britt</td>
+                <td contenteditable="true">Britt M</td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true">TV</td>
+                <td contenteditable="true">MV</td>
+                <td contenteditable="true"></td>
               </tr>
-              <tr data-employee="Vikar" data-department="Regnbuen">
-                <td class="person">Foreldre / vikar</td>
-                <td></td>
-                <td><small>Vetle 08:30–16</small></td>
-                <td><small>Albert / Jonathan</small></td>
-                <td></td>
-                <td></td>
+              <tr data-employee="Vikar" data-department="Regnbuen" class="support-row">
+                <td class="person">Vikar</td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true">Sharlene 08:00–14:30</td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true">Lola 11–14</td>
+              </tr>
+              <tr data-employee="Foreldreinnsats" data-department="Regnbuen" class="support-row">
+                <td class="person">Foreldreinnsats</td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true">Vetle 08:30–16</td>
+                <td contenteditable="true">Albert / Jonathan</td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
               </tr>
             </tbody>
           </table>
@@ -275,12 +259,15 @@
         </article>
 
         <article class="card forest-card">
-          <h2>Kjøkkenboka</h2>
-          <ul class="clean-list">
-            <li>Benjamin kontor onsdag og torsdag</li>
-            <li>Sharlene vikar tirsdag og onsdag</li>
-            <li>Husk ekstra tursekker til overnatting</li>
-          </ul>
+          <h2>Min uke</h2>
+          <p class="muted">Denne kan senere vise automatisk filtrerte vakter for innlogget ansatt.</p>
+          <div class="mini-week">
+            <span>Man: Kontor</span>
+            <span>Tir: Fri</span>
+            <span>Ons: Kontor</span>
+            <span>Tor: SF 11:45–15</span>
+            <span>Fre: Maxi</span>
+          </div>
         </article>
       </section>
     </main>
