@@ -410,3 +410,144 @@ if (clearAbsences) {
 }
 
 renderAbsences();
+
+/* ===== KJØKKENBOKA ===== */
+
+const noteForm = document.getElementById("noteForm");
+const noteFeed = document.getElementById("noteFeed");
+const noteCategoryFilter = document.getElementById("noteCategoryFilter");
+const noteSearch = document.getElementById("noteSearch");
+const clearNotes = document.getElementById("clearNotes");
+const noteCount = document.getElementById("noteCount");
+
+const noteStorageKey = "kbfb-kjokkenboka";
+
+function getNotes() {
+  return JSON.parse(localStorage.getItem(noteStorageKey) || "[]");
+}
+
+function saveNotes(notes) {
+  localStorage.setItem(noteStorageKey, JSON.stringify(notes));
+}
+
+function getCategoryIcon(category) {
+  const icons = {
+    Viktig: "📌",
+    Møte: "📅",
+    Personal: "👥",
+    Barn: "🧒",
+    Tur: "🏕️",
+    Praktisk: "🔧"
+  };
+
+  return icons[category] || "📖";
+}
+
+function normalizeClass(text) {
+  return text
+    .toLowerCase()
+    .replace("ø", "o")
+    .replace("å", "a")
+    .replace("æ", "a");
+}
+
+function renderNotes() {
+  if (!noteFeed) return;
+
+  const category = noteCategoryFilter?.value || "all";
+  const search = (noteSearch?.value || "").toLowerCase();
+
+  let notes = getNotes().sort((a, b) => {
+    const aDate = `${a.date} ${a.time || "00:00"}`;
+    const bDate = `${b.date} ${b.time || "00:00"}`;
+    return new Date(bDate) - new Date(aDate);
+  });
+
+  notes = notes.filter(note => {
+    const matchesCategory = category === "all" || note.category === category;
+    const matchesSearch =
+      note.text.toLowerCase().includes(search) ||
+      note.author.toLowerCase().includes(search) ||
+      note.category.toLowerCase().includes(search);
+
+    return matchesCategory && matchesSearch;
+  });
+
+  if (noteCount) {
+    noteCount.textContent = `${notes.length} ${notes.length === 1 ? "beskjed" : "beskjeder"}`;
+  }
+
+  if (!notes.length) {
+    noteFeed.innerHTML = `<p class="muted">Ingen beskjeder å vise.</p>`;
+    return;
+  }
+
+  noteFeed.innerHTML = notes.map(note => `
+    <article class="note-card ${normalizeClass(note.category)}">
+      <div class="note-top">
+        <div class="note-meta">
+          <span class="note-author">${note.author}</span>
+          <span class="note-date">${formatNorwegianDate(note.date)}${note.time ? ` kl. ${note.time}` : ""}</span>
+          <span class="note-category">${getCategoryIcon(note.category)} ${note.category}</span>
+        </div>
+
+        <button class="note-delete" data-note-id="${note.id}">Slett</button>
+      </div>
+
+      <p class="note-text">${note.text}</p>
+    </article>
+  `).join("");
+
+  document.querySelectorAll("[data-note-id]").forEach(button => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.noteId;
+      const updated = getNotes().filter(note => note.id !== id);
+      saveNotes(updated);
+      renderNotes();
+    });
+  });
+}
+
+if (noteForm) {
+  const noteDate = document.getElementById("noteDate");
+  if (noteDate) noteDate.value = new Date().toISOString().slice(0, 10);
+
+  noteForm.addEventListener("submit", event => {
+    event.preventDefault();
+
+    const note = {
+      id: crypto.randomUUID(),
+      author: document.getElementById("noteAuthor").value,
+      date: document.getElementById("noteDate").value,
+      category: document.getElementById("noteCategory").value,
+      time: document.getElementById("noteTime").value,
+      text: document.getElementById("noteText").value.trim()
+    };
+
+    const notes = getNotes();
+    notes.push(note);
+    saveNotes(notes);
+
+    noteForm.reset();
+    document.getElementById("noteDate").value = new Date().toISOString().slice(0, 10);
+
+    renderNotes();
+  });
+}
+
+if (noteCategoryFilter) {
+  noteCategoryFilter.addEventListener("change", renderNotes);
+}
+
+if (noteSearch) {
+  noteSearch.addEventListener("input", renderNotes);
+}
+
+if (clearNotes) {
+  clearNotes.addEventListener("click", () => {
+    localStorage.removeItem(noteStorageKey);
+    renderNotes();
+  });
+}
+
+renderNotes();
