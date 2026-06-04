@@ -61,6 +61,54 @@ function formatDateRange(startDate, endDate) {
   return `${formatNorwegianDate(startDate)} – ${formatNorwegianDate(endDate)}`;
 }
 
+/* ---------- DATOER / ÅRSHJUL ---------- */
+
+const eventStorageKey = "kbfb-events";
+
+function getEvents() {
+  return JSON.parse(localStorage.getItem(eventStorageKey) || "[]");
+}
+
+function saveEvents(events) {
+  localStorage.setItem(eventStorageKey, JSON.stringify(events));
+}
+
+function categoryLabel(category) {
+  const labels = {
+    general: "Generelt",
+    personal: "Personalmøte / sosialt",
+    plandager: "Plandag",
+    overnatting: "Overnatting / tur",
+    foreldre: "Foreldre",
+    styre: "Styremøte",
+    su: "SU-møte"
+  };
+
+  return labels[category] || "Generelt";
+}
+
+function categoryEmoji(category) {
+  const emojis = {
+    general: "⚪",
+    personal: "🟧",
+    plandager: "🟥",
+    overnatting: "🟦",
+    foreldre: "🟨",
+    styre: "🟩",
+    su: "🟪"
+  };
+
+  return emojis[category] || "⚪";
+}
+
+function eventIsInWeek(eventDate, weekStart) {
+  const date = new Date(eventDate + "T12:00:00");
+  const start = new Date(weekStart);
+  const end = addDays(start, 4);
+
+  return date >= start && date <= end;
+}
+
 /* ---------- DASHBOARD ---------- */
 
 const dashboardWeekTitle = document.getElementById("dashboardWeekTitle");
@@ -71,18 +119,14 @@ const dashboardCurrentWeek = document.getElementById("dashboardCurrentWeek");
 const dashboardKitchenNotes = document.getElementById("dashboardKitchenNotes");
 const dashboardSubs = document.getElementById("dashboardSubs");
 const dashboardAbsences = document.getElementById("dashboardAbsences");
+const dashboardEvents = document.getElementById("dashboardEvents");
 
 let dashboardViewedWeekStart = getMonday(new Date());
 const dashboardRealWeekStart = getMonday(new Date());
 
 function dateIsInDashboardWeek(dateString) {
   if (!dateString) return false;
-
-  const date = new Date(dateString + "T12:00:00");
-  const start = new Date(dashboardViewedWeekStart);
-  const end = addDays(start, 4);
-
-  return date >= start && date <= end;
+  return eventIsInWeek(dateString, dashboardViewedWeekStart);
 }
 
 function dateRangeTouchesDashboardWeek(startDate, endDate) {
@@ -96,18 +140,21 @@ function dateRangeTouchesDashboardWeek(startDate, endDate) {
   return start <= weekEnd && end >= weekStart;
 }
 
-function updateDashboardWeek() {
-  if (!dashboardWeekTitle || !dashboardWeekDates) return;
+function renderDashboardEvents() {
+  if (!dashboardEvents) return;
 
-  const weekNumber = getWeekNumber(dashboardViewedWeekStart);
-  const friday = addDays(dashboardViewedWeekStart, 4);
+  const events = getEvents()
+    .filter(event => eventIsInWeek(event.date, dashboardViewedWeekStart))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  dashboardWeekTitle.textContent = `Uke ${weekNumber}`;
-  dashboardWeekDates.textContent = `${formatShortDate(dashboardViewedWeekStart)}–${formatShortDate(friday)} · Ukas oversikt`;
-
-  renderDashboardKitchenNotes();
-  renderDashboardSubs();
-  renderDashboardAbsences();
+  dashboardEvents.innerHTML = events.length
+    ? events.map(event => `
+      <div class="compact-item">
+        <strong>${categoryEmoji(event.category)} ${formatKitchenDate(event.date)}</strong>
+        <span>${event.title}${event.note ? ` · ${event.note}` : ""}</span>
+      </div>
+    `).join("")
+    : `<p class="muted">Ingen datoer denne uka.</p>`;
 }
 
 function renderDashboardKitchenNotes() {
@@ -155,10 +202,25 @@ function renderDashboardAbsences() {
     ? absences.map(record => `
       <div class="compact-item">
         <strong>${record.name} · ${record.type}</strong>
-        <span>${formatDateRange(record.startDate, record.endDate)} ${record.hours ? `· ${record.hours} timer` : ""}</span>
+        <span>${formatDateRange(record.startDate, record.endDate)}${record.hours ? ` · ${record.hours} timer` : ""}</span>
       </div>
     `).join("")
     : `<p class="muted">Ingen fravær registrert denne uka.</p>`;
+}
+
+function updateDashboardWeek() {
+  if (!dashboardWeekTitle || !dashboardWeekDates) return;
+
+  const weekNumber = getWeekNumber(dashboardViewedWeekStart);
+  const friday = addDays(dashboardViewedWeekStart, 4);
+
+  dashboardWeekTitle.textContent = `Uke ${weekNumber}`;
+  dashboardWeekDates.textContent = `${formatShortDate(dashboardViewedWeekStart)}–${formatShortDate(friday)} · Ukas oversikt`;
+
+  renderDashboardEvents();
+  renderDashboardKitchenNotes();
+  renderDashboardSubs();
+  renderDashboardAbsences();
 }
 
 if (dashboardPrevWeek) {
@@ -189,6 +251,7 @@ updateDashboardWeek();
 const employeeFilter = document.getElementById("employeeFilter");
 const departmentFilter = document.getElementById("departmentFilter");
 const dateSearch = document.getElementById("dateSearch");
+const weekEvents = document.getElementById("weekEvents");
 
 const weekTitle = document.getElementById("weekTitle");
 const weekDates = document.getElementById("weekDates");
@@ -199,20 +262,7 @@ const currentWeekBtn = document.getElementById("currentWeek");
 let viewedWeekStart = getMonday(new Date());
 const realCurrentWeekStart = getMonday(new Date());
 
-const shiftValues = [
-  "",
-  "TV",
-  "TM",
-  "MV",
-  "SM",
-  "SV",
-  "PT",
-  "F",
-  "AVS",
-  "KONTOR",
-  "MØTE",
-  "ANNET"
-];
+const shiftValues = ["", "TV", "TM", "MV", "SM", "SV", "PT", "F", "AVS", "KONTOR", "MØTE", "ANNET"];
 
 function getCurrentWeekKey() {
   return viewedWeekStart.toISOString().slice(0, 10);
@@ -303,6 +353,23 @@ function buildShiftDropdowns() {
   });
 }
 
+function renderWeekEvents() {
+  if (!weekEvents) return;
+
+  const events = getEvents()
+    .filter(event => eventIsInWeek(event.date, viewedWeekStart))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  weekEvents.innerHTML = events.length
+    ? events.map(event => `
+      <div class="compact-item">
+        <strong>${categoryEmoji(event.category)} ${formatKitchenDate(event.date)}</strong>
+        <span>${event.title}${event.note ? ` · ${event.note}` : ""}</span>
+      </div>
+    `).join("")
+    : `<p class="muted">Ingen datoer denne uka.</p>`;
+}
+
 function updateWeekView() {
   if (!weekTitle || !weekDates) return;
 
@@ -321,6 +388,7 @@ function updateWeekView() {
   });
 
   buildShiftDropdowns();
+  renderWeekEvents();
 }
 
 function filterShifts() {
@@ -483,7 +551,7 @@ if (clearQuickNotes) {
 
 renderQuickNotes();
 
-/* ---------- DATOER / ÅRSHJUL ---------- */
+/* ---------- DATOER-SIDEN ---------- */
 
 const dateForm = document.getElementById("dateForm");
 const dateId = document.getElementById("dateId");
@@ -496,42 +564,6 @@ const dateCount = document.getElementById("dateCount");
 const dateSearchInput = document.getElementById("dateSearchInput");
 const dateCategoryFilter = document.getElementById("dateCategoryFilter");
 const seedDates = document.getElementById("seedDates");
-
-const eventStorageKey = "kbfb-events";
-
-function getEvents() {
-  return JSON.parse(localStorage.getItem(eventStorageKey) || "[]");
-}
-
-function saveEvents(events) {
-  localStorage.setItem(eventStorageKey, JSON.stringify(events));
-}
-
-function categoryLabel(category) {
-  const labels = {
-    general: "Generelt",
-    personal: "Personalmøte / sosialt",
-    plandager: "Plandag",
-    overnatting: "Overnatting / tur",
-    foreldre: "Foreldre",
-    styre: "Styremøte",
-    su: "SU-møte"
-  };
-  return labels[category] || "Generelt";
-}
-
-function categoryEmoji(category) {
-  const emojis = {
-    general: "⚪",
-    personal: "🟧",
-    plandager: "🟥",
-    overnatting: "🟦",
-    foreldre: "🟨",
-    styre: "🟩",
-    su: "🟪"
-  };
-  return emojis[category] || "⚪";
-}
 
 function renderEvents() {
   if (!dateList) return;
@@ -591,8 +623,8 @@ function renderEvents() {
       const updated = getEvents().filter(item => item.id !== button.dataset.deleteDate);
       saveEvents(updated);
       renderEvents();
-      renderDashboardEvents?.();
-      renderWeekEvents?.();
+      renderDashboardEvents();
+      renderWeekEvents();
     });
   });
 }
@@ -626,11 +658,18 @@ if (dateForm) {
     eventDate.value = new Date().toISOString().slice(0, 10);
 
     renderEvents();
+    renderDashboardEvents();
+    renderWeekEvents();
   });
 }
 
-if (dateSearchInput) dateSearchInput.addEventListener("input", renderEvents);
-if (dateCategoryFilter) dateCategoryFilter.addEventListener("change", renderEvents);
+if (dateSearchInput) {
+  dateSearchInput.addEventListener("input", renderEvents);
+}
+
+if (dateCategoryFilter) {
+  dateCategoryFilter.addEventListener("change", renderEvents);
+}
 
 if (seedDates) {
   seedDates.addEventListener("click", () => {
@@ -647,7 +686,7 @@ if (seedDates) {
       { date: "2026-11-17", title: "Styremøte", category: "styre", note: "" },
       { date: "2026-12-11", title: "Lucia og julegløgg", category: "foreldre", note: "Med foreldre." },
       { date: "2026-12-18", title: "Julebord", category: "personal", note: "" },
-      { date: "2027-01-02", title: "Planleggingsdag", category: "plandager", note: "Barnehagen er stengt." },
+      { date: "2027-01-04", title: "Planleggingsdag", category: "plandager", note: "Barnehagen er stengt." },
       { date: "2027-01-14", title: "Personalmøte", category: "personal", note: "" },
       { date: "2027-02-04", title: "Styremøte", category: "styre", note: "" },
       { date: "2027-02-23", title: "Karneval", category: "general", note: "" },
@@ -659,60 +698,18 @@ if (seedDates) {
       { date: "2027-05-13", title: "17. mai markering", category: "foreldre", note: "" },
       { date: "2027-05-19", title: "Visittur for nye barn", category: "foreldre", note: "" },
       { date: "2027-05-27", title: "SU-møte", category: "su", note: "" }
-    ].map(event => ({ id: crypto.randomUUID(), ...event }));
+    ].map(event => ({
+      id: crypto.randomUUID(),
+      ...event
+    }));
 
     saveEvents(demoEvents);
-
-    /* ---------- VIS DATOER PÅ DASHBOARD OG VAKTLISTE ---------- */
-
-const dashboardEvents = document.getElementById("dashboardEvents");
-const weekEvents = document.getElementById("weekEvents");
-
-function eventIsInWeek(eventDate, weekStart) {
-  const date = new Date(eventDate + "T12:00:00");
-  const start = new Date(weekStart);
-  const end = addDays(start, 4);
-  return date >= start && date <= end;
-}
-
-function renderDashboardEvents() {
-  if (!dashboardEvents) return;
-
-  const events = getEvents()
-    .filter(event => eventIsInWeek(event.date, dashboardViewedWeekStart))
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-  dashboardEvents.innerHTML = events.length
-    ? events.map(event => `
-      <div class="compact-item">
-        <strong>${categoryEmoji(event.category)} ${formatKitchenDate(event.date)}</strong>
-        <span>${event.title}${event.note ? ` · ${event.note}` : ""}</span>
-      </div>
-    `).join("")
-    : `<p class="muted">Ingen datoer denne uka.</p>`;
-}
-
-function renderWeekEvents() {
-  if (!weekEvents) return;
-
-  const events = getEvents()
-    .filter(event => eventIsInWeek(event.date, viewedWeekStart))
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-  weekEvents.innerHTML = events.length
-    ? events.map(event => `
-      <div class="compact-item">
-        <strong>${categoryEmoji(event.category)} ${formatKitchenDate(event.date)}</strong>
-        <span>${event.title}${event.note ? ` · ${event.note}` : ""}</span>
-      </div>
-    `).join("")
-    : `<p class="muted">Ingen datoer denne uka.</p>`;
-}
-
-renderDashboardEvents();
-renderWeekEvents();
     renderEvents();
+    renderDashboardEvents();
+    renderWeekEvents();
   });
 }
 
 renderEvents();
+renderDashboardEvents();
+renderWeekEvents();
