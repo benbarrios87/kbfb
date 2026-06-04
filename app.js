@@ -30,7 +30,10 @@ function getWeekNumber(date) {
 }
 
 function formatShortDate(date) {
-  return date.toLocaleDateString("no-NO", { day: "2-digit", month: "2-digit" });
+  return date.toLocaleDateString("no-NO", {
+    day: "2-digit",
+    month: "2-digit"
+  });
 }
 
 function formatNorwegianDate(dateString) {
@@ -74,18 +77,22 @@ const dashboardRealWeekStart = getMonday(new Date());
 
 function dateIsInDashboardWeek(dateString) {
   if (!dateString) return false;
+
   const date = new Date(dateString + "T12:00:00");
   const start = new Date(dashboardViewedWeekStart);
   const end = addDays(start, 4);
+
   return date >= start && date <= end;
 }
 
 function dateRangeTouchesDashboardWeek(startDate, endDate) {
   if (!startDate || !endDate) return false;
+
   const start = new Date(startDate + "T12:00:00");
   const end = new Date(endDate + "T12:00:00");
   const weekStart = new Date(dashboardViewedWeekStart);
   const weekEnd = addDays(weekStart, 4);
+
   return start <= weekEnd && end >= weekStart;
 }
 
@@ -112,11 +119,11 @@ function renderDashboardKitchenNotes() {
 
   dashboardKitchenNotes.innerHTML = notes.length
     ? notes.map(note => `
-        <div class="compact-item">
-          <strong>${formatKitchenDate(note.date)} · ${note.author}</strong>
-          <span>${note.text}</span>
-        </div>
-      `).join("")
+      <div class="compact-item">
+        <strong>${formatKitchenDate(note.date)} · ${note.author}</strong>
+        <span>${note.text}</span>
+      </div>
+    `).join("")
     : `<p class="muted">Ingen beskjeder denne uka.</p>`;
 }
 
@@ -129,11 +136,11 @@ function renderDashboardSubs() {
 
   dashboardSubs.innerHTML = subs.length
     ? subs.map(sub => `
-        <div class="compact-item">
-          <strong>${formatKitchenDate(sub.date)} · ${sub.name}</strong>
-          <span>${sub.department} · ${sub.start}–${sub.end} · ${sub.hours} timer</span>
-        </div>
-      `).join("")
+      <div class="compact-item">
+        <strong>${formatKitchenDate(sub.date)} · ${sub.name}</strong>
+        <span>${sub.department} · ${sub.start}–${sub.end} · ${sub.hours} timer</span>
+      </div>
+    `).join("")
     : `<p class="muted">Ingen vikarvakter denne uka.</p>`;
 }
 
@@ -146,11 +153,11 @@ function renderDashboardAbsences() {
 
   dashboardAbsences.innerHTML = absences.length
     ? absences.map(record => `
-        <div class="compact-item">
-          <strong>${record.name} · ${record.type}</strong>
-          <span>${formatDateRange(record.startDate, record.endDate)} ${record.hours ? `· ${record.hours} timer` : ""}</span>
-        </div>
-      `).join("")
+      <div class="compact-item">
+        <strong>${record.name} · ${record.type}</strong>
+        <span>${formatDateRange(record.startDate, record.endDate)} ${record.hours ? `· ${record.hours} timer` : ""}</span>
+      </div>
+    `).join("")
     : `<p class="muted">Ingen fravær registrert denne uka.</p>`;
 }
 
@@ -177,10 +184,12 @@ if (dashboardCurrentWeek) {
 
 updateDashboardWeek();
 
-/* ---------- VAKTLISTE ---------- */
+/* ---------- VAKTLISTE MED DROPDOWN ---------- */
 
 const employeeFilter = document.getElementById("employeeFilter");
 const departmentFilter = document.getElementById("departmentFilter");
+const dateSearch = document.getElementById("dateSearch");
+
 const weekTitle = document.getElementById("weekTitle");
 const weekDates = document.getElementById("weekDates");
 const prevWeekBtn = document.getElementById("prevWeek");
@@ -189,6 +198,110 @@ const currentWeekBtn = document.getElementById("currentWeek");
 
 let viewedWeekStart = getMonday(new Date());
 const realCurrentWeekStart = getMonday(new Date());
+
+const shiftValues = [
+  "",
+  "TV",
+  "TM",
+  "MV",
+  "SM",
+  "SV",
+  "PT",
+  "F",
+  "AVS",
+  "KONTOR",
+  "MØTE",
+  "ANNET"
+];
+
+function getCurrentWeekKey() {
+  return viewedWeekStart.toISOString().slice(0, 10);
+}
+
+function getShiftStorageKey(cell) {
+  const row = cell.closest("tr");
+  const table = cell.closest("table");
+  const department = row?.dataset.department || "Ukjent";
+  const employee = row?.dataset.employee || "Ukjent";
+  const rowIndex = Array.from(table.querySelectorAll("tbody tr")).indexOf(row);
+  const cellIndex = Array.from(row.children).indexOf(cell);
+
+  return `kbfb-shift-${getCurrentWeekKey()}-${department}-${employee}-${rowIndex}-${cellIndex}`;
+}
+
+function getShiftSelectClass(value) {
+  if (value === "TV") return "tv";
+  if (value === "TM") return "tm";
+  if (value === "MV") return "mv";
+  if (value === "SM") return "sm";
+  if (value === "SV") return "sv";
+  if (value === "PT") return "pt";
+  if (value === "F" || value === "AVS") return "free";
+  if (value === "KONTOR" || value === "MØTE") return "office";
+  if (value === "ANNET") return "custom";
+  return "";
+}
+
+function colorShiftSelect(select) {
+  select.className = "shift-select";
+  const color = getShiftSelectClass(select.value);
+  if (color) select.classList.add(color);
+}
+
+function buildShiftDropdowns() {
+  document.querySelectorAll(".shift-cell").forEach(cell => {
+    const key = getShiftStorageKey(cell);
+    const saved = localStorage.getItem(key);
+    const defaultValue = saved !== null ? saved : cell.dataset.default || "";
+
+    const select = document.createElement("select");
+    select.className = "shift-select";
+
+    shiftValues.forEach(value => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value === "" ? "—" : value;
+      select.appendChild(option);
+    });
+
+    const customInput = document.createElement("input");
+    customInput.className = "custom-shift-input";
+    customInput.placeholder = "11–14, Maxi, Sharlene...";
+    customInput.style.display = "none";
+
+    if (shiftValues.includes(defaultValue)) {
+      select.value = defaultValue;
+    } else if (defaultValue) {
+      select.value = "ANNET";
+      customInput.value = defaultValue;
+      customInput.style.display = "block";
+    }
+
+    colorShiftSelect(select);
+
+    select.addEventListener("change", () => {
+      colorShiftSelect(select);
+
+      if (select.value === "ANNET") {
+        customInput.style.display = "block";
+        customInput.focus();
+        localStorage.setItem(key, customInput.value.trim());
+      } else {
+        customInput.style.display = "none";
+        customInput.value = "";
+        localStorage.setItem(key, select.value);
+      }
+    });
+
+    customInput.addEventListener("input", () => {
+      localStorage.setItem(key, customInput.value.trim());
+    });
+
+    cell.innerHTML = "";
+    cell.appendChild(select);
+    cell.appendChild(customInput);
+  });
+}
 
 function updateWeekView() {
   if (!weekTitle || !weekDates) return;
@@ -207,53 +320,7 @@ function updateWeekView() {
     head.innerHTML = `${dayNames[dayIndex]}<br><span>${formatShortDate(date)}</span>`;
   });
 
-  loadSavedShiftsForWeek();
-  applyShiftCellStyling();
-}
-
-function getCurrentWeekKey() {
-  return viewedWeekStart.toISOString().slice(0, 10);
-}
-
-function getCellKey(cell) {
-  const row = cell.closest("tr");
-  const table = cell.closest("table");
-  const department = row?.dataset.department || "Ukjent";
-  const employee = row?.dataset.employee || "Ukjent";
-  const rowIndex = Array.from(table.querySelectorAll("tbody tr")).indexOf(row);
-  const cellIndex = Array.from(row.children).indexOf(cell);
-
-  return `kbfb-shift-${getCurrentWeekKey()}-${department}-${employee}-${rowIndex}-${cellIndex}`;
-}
-
-function loadSavedShiftsForWeek() {
-  document.querySelectorAll('.editable-shifts td[contenteditable="true"]').forEach(cell => {
-    const savedValue = localStorage.getItem(getCellKey(cell));
-    if (savedValue !== null) cell.textContent = savedValue;
-  });
-}
-
-function applyShiftCellStyling() {
-  document.querySelectorAll('.editable-shifts td[contenteditable="true"]').forEach(cell => {
-    const text = cell.textContent.trim().toUpperCase();
-
-    cell.classList.remove(
-      "shift-tv", "shift-tm", "shift-mv", "shift-sm", "shift-sv",
-      "shift-pt", "shift-free", "shift-office", "shift-custom"
-    );
-
-    if (!text) return;
-
-    if (text.includes("TV")) cell.classList.add("shift-tv");
-    else if (text.includes("TM")) cell.classList.add("shift-tm");
-    else if (text.includes("MV")) cell.classList.add("shift-mv");
-    else if (text.includes("SM")) cell.classList.add("shift-sm");
-    else if (text.includes("SV")) cell.classList.add("shift-sv");
-    else if (text.includes("PT") || text.includes("PD")) cell.classList.add("shift-pt");
-    else if (text.includes("FERIE") || text.includes("AVS") || text === "F") cell.classList.add("shift-free");
-    else if (text.includes("KONTOR") || text.includes("MØTE")) cell.classList.add("shift-office");
-    else if (/\d{1,2}[:.]?\d{0,2}\s*[–-]\s*\d{1,2}/.test(text)) cell.classList.add("shift-custom");
-  });
+  buildShiftDropdowns();
 }
 
 function filterShifts() {
@@ -277,6 +344,7 @@ if (prevWeekBtn) {
   prevWeekBtn.addEventListener("click", () => {
     viewedWeekStart = addWeeks(viewedWeekStart, -1);
     updateWeekView();
+    filterShifts();
   });
 }
 
@@ -284,6 +352,7 @@ if (nextWeekBtn) {
   nextWeekBtn.addEventListener("click", () => {
     viewedWeekStart = addWeeks(viewedWeekStart, 1);
     updateWeekView();
+    filterShifts();
   });
 }
 
@@ -291,6 +360,17 @@ if (currentWeekBtn) {
   currentWeekBtn.addEventListener("click", () => {
     viewedWeekStart = new Date(realCurrentWeekStart);
     updateWeekView();
+    filterShifts();
+  });
+}
+
+if (dateSearch) {
+  dateSearch.addEventListener("change", () => {
+    if (!dateSearch.value) return;
+
+    viewedWeekStart = getMonday(new Date(dateSearch.value + "T12:00:00"));
+    updateWeekView();
+    filterShifts();
   });
 }
 
@@ -299,7 +379,6 @@ if (employeeFilter && departmentFilter) {
   departmentFilter.addEventListener("change", filterShifts);
 }
 
-setupEditableCells();
 updateWeekView();
 filterShifts();
 
@@ -333,6 +412,7 @@ function renderQuickNotes() {
   }
 
   const grouped = {};
+
   notes.forEach(note => {
     if (!grouped[note.date]) grouped[note.date] = [];
     grouped[note.date].push(note);
@@ -362,7 +442,9 @@ function renderQuickNotes() {
   });
 }
 
-if (quickNoteDate) quickNoteDate.value = new Date().toISOString().slice(0, 10);
+if (quickNoteDate) {
+  quickNoteDate.value = new Date().toISOString().slice(0, 10);
+}
 
 document.querySelectorAll(".quick-template").forEach(button => {
   button.addEventListener("click", () => {
@@ -400,205 +482,3 @@ if (clearQuickNotes) {
 }
 
 renderQuickNotes();
-
-document.querySelectorAll(".shift-select").forEach(select => {
-  select.addEventListener("change", () => {
-    const customField =
-      select.parentElement.querySelector(".custom-shift");
-
-    if (select.value === "ANNET") {
-      customField.style.display = "block";
-      customField.focus();
-    } else {
-      customField.style.display = "none";
-    }
-  });
-
-  /* ---------- DROPDOWN-VAKTER ---------- */
-
-const shiftOptions = [
-  "",
-  "TV",
-  "TM",
-  "MV",
-  "SM",
-  "SV",
-  "PT",
-  "F",
-  "AVS",
-  "KONTOR",
-  "MØTE",
-  "ANNET"
-];
-
-function getShiftClass(value) {
-  if (value === "TV") return "tv";
-  if (value === "TM") return "tm";
-  if (value === "MV") return "mv";
-  if (value === "SM") return "sm";
-  if (value === "SV") return "sv";
-  if (value === "PT") return "pt";
-  if (value === "F" || value === "AVS") return "free";
-  if (value === "KONTOR" || value === "MØTE") return "office";
-  if (value === "ANNET") return "custom";
-  return "";
-}
-
-function applySelectColor(select) {
-  select.className = "shift-select";
-  const colorClass = getShiftClass(select.value);
-  if (colorClass) select.classList.add(colorClass);
-}
-
-function convertShiftCellsToDropdowns() {
-  document.querySelectorAll('.editable-shifts td[contenteditable="true"]').forEach(cell => {
-    if (cell.dataset.dropdownReady === "true") return;
-
-    const originalText = cell.textContent.trim();
-    const key = getCellKey(cell);
-    const saved = localStorage.getItem(key);
-    const value = saved !== null ? saved : originalText;
-
-    cell.removeAttribute("contenteditable");
-    cell.classList.add("shift-cell");
-    cell.dataset.dropdownReady = "true";
-
-    const select = document.createElement("select");
-    select.className = "shift-select";
-
-    shiftOptions.forEach(optionValue => {
-      const option = document.createElement("option");
-      option.value = optionValue;
-      option.textContent = optionValue === "" ? "—" : optionValue;
-      select.appendChild(option);
-    });
-
-    const customInput = document.createElement("input");
-    customInput.className = "custom-shift-input";
-    customInput.placeholder = "11–14, Maxi, Sharlene...";
-    customInput.style.display = "none";
-
-    if (shiftOptions.includes(value)) {
-      select.value = value;
-    } else if (value) {
-      select.value = "ANNET";
-      customInput.value = value;
-      customInput.style.display = "block";
-    }
-
-    applySelectColor(select);
-
-    select.addEventListener("change", () => {
-      applySelectColor(select);
-
-      if (select.value === "ANNET") {
-        customInput.style.display = "block";
-        customInput.focus();
-        localStorage.setItem(key, customInput.value.trim());
-      } else {
-        customInput.style.display = "none";
-        customInput.value = "";
-        localStorage.setItem(key, select.value);
-      }
-    });
-
-    customInput.addEventListener("input", () => {
-      localStorage.setItem(key, customInput.value.trim());
-    });
-
-    cell.innerHTML = "";
-    cell.appendChild(select);
-    cell.appendChild(customInput);
-  });
-}
-
-convertShiftCellsToDropdowns();
-
-                                                   /* ---------- DROPDOWN VAKTER ---------- */
-
-const shiftValues = [
-  "",
-  "TV",
-  "TM",
-  "MV",
-  "SM",
-  "SV",
-  "PT",
-  "F",
-  "AVS",
-  "KONTOR",
-  "MØTE",
-  "ANNET"
-];
-
-function getShiftColorClass(value) {
-  switch (value) {
-    case "TV":
-      return "shift-tv";
-
-    case "TM":
-      return "shift-tm";
-
-    case "MV":
-      return "shift-mv";
-
-    case "SM":
-      return "shift-sm";
-
-    case "SV":
-      return "shift-sv";
-
-    case "PT":
-      return "shift-pt";
-
-    case "F":
-    case "AVS":
-      return "shift-free";
-
-    case "KONTOR":
-    case "MØTE":
-      return "shift-office";
-
-    case "ANNET":
-      return "shift-custom";
-
-    default:
-      return "";
-  }
-}
-
-function updateShiftDropdownColor(select) {
-  select.className = "shift-select";
-
-  const colorClass = getShiftColorClass(select.value);
-
-  if (colorClass) {
-    select.classList.add(colorClass);
-  }
-}
-
-document.querySelectorAll(".shift-cell").forEach((cell, index) => {
-  const defaultValue = cell.dataset.default || "";
-
-  const select = document.createElement("select");
-  select.className = "shift-select";
-
-  shiftValues.forEach(value => {
-    const option = document.createElement("option");
-
-    option.value = value;
-    option.textContent = value === "" ? "—" : value;
-
-    select.appendChild(option);
-  });
-
-  select.value = defaultValue;
-
-  updateShiftDropdownColor(select);
-
-  select.addEventListener("change", () => {
-    updateShiftDropdownColor(select);
-  });
-
-  cell.appendChild(select);
-});
