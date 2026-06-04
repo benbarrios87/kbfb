@@ -1568,3 +1568,51 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .shift-select.free { background: #fff1b8; }
 .shift-select.office { background: #d7f3e5; }
 .shift-select.custom { background: #f8f5ef; }
+
+              .shift-select {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  padding: 8px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+/* Farger */
+
+.shift-tv {
+  background: #d9f2d9;
+}
+
+.shift-tm {
+  background: #e4f5d0;
+}
+
+.shift-mv {
+  background: #fff3c9;
+}
+
+.shift-sm {
+  background: #ffe2c2;
+}
+
+.shift-sv {
+  background: #ffd3d3;
+}
+
+.shift-pt {
+  background: #dce8ff;
+}
+
+.shift-free {
+  background: #eee4ff;
+}
+
+.shift-office {
+  background: #d8f4e5;
+}
+
+.shift-custom {
+  background: #f4f1ea;
+}
