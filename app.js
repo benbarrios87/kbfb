@@ -415,3 +415,17 @@ if (clearQuickNotes) {
 }
 
 renderQuickNotes();
+
+document.querySelectorAll(".shift-select").forEach(select => {
+  select.addEventListener("change", () => {
+    const customField =
+      select.parentElement.querySelector(".custom-shift");
+
+    if (select.value === "ANNET") {
+      customField.style.display = "block";
+      customField.focus();
+    } else {
+      customField.style.display = "none";
+    }
+  });
+});
