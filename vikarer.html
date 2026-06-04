@@ -1,1 +1,135 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vikarer | KBFB Personal</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
 
+<body>
+  <div class="layout">
+    <aside class="sidebar nature-sidebar">
+      <div class="brand">
+        <div class="brand-icon">🌲</div>
+        <h2>KBFB</h2>
+        <p>Personalrommet</p>
+      </div>
+
+      <nav>
+        <a href="dashboard.html">🏠 Hjem</a>
+        <a href="vakter.html">📅 Vakter</a>
+        <a class="active" href="vikarer.html">🕒 Vikarer</a>
+        <a href="ferieogavspasering.html">🌴 Ferie og avspasering</a>
+        <a href="filarkiv.html">📁 Filarkiv</a>
+        <a href="aarshjul.html">🗓️ Årshjul</a>
+        <a href="turbank.html">🏕️ Turbank</a>
+        <a href="admin.html">⚙️ Admin</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <section class="forest-hero compact">
+        <div>
+          <p class="eyebrow">Vikaroversikt</p>
+          <h1>Vikarer og timer</h1>
+          <p class="muted">Før opp vaktdager, timer og avdeling</p>
+        </div>
+        <div class="hero-badge">🕒 Timeregistrering</div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Registrer vikarvakt</h2>
+
+          <form id="subForm" class="form-grid">
+            <label>
+              Vikar
+              <select id="subName" required>
+                <option value="">Velg vikar</option>
+                <option value="Sharlene">Sharlene</option>
+                <option value="Lola">Lola</option>
+                <option value="Britt">Britt</option>
+                <option value="Annen vikar">Annen vikar</option>
+              </select>
+            </label>
+
+            <label>
+              Dato
+              <input id="subDate" type="date" required />
+            </label>
+
+            <label>
+              Fra
+              <input id="subStart" type="time" value="08:30" required />
+            </label>
+
+            <label>
+              Til
+              <input id="subEnd" type="time" value="16:00" required />
+            </label>
+
+            <label>
+              Pause i minutter
+              <input id="subBreak" type="number" min="0" step="5" value="0" />
+            </label>
+
+            <label>
+              Avdeling
+              <select id="subDepartment">
+                <option value="Sommerfuglen">Sommerfuglen</option>
+                <option value="Regnbuen">Regnbuen</option>
+                <option value="Begge">Begge</option>
+                <option value="Annet">Annet</option>
+              </select>
+            </label>
+
+            <label class="wide-field">
+              Notat
+              <input id="subNote" type="text" placeholder="F.eks. tur, kort dag, ekstrahjelp" />
+            </label>
+
+            <button class="primary-btn form-button" type="submit">Lagre vakt</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h2>Oppsummering</h2>
+          <div id="subSummary" class="summary-list">
+            <p class="muted">Ingen vakter registrert ennå.</p>
+          </div>
+        </article>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Registrerte vakter</p>
+            <h2>Vikarlogg</h2>
+          </div>
+          <button id="clearSubs" class="secondary-btn">Tøm testdata</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="shift-table" id="subTable">
+            <thead>
+              <tr>
+                <th>Dato</th>
+                <th>Vikar</th>
+                <th>Avdeling</th>
+                <th>Tid</th>
+                <th>Timer</th>
+                <th>Notat</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="subTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
