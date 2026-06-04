@@ -20,7 +20,16 @@ if (todayText) {
     year: "numeric"
   });
 }
+function formatNorwegianDate(dateString) {
+  if (!dateString) return "";
 
+  return new Date(dateString + "T12:00:00").toLocaleDateString("no-NO", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+}
 /* ===== VAKTPLAN ===== */
 
 const employeeFilter = document.getElementById("employeeFilter");
