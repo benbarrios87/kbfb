@@ -1,200 +1,138 @@
-/* ===== FERIE / AVSPASERING / OVERTID ===== */
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kjøkkenboka | KBFB Personal</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
 
-const absenceForm = document.getElementById("absenceForm");
-const absenceTableBody = document.getElementById("absenceTableBody");
-const absenceSummary = document.getElementById("absenceSummary");
-const absenceFilter = document.getElementById("absenceFilter");
-const clearAbsences = document.getElementById("clearAbsences");
+<body>
+  <div class="layout">
+    <aside class="sidebar nature-sidebar">
+      <div class="brand">
+        <div class="brand-icon">🌲</div>
+        <h2>KBFB</h2>
+        <p>Personalrommet</p>
+      </div>
 
-const absenceStorageKey = "kbfb-absence-records";
+      <nav>
+        <a href="dashboard.html">🏠 Hjem</a>
+        <a href="vakter.html">📅 Vakter</a>
+        <a class="active" href="kjokkenboka.html">📖 Kjøkkenboka</a>
+        <a href="vikarer.html">🕒 Vikarer</a>
+        <a href="ferieogavspasering.html">🌴 Ferie og avspasering</a>
+        <a href="filarkiv.html">📁 Filarkiv</a>
+        <a href="aarshjul.html">🗓️ Årshjul</a>
+        <a href="turbank.html">🏕️ Turbank</a>
+        <a href="admin.html">⚙️ Admin</a>
+      </nav>
+    </aside>
 
-function getAbsences() {
-  return JSON.parse(localStorage.getItem(absenceStorageKey) || "[]");
-}
-
-function saveAbsences(records) {
-  localStorage.setItem(absenceStorageKey, JSON.stringify(records));
-}
-
-function countWeekdays(startDate, endDate) {
-  if (!startDate || !endDate) return 0;
-
-  const start = new Date(startDate + "T12:00:00");
-  const end = new Date(endDate + "T12:00:00");
-
-  if (end < start) return 0;
-
-  let count = 0;
-  const current = new Date(start);
-
-  while (current <= end) {
-    const day = current.getDay();
-    if (day !== 0 && day !== 6) count++;
-    current.setDate(current.getDate() + 1);
-  }
-
-  return count;
-}
-
-function formatDateRange(startDate, endDate) {
-  if (startDate === endDate) return formatNorwegianDate(startDate);
-  return `${formatNorwegianDate(startDate)} – ${formatNorwegianDate(endDate)}`;
-}
-
-function normalizeStatus(status) {
-  return status
-    .toLowerCase()
-    .replace("ø", "o")
-    .replace("å", "a")
-    .replace("æ", "a");
-}
-
-function renderAbsences() {
-  if (!absenceTableBody || !absenceSummary) return;
-
-  const selected = absenceFilter?.value || "all";
-  const allRecords = getAbsences().sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
-  const records = selected === "all"
-    ? allRecords
-    : allRecords.filter(record => record.name === selected);
-
-  absenceTableBody.innerHTML = "";
-
-  records.forEach(record => {
-    const row = document.createElement("tr");
-    const statusClass = `status-${normalizeStatus(record.status)}`;
-
-    row.innerHTML = `
-      <td><strong>${record.name}</strong></td>
-      <td class="absence-type">${record.type}</td>
-      <td>${formatDateRange(record.startDate, record.endDate)}</td>
-      <td>${record.days}</td>
-      <td>${record.hours || ""}</td>
-      <td><span class="status-pill ${statusClass}">${record.status}</span></td>
-      <td>${record.note || ""}</td>
-      <td><button class="delete-row" data-absence-id="${record.id}">Slett</button></td>
-    `;
-
-    absenceTableBody.appendChild(row);
-  });
-
-  renderAbsenceSummary(records);
-
-  document.querySelectorAll("[data-absence-id]").forEach(button => {
-    button.addEventListener("click", () => {
-      const id = button.dataset.absenceId;
-      const updated = getAbsences().filter(record => record.id !== id);
-      saveAbsences(updated);
-      renderAbsences();
-    });
-  });
-}
-
-function renderAbsenceSummary(records) {
-  if (!absenceSummary) return;
-
-  if (!records.length) {
-    absenceSummary.innerHTML = `<p class="muted">Ingen føringer ennå.</p>`;
-    return;
-  }
-
-  const totals = {};
-
-  records.forEach(record => {
-    if (!totals[record.name]) {
-      totals[record.name] = {
-        ferie: 0,
-        avspaseringBrukt: 0,
-        avspaseringOpptjent: 0,
-        overtid: 0
-      };
-    }
-
-    const hours = Number(record.hours || 0);
-
-    if (record.type === "Ferie") totals[record.name].ferie += Number(record.days || 0);
-    if (record.type === "Avspasering brukt") totals[record.name].avspaseringBrukt += hours;
-    if (record.type === "Avspasering opptjent") totals[record.name].avspaseringOpptjent += hours;
-    if (record.type === "Overtid") totals[record.name].overtid += hours;
-  });
-
-  absenceSummary.innerHTML = Object.entries(totals)
-    .map(([name, total]) => {
-      const avspaseringSaldo = Math.round((total.avspaseringOpptjent - total.avspaseringBrukt) * 100) / 100;
-
-      return `
-        <div class="summary-item">
-          <strong>${name}</strong>
-          <div class="summary-mini">
-            <span>Ferie registrert: ${total.ferie} dager</span>
-            <span>Avspasering saldo: ${avspaseringSaldo} timer</span>
-            <span>Overtid registrert: ${Math.round(total.overtid * 100) / 100} timer</span>
-          </div>
+    <main class="main">
+      <section class="forest-hero compact">
+        <div>
+          <p class="eyebrow">Felles beskjedbok</p>
+          <h1>Kjøkkenboka</h1>
+          <p class="muted">Beskjeder, møter, avtaler og ting alle bør vite.</p>
         </div>
-      `;
-    })
-    .join("");
-}
+        <div class="hero-badge">📖 Dagens småting</div>
+      </section>
 
-if (absenceForm) {
-  const startDateInput = document.getElementById("absenceStartDate");
-  const endDateInput = document.getElementById("absenceEndDate");
+      <section class="grid">
+        <article class="card">
+          <h2>Ny beskjed</h2>
 
-  const today = new Date().toISOString().slice(0, 10);
-  startDateInput.value = today;
-  endDateInput.value = today;
+          <form id="noteForm" class="form-grid">
+            <label>
+              Navn
+              <select id="noteAuthor" required>
+                <option value="">Velg navn</option>
+                <option value="Benjamin">Benjamin</option>
+                <option value="Imelda">Imelda</option>
+                <option value="Nika">Nika</option>
+                <option value="Irina">Irina</option>
+                <option value="Mari">Mari</option>
+                <option value="Marianne R">Marianne R</option>
+                <option value="Marianne L">Marianne L</option>
+                <option value="Valantis">Valantis</option>
+                <option value="Britt">Britt</option>
+                <option value="Lola">Lola</option>
+              </select>
+            </label>
 
-  startDateInput.addEventListener("change", () => {
-    if (!endDateInput.value || endDateInput.value < startDateInput.value) {
-      endDateInput.value = startDateInput.value;
-    }
-  });
+            <label>
+              Dato
+              <input id="noteDate" type="date" required />
+            </label>
 
-  absenceForm.addEventListener("submit", event => {
-    event.preventDefault();
+            <label>
+              Kategori
+              <select id="noteCategory" required>
+                <option value="Viktig">📌 Viktig</option>
+                <option value="Møte">📅 Møte</option>
+                <option value="Personal">👥 Personal</option>
+                <option value="Barn">🧒 Barn</option>
+                <option value="Tur">🏕️ Tur</option>
+                <option value="Praktisk">🔧 Praktisk</option>
+              </select>
+            </label>
 
-    const name = document.getElementById("absenceName").value;
-    const type = document.getElementById("absenceType").value;
-    const startDate = document.getElementById("absenceStartDate").value;
-    const endDate = document.getElementById("absenceEndDate").value;
-    const hours = document.getElementById("absenceHours").value;
-    const status = document.getElementById("absenceStatus").value;
-    const note = document.getElementById("absenceNote").value.trim();
-    const days = countWeekdays(startDate, endDate);
+            <label>
+              Klokkeslett
+              <input id="noteTime" type="time" />
+            </label>
 
-    const record = {
-      id: crypto.randomUUID(),
-      name,
-      type,
-      startDate,
-      endDate,
-      days,
-      hours,
-      status,
-      note
-    };
+            <label class="wide-field">
+              Beskjed
+              <textarea id="noteText" rows="4" placeholder="F.eks. Irina tannlege kl. 13, Benjamin på møte, husk tursekker..." required></textarea>
+            </label>
 
-    const records = getAbsences();
-    records.push(record);
-    saveAbsences(records);
+            <button class="primary-btn form-button" type="submit">Legg inn beskjed</button>
+          </form>
+        </article>
 
-    absenceForm.reset();
-    document.getElementById("absenceStartDate").value = today;
-    document.getElementById("absenceEndDate").value = today;
+        <article class="card">
+          <h2>Filtrer</h2>
 
-    renderAbsences();
-  });
-}
+          <label class="simple-filter">
+            Kategori
+            <select id="noteCategoryFilter">
+              <option value="all">Alle kategorier</option>
+              <option value="Viktig">📌 Viktig</option>
+              <option value="Møte">📅 Møte</option>
+              <option value="Personal">👥 Personal</option>
+              <option value="Barn">🧒 Barn</option>
+              <option value="Tur">🏕️ Tur</option>
+              <option value="Praktisk">🔧 Praktisk</option>
+            </select>
+          </label>
 
-if (absenceFilter) {
-  absenceFilter.addEventListener("change", renderAbsences);
-}
+          <label class="simple-filter">
+            Søk
+            <input id="noteSearch" type="search" placeholder="Søk i beskjeder..." />
+          </label>
 
-if (clearAbsences) {
-  clearAbsences.addEventListener("click", () => {
-    localStorage.removeItem(absenceStorageKey);
-    renderAbsences();
-  });
-}
+          <button id="clearNotes" class="secondary-btn">Tøm testdata</button>
+        </article>
+      </section>
 
-renderAbsences();
+      <section class="card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Feed</p>
+            <h2>Beskjeder</h2>
+          </div>
+          <span class="small-pill" id="noteCount">0 beskjeder</span>
+        </div>
+
+        <div id="noteFeed" class="note-feed">
+          <p class="muted">Ingen beskjeder ennå.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
