@@ -1503,3 +1503,38 @@ updateDashboardWeek();
     grid-template-columns: 1fr;
   }
 }
+.edit-toolbar {
+  margin-top: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.shift-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+}
+
+.shift-palette.hidden {
+  display: none;
+}
+
+.shift-palette button {
+  border: 0;
+  cursor: pointer;
+  min-width: 52px;
+}
+
+.shift-palette button.selected {
+  outline: 3px solid rgba(47, 107, 63, 0.35);
+  transform: translateY(-1px);
+}
+
+body.edit-mode .editable-shifts td[contenteditable="true"] {
+  outline: 2px dashed rgba(47, 107, 63, 0.2);
+}
+
+body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
+  background: #eaf7ea;
+}
