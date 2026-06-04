@@ -1616,3 +1616,34 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .shift-custom {
   background: #f4f1ea;
 }
+
+                                                                   .shift-cell {
+  min-width: 145px;
+}
+
+.shift-select,
+.custom-shift-input {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 9px 10px;
+  font-weight: 900;
+  font: inherit;
+}
+
+.custom-shift-input {
+  margin-top: 7px;
+  border: 1px solid var(--line);
+  background: white;
+  font-weight: 750;
+}
+
+.shift-select.tv { background: #d7efcf; }
+.shift-select.tm { background: #d8ecff; }
+.shift-select.mv { background: #eadcff; }
+.shift-select.sm { background: #ffe6c7; }
+.shift-select.sv { background: #ffd8d8; }
+.shift-select.pt { background: #e6e6e6; }
+.shift-select.free { background: #fff1b8; }
+.shift-select.office { background: #d7f3e5; }
+.shift-select.custom { background: #f8f5ef; }
