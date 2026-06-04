@@ -560,3 +560,118 @@ if (clearNotes) {
 }
 
 renderNotes();
+
+/* ===== ENKEL KJØKKENBOK ===== */
+
+const quickNoteForm = document.getElementById("quickNoteForm");
+const quickNoteAuthor = document.getElementById("quickNoteAuthor");
+const quickNoteDate = document.getElementById("quickNoteDate");
+const quickNoteText = document.getElementById("quickNoteText");
+const quickNoteFeed = document.getElementById("quickNoteFeed");
+const clearQuickNotes = document.getElementById("clearQuickNotes");
+
+const quickNoteStorageKey = "kbfb-quick-kjokkenbok";
+
+function getQuickNotes() {
+  return JSON.parse(localStorage.getItem(quickNoteStorageKey) || "[]");
+}
+
+function saveQuickNotes(notes) {
+  localStorage.setItem(quickNoteStorageKey, JSON.stringify(notes));
+}
+
+function formatKitchenDate(dateString) {
+  return new Date(dateString + "T12:00:00").toLocaleDateString("no-NO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long"
+  });
+}
+
+function renderQuickNotes() {
+  if (!quickNoteFeed) return;
+
+  const notes = getQuickNotes().sort((a, b) => {
+    return new Date(b.date) - new Date(a.date);
+  });
+
+  if (!notes.length) {
+    quickNoteFeed.innerHTML = `<p class="muted">Ingen beskjeder ennå.</p>`;
+    return;
+  }
+
+  const grouped = {};
+
+  notes.forEach(note => {
+    if (!grouped[note.date]) grouped[note.date] = [];
+    grouped[note.date].push(note);
+  });
+
+  quickNoteFeed.innerHTML = Object.entries(grouped)
+    .map(([date, dayNotes]) => `
+      <div class="kitchen-day">
+        <h3>${formatKitchenDate(date)}</h3>
+
+        ${dayNotes.map(note => `
+          <article class="kitchen-entry">
+            <div class="kitchen-entry-top">
+              <strong>${note.author}</strong>
+              <button class="kitchen-delete" data-quick-note-id="${note.id}">Slett</button>
+            </div>
+            <p>${note.text}</p>
+          </article>
+        `).join("")}
+      </div>
+    `)
+    .join("");
+
+  document.querySelectorAll("[data-quick-note-id]").forEach(button => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.quickNoteId;
+      const updated = getQuickNotes().filter(note => note.id !== id);
+      saveQuickNotes(updated);
+      renderQuickNotes();
+    });
+  });
+}
+
+if (quickNoteDate) {
+  quickNoteDate.value = new Date().toISOString().slice(0, 10);
+}
+
+document.querySelectorAll(".quick-template").forEach(button => {
+  button.addEventListener("click", () => {
+    if (!quickNoteText) return;
+    quickNoteText.value = button.dataset.text;
+    quickNoteText.focus();
+  });
+});
+
+if (quickNoteForm) {
+  quickNoteForm.addEventListener("submit", event => {
+    event.preventDefault();
+
+    const note = {
+      id: crypto.randomUUID(),
+      author: quickNoteAuthor.value,
+      date: quickNoteDate.value,
+      text: quickNoteText.value.trim()
+    };
+
+    const notes = getQuickNotes();
+    notes.push(note);
+    saveQuickNotes(notes);
+
+    quickNoteText.value = "";
+    renderQuickNotes();
+  });
+}
+
+if (clearQuickNotes) {
+  clearQuickNotes.addEventListener("click", () => {
+    localStorage.removeItem(quickNoteStorageKey);
+    renderQuickNotes();
+  });
+}
+
+renderQuickNotes();
