@@ -1172,3 +1172,108 @@ textarea {
 .note-delete:hover {
   background: #ffd0d0;
 }
+/* ===== ENKEL KJØKKENBOK ===== */
+
+.kitchen-simple {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.94), rgba(250,246,235,0.94));
+}
+
+.quick-note-form {
+  display: grid;
+  gap: 16px;
+}
+
+.quick-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.quick-note-form label {
+  display: grid;
+  gap: 7px;
+  font-weight: 850;
+  color: var(--muted);
+}
+
+.quick-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.quick-template {
+  border: 1px solid var(--line);
+  background: #fffaf0;
+  color: var(--green-dark);
+  border-radius: 999px;
+  padding: 9px 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.quick-template:hover {
+  background: var(--green-soft);
+}
+
+.kitchen-feed {
+  display: grid;
+  gap: 24px;
+}
+
+.kitchen-day {
+  display: grid;
+  gap: 10px;
+}
+
+.kitchen-day h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--green-dark);
+  border-bottom: 2px solid var(--green-soft);
+  padding-bottom: 8px;
+}
+
+.kitchen-entry {
+  background: #fffdf7;
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--green);
+  border-radius: 18px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 7px;
+}
+
+.kitchen-entry-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.kitchen-entry strong {
+  color: var(--green-dark);
+}
+
+.kitchen-entry p {
+  margin: 0;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+.kitchen-delete {
+  border: 0;
+  background: #ffe4e4;
+  color: #8d1c1c;
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+@media (max-width: 850px) {
+  .quick-row {
+    grid-template-columns: 1fr;
+  }
+}
