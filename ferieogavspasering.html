@@ -1,1 +1,166 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ferie og avspasering | KBFB Personal</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
 
+<body>
+  <div class="layout">
+    <aside class="sidebar nature-sidebar">
+      <div class="brand">
+        <div class="brand-icon">🌲</div>
+        <h2>KBFB</h2>
+        <p>Personalrommet</p>
+      </div>
+
+      <nav>
+        <a href="dashboard.html">🏠 Hjem</a>
+        <a href="vakter.html">📅 Vakter</a>
+        <a href="vikarer.html">🕒 Vikarer</a>
+        <a class="active" href="ferieogavspasering.html">🌴 Ferie og avspasering</a>
+        <a href="filarkiv.html">📁 Filarkiv</a>
+        <a href="aarshjul.html">🗓️ Årshjul</a>
+        <a href="turbank.html">🏕️ Turbank</a>
+        <a href="admin.html">⚙️ Admin</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <section class="forest-hero compact">
+        <div>
+          <p class="eyebrow">Fravær og timer</p>
+          <h1>Ferie, avspasering og overtid</h1>
+          <p class="muted">Før opp egne dager og timer. Adminoversikt kommer senere.</p>
+        </div>
+        <div class="hero-badge">🌴 Personlig oversikt</div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Legg inn føring</h2>
+
+          <form id="absenceForm" class="form-grid">
+            <label>
+              Ansatt
+              <select id="absenceName" required>
+                <option value="">Velg ansatt</option>
+                <option value="Benjamin">Benjamin</option>
+                <option value="Imelda">Imelda</option>
+                <option value="Nika">Nika</option>
+                <option value="Irina">Irina</option>
+                <option value="Mari">Mari</option>
+                <option value="Marianne R">Marianne R</option>
+                <option value="Marianne L">Marianne L</option>
+                <option value="Valantis">Valantis</option>
+                <option value="Britt">Britt</option>
+                <option value="Lola">Lola</option>
+              </select>
+            </label>
+
+            <label>
+              Type
+              <select id="absenceType" required>
+                <option value="Ferie">Ferie</option>
+                <option value="Avspasering brukt">Avspasering brukt</option>
+                <option value="Avspasering opptjent">Avspasering opptjent</option>
+                <option value="Overtid">Overtid</option>
+                <option value="Permisjon">Permisjon</option>
+              </select>
+            </label>
+
+            <label>
+              Fra dato
+              <input id="absenceStartDate" type="date" required />
+            </label>
+
+            <label>
+              Til dato
+              <input id="absenceEndDate" type="date" required />
+            </label>
+
+            <label>
+              Timer
+              <input id="absenceHours" type="number" min="0" step="0.5" placeholder="F.eks. 7.5" />
+            </label>
+
+            <label>
+              Status
+              <select id="absenceStatus">
+                <option value="Registrert">Registrert</option>
+                <option value="Ønsket">Ønsket</option>
+                <option value="Godkjent">Godkjent</option>
+                <option value="Avslått">Avslått</option>
+              </select>
+            </label>
+
+            <label class="wide-field">
+              Notat
+              <input id="absenceNote" type="text" placeholder="F.eks. tannlege, fri fredag, jobbet ekstra på møte" />
+            </label>
+
+            <button class="primary-btn form-button" type="submit">Lagre føring</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h2>Oversikt</h2>
+
+          <label class="simple-filter">
+            Vis ansatt
+            <select id="absenceFilter">
+              <option value="all">Alle</option>
+              <option value="Benjamin">Benjamin</option>
+              <option value="Imelda">Imelda</option>
+              <option value="Nika">Nika</option>
+              <option value="Irina">Irina</option>
+              <option value="Mari">Mari</option>
+              <option value="Marianne R">Marianne R</option>
+              <option value="Marianne L">Marianne L</option>
+              <option value="Valantis">Valantis</option>
+              <option value="Britt">Britt</option>
+              <option value="Lola">Lola</option>
+            </select>
+          </label>
+
+          <div id="absenceSummary" class="summary-list">
+            <p class="muted">Ingen føringer ennå.</p>
+          </div>
+        </article>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Logg</p>
+            <h2>Føringer</h2>
+          </div>
+          <button id="clearAbsences" class="secondary-btn">Tøm testdata</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="shift-table">
+            <thead>
+              <tr>
+                <th>Ansatt</th>
+                <th>Type</th>
+                <th>Dato</th>
+                <th>Dager</th>
+                <th>Timer</th>
+                <th>Status</th>
+                <th>Notat</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="absenceTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
