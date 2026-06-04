@@ -662,6 +662,55 @@ if (seedDates) {
     ].map(event => ({ id: crypto.randomUUID(), ...event }));
 
     saveEvents(demoEvents);
+
+    /* ---------- VIS DATOER PÅ DASHBOARD OG VAKTLISTE ---------- */
+
+const dashboardEvents = document.getElementById("dashboardEvents");
+const weekEvents = document.getElementById("weekEvents");
+
+function eventIsInWeek(eventDate, weekStart) {
+  const date = new Date(eventDate + "T12:00:00");
+  const start = new Date(weekStart);
+  const end = addDays(start, 4);
+  return date >= start && date <= end;
+}
+
+function renderDashboardEvents() {
+  if (!dashboardEvents) return;
+
+  const events = getEvents()
+    .filter(event => eventIsInWeek(event.date, dashboardViewedWeekStart))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  dashboardEvents.innerHTML = events.length
+    ? events.map(event => `
+      <div class="compact-item">
+        <strong>${categoryEmoji(event.category)} ${formatKitchenDate(event.date)}</strong>
+        <span>${event.title}${event.note ? ` · ${event.note}` : ""}</span>
+      </div>
+    `).join("")
+    : `<p class="muted">Ingen datoer denne uka.</p>`;
+}
+
+function renderWeekEvents() {
+  if (!weekEvents) return;
+
+  const events = getEvents()
+    .filter(event => eventIsInWeek(event.date, viewedWeekStart))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  weekEvents.innerHTML = events.length
+    ? events.map(event => `
+      <div class="compact-item">
+        <strong>${categoryEmoji(event.category)} ${formatKitchenDate(event.date)}</strong>
+        <span>${event.title}${event.note ? ` · ${event.note}` : ""}</span>
+      </div>
+    `).join("")
+    : `<p class="muted">Ingen datoer denne uka.</p>`;
+}
+
+renderDashboardEvents();
+renderWeekEvents();
     renderEvents();
   });
 }
