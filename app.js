@@ -226,21 +226,6 @@ function getCellKey(cell) {
   return `kbfb-shift-${getCurrentWeekKey()}-${department}-${employee}-${rowIndex}-${cellIndex}`;
 }
 
-function setupEditableCells() {
-  document.querySelectorAll('.editable-shifts td[contenteditable="true"]').forEach(cell => {
-    cell.addEventListener("input", () => {
-      localStorage.setItem(getCellKey(cell), cell.textContent.trim());
-      applyShiftCellStyling();
-    });
-
-    cell.addEventListener("blur", () => {
-      cell.textContent = cell.textContent.trim();
-      localStorage.setItem(getCellKey(cell), cell.textContent);
-      applyShiftCellStyling();
-    });
-  });
-}
-
 function loadSavedShiftsForWeek() {
   document.querySelectorAll('.editable-shifts td[contenteditable="true"]').forEach(cell => {
     const savedValue = localStorage.getItem(getCellKey(cell));
