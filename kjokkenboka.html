@@ -34,19 +34,19 @@
         <div>
           <p class="eyebrow">Felles beskjedbok</p>
           <h1>Kjøkkenboka</h1>
-          <p class="muted">Beskjeder, møter, avtaler og ting alle bør vite.</p>
+          <p class="muted">Skriv raskt. Les raskt. Akkurat som boka på kjøkkenet.</p>
         </div>
-        <div class="hero-badge">📖 Dagens småting</div>
+        <div class="hero-badge">✏️ Enkel beskjedlogg</div>
       </section>
 
-      <section class="grid">
-        <article class="card">
-          <h2>Ny beskjed</h2>
+      <section class="card kitchen-simple">
+        <h2>Ny beskjed</h2>
 
-          <form id="noteForm" class="form-grid">
+        <form id="quickNoteForm" class="quick-note-form">
+          <div class="quick-row">
             <label>
-              Navn
-              <select id="noteAuthor" required>
+              Hvem?
+              <select id="quickNoteAuthor" required>
                 <option value="">Velg navn</option>
                 <option value="Benjamin">Benjamin</option>
                 <option value="Imelda">Imelda</option>
@@ -63,70 +63,37 @@
 
             <label>
               Dato
-              <input id="noteDate" type="date" required />
+              <input id="quickNoteDate" type="date" required />
             </label>
+          </div>
 
-            <label>
-              Kategori
-              <select id="noteCategory" required>
-                <option value="Viktig">📌 Viktig</option>
-                <option value="Møte">📅 Møte</option>
-                <option value="Personal">👥 Personal</option>
-                <option value="Barn">🧒 Barn</option>
-                <option value="Tur">🏕️ Tur</option>
-                <option value="Praktisk">🔧 Praktisk</option>
-              </select>
-            </label>
-
-            <label>
-              Klokkeslett
-              <input id="noteTime" type="time" />
-            </label>
-
-            <label class="wide-field">
-              Beskjed
-              <textarea id="noteText" rows="4" placeholder="F.eks. Irina tannlege kl. 13, Benjamin på møte, husk tursekker..." required></textarea>
-            </label>
-
-            <button class="primary-btn form-button" type="submit">Legg inn beskjed</button>
-          </form>
-        </article>
-
-        <article class="card">
-          <h2>Filtrer</h2>
-
-          <label class="simple-filter">
-            Kategori
-            <select id="noteCategoryFilter">
-              <option value="all">Alle kategorier</option>
-              <option value="Viktig">📌 Viktig</option>
-              <option value="Møte">📅 Møte</option>
-              <option value="Personal">👥 Personal</option>
-              <option value="Barn">🧒 Barn</option>
-              <option value="Tur">🏕️ Tur</option>
-              <option value="Praktisk">🔧 Praktisk</option>
-            </select>
+          <label>
+            Beskjed
+            <textarea id="quickNoteText" rows="3" placeholder="Skriv beskjed her..." required></textarea>
           </label>
 
-          <label class="simple-filter">
-            Søk
-            <input id="noteSearch" type="search" placeholder="Søk i beskjeder..." />
-          </label>
+          <div class="quick-buttons">
+            <button type="button" class="quick-template" data-text="Tannlege kl. ">Tannlege</button>
+            <button type="button" class="quick-template" data-text="Møte kl. ">Møte</button>
+            <button type="button" class="quick-template" data-text="Kontordag ">Kontordag</button>
+            <button type="button" class="quick-template" data-text="Går kl. ">Går tidlig</button>
+            <button type="button" class="quick-template" data-text="Vikar: ">Vikar</button>
+          </div>
 
-          <button id="clearNotes" class="secondary-btn">Tøm testdata</button>
-        </article>
+          <button class="primary-btn form-button" type="submit">Lagre beskjed</button>
+        </form>
       </section>
 
       <section class="card">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Feed</p>
+            <p class="eyebrow">Oversikt</p>
             <h2>Beskjeder</h2>
           </div>
-          <span class="small-pill" id="noteCount">0 beskjeder</span>
+          <button id="clearQuickNotes" class="secondary-btn">Tøm testdata</button>
         </div>
 
-        <div id="noteFeed" class="note-feed">
+        <div id="quickNoteFeed" class="kitchen-feed">
           <p class="muted">Ingen beskjeder ennå.</p>
         </div>
       </section>
