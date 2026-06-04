@@ -1,1 +1,84 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hvor er Benjamin? | KBFB Personal</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
 
+<body>
+  <div class="layout">
+    <aside class="sidebar nature-sidebar">
+      <div class="brand">
+        <div class="brand-icon">🌲</div>
+        <h2>KBFB</h2>
+        <p>Personalrommet</p>
+      </div>
+
+      <nav>
+        <a href="dashboard.html">🏠 Hjem</a>
+        <a href="vakter.html">📅 Vakter</a>
+        <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
+        <a href="datoer.html">📆 Datoer</a>
+        <a class="active" href="kalender.html">📍 Hvor er Benjamin?</a>
+        <a href="vikarer.html">🕒 Vikarer</a>
+        <a href="ferieogavspasering.html">🌴 Ferie og avspasering</a>
+        <a href="filarkiv.html">📁 Filarkiv</a>
+        <a href="aarshjul.html">🗓️ Årshjul</a>
+        <a href="turbank.html">🏕️ Turbank</a>
+        <a href="admin.html">⚙️ Admin</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <section class="forest-hero compact">
+        <div>
+          <p class="eyebrow">Benjamin sin kalender</p>
+          <h1>Hvor er Benjamin?</h1>
+          <p class="muted">Her kan ansatte se om jeg er på kontor, i møte, på tur eller ute av huset.</p>
+        </div>
+        <div class="hero-badge">📍 Tilgjengelighet</div>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Kalender</p>
+            <h2>Min jobbkalender</h2>
+          </div>
+          <span class="small-pill">Oppdateres fra Google Kalender</span>
+        </div>
+
+        <div class="calendar-wrap">
+          <iframe
+            src="https://calendar.google.com/calendar/embed?src=gsh5amtjd3jsk1cslt2t8n7mnk%40group.calendar.google.com&ctz=Europe%2FOslo"
+            frameborder="0"
+            scrolling="no">
+          </iframe>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card forest-card">
+          <h2>Hva betyr dette?</h2>
+          <ul class="clean-list">
+            <li><strong>Kontor:</strong> Jeg er tilgjengelig for korte avklaringer.</li>
+            <li><strong>Møte:</strong> Send melding hvis det haster.</li>
+            <li><strong>Tur / avdeling:</strong> Jeg er med barna eller ute av huset.</li>
+            <li><strong>Fri / permisjon:</strong> Ta kun kontakt ved viktige saker.</li>
+          </ul>
+        </article>
+
+        <article class="card forest-card">
+          <h2>Rask beskjed</h2>
+          <p class="muted">Ved viktige ting: skriv i kjøkkenboka eller send meg melding direkte.</p>
+          <a class="primary-btn" href="kjokkenboka.html">Åpne kjøkkenboka</a>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
