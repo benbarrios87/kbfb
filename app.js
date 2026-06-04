@@ -209,3 +209,204 @@ function applyShiftCellStyling() {
 setupEditableCells();
 updateWeekView();
 filterShifts();
+
+/* ===== FERIE / AVSPASERING / OVERTID ===== */
+
+const absenceForm = document.getElementById("absenceForm");
+const absenceTableBody = document.getElementById("absenceTableBody");
+const absenceSummary = document.getElementById("absenceSummary");
+const absenceFilter = document.getElementById("absenceFilter");
+const clearAbsences = document.getElementById("clearAbsences");
+
+const absenceStorageKey = "kbfb-absence-records";
+
+function getAbsences() {
+  return JSON.parse(localStorage.getItem(absenceStorageKey) || "[]");
+}
+
+function saveAbsences(records) {
+  localStorage.setItem(absenceStorageKey, JSON.stringify(records));
+}
+
+function countWeekdays(startDate, endDate) {
+  if (!startDate || !endDate) return 0;
+
+  const start = new Date(startDate + "T12:00:00");
+  const end = new Date(endDate + "T12:00:00");
+
+  if (end < start) return 0;
+
+  let count = 0;
+  const current = new Date(start);
+
+  while (current <= end) {
+    const day = current.getDay();
+    if (day !== 0 && day !== 6) count++;
+    current.setDate(current.getDate() + 1);
+  }
+
+  return count;
+}
+
+function formatDateRange(startDate, endDate) {
+  if (startDate === endDate) return formatNorwegianDate(startDate);
+  return `${formatNorwegianDate(startDate)} – ${formatNorwegianDate(endDate)}`;
+}
+
+function normalizeStatus(status) {
+  return status
+    .toLowerCase()
+    .replace("ø", "o")
+    .replace("å", "a")
+    .replace("æ", "a");
+}
+
+function renderAbsences() {
+  if (!absenceTableBody || !absenceSummary) return;
+
+  const selected = absenceFilter?.value || "all";
+  const allRecords = getAbsences().sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+  const records = selected === "all"
+    ? allRecords
+    : allRecords.filter(record => record.name === selected);
+
+  absenceTableBody.innerHTML = "";
+
+  records.forEach(record => {
+    const row = document.createElement("tr");
+    const statusClass = `status-${normalizeStatus(record.status)}`;
+
+    row.innerHTML = `
+      <td><strong>${record.name}</strong></td>
+      <td class="absence-type">${record.type}</td>
+      <td>${formatDateRange(record.startDate, record.endDate)}</td>
+      <td>${record.days}</td>
+      <td>${record.hours || ""}</td>
+      <td><span class="status-pill ${statusClass}">${record.status}</span></td>
+      <td>${record.note || ""}</td>
+      <td><button class="delete-row" data-absence-id="${record.id}">Slett</button></td>
+    `;
+
+    absenceTableBody.appendChild(row);
+  });
+
+  renderAbsenceSummary(records);
+
+  document.querySelectorAll("[data-absence-id]").forEach(button => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.absenceId;
+      const updated = getAbsences().filter(record => record.id !== id);
+      saveAbsences(updated);
+      renderAbsences();
+    });
+  });
+}
+
+function renderAbsenceSummary(records) {
+  if (!absenceSummary) return;
+
+  if (!records.length) {
+    absenceSummary.innerHTML = `<p class="muted">Ingen føringer ennå.</p>`;
+    return;
+  }
+
+  const totals = {};
+
+  records.forEach(record => {
+    if (!totals[record.name]) {
+      totals[record.name] = {
+        ferie: 0,
+        avspaseringBrukt: 0,
+        avspaseringOpptjent: 0,
+        overtid: 0
+      };
+    }
+
+    const hours = Number(record.hours || 0);
+
+    if (record.type === "Ferie") totals[record.name].ferie += Number(record.days || 0);
+    if (record.type === "Avspasering brukt") totals[record.name].avspaseringBrukt += hours;
+    if (record.type === "Avspasering opptjent") totals[record.name].avspaseringOpptjent += hours;
+    if (record.type === "Overtid") totals[record.name].overtid += hours;
+  });
+
+  absenceSummary.innerHTML = Object.entries(totals)
+    .map(([name, total]) => {
+      const avspaseringSaldo = Math.round((total.avspaseringOpptjent - total.avspaseringBrukt) * 100) / 100;
+
+      return `
+        <div class="summary-item">
+          <strong>${name}</strong>
+          <div class="summary-mini">
+            <span>Ferie registrert: ${total.ferie} dager</span>
+            <span>Avspasering saldo: ${avspaseringSaldo} timer</span>
+            <span>Overtid registrert: ${Math.round(total.overtid * 100) / 100} timer</span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+if (absenceForm) {
+  const startDateInput = document.getElementById("absenceStartDate");
+  const endDateInput = document.getElementById("absenceEndDate");
+
+  const today = new Date().toISOString().slice(0, 10);
+  startDateInput.value = today;
+  endDateInput.value = today;
+
+  startDateInput.addEventListener("change", () => {
+    if (!endDateInput.value || endDateInput.value < startDateInput.value) {
+      endDateInput.value = startDateInput.value;
+    }
+  });
+
+  absenceForm.addEventListener("submit", event => {
+    event.preventDefault();
+
+    const name = document.getElementById("absenceName").value;
+    const type = document.getElementById("absenceType").value;
+    const startDate = document.getElementById("absenceStartDate").value;
+    const endDate = document.getElementById("absenceEndDate").value;
+    const hours = document.getElementById("absenceHours").value;
+    const status = document.getElementById("absenceStatus").value;
+    const note = document.getElementById("absenceNote").value.trim();
+    const days = countWeekdays(startDate, endDate);
+
+    const record = {
+      id: crypto.randomUUID(),
+      name,
+      type,
+      startDate,
+      endDate,
+      days,
+      hours,
+      status,
+      note
+    };
+
+    const records = getAbsences();
+    records.push(record);
+    saveAbsences(records);
+
+    absenceForm.reset();
+    document.getElementById("absenceStartDate").value = today;
+    document.getElementById("absenceEndDate").value = today;
+
+    renderAbsences();
+  });
+}
+
+if (absenceFilter) {
+  absenceFilter.addEventListener("change", renderAbsences);
+}
+
+if (clearAbsences) {
+  clearAbsences.addEventListener("click", () => {
+    localStorage.removeItem(absenceStorageKey);
+    renderAbsences();
+  });
+}
+
+renderAbsences();
