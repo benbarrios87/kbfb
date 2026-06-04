@@ -553,6 +553,8 @@ renderQuickNotes();
 
 /* ---------- DATOER-SIDEN ---------- */
 
+/* ---------- DATOER-SIDEN ---------- */
+
 const dateForm = document.getElementById("dateForm");
 const dateId = document.getElementById("dateId");
 const eventDate = document.getElementById("eventDate");
@@ -560,48 +562,80 @@ const eventTitle = document.getElementById("eventTitle");
 const eventCategory = document.getElementById("eventCategory");
 const eventNote = document.getElementById("eventNote");
 const dateList = document.getElementById("dateList");
-const dateCount = document.getElementById("dateCount");
-const dateSearchInput = document.getElementById("dateSearchInput");
 const dateCategoryFilter = document.getElementById("dateCategoryFilter");
-const seedDates = document.getElementById("seedDates");
+
+function defaultEventTitle(category) {
+  const titles = {
+    general: "Viktig dato",
+    personal: "Personalmøte",
+    plandager: "Planleggingsdag",
+    overnatting: "Overnatting / tur",
+    foreldre: "Foreldremøte",
+    styre: "Styremøte",
+    su: "SU-møte"
+  };
+
+  return titles[category] || "Viktig dato";
+}
+
+function monthHeading(dateString) {
+  return new Date(dateString + "T12:00:00").toLocaleDateString("no-NO", {
+    month: "long",
+    year: "numeric"
+  });
+}
+
+function shortDate(dateString) {
+  return new Date(dateString + "T12:00:00").toLocaleDateString("no-NO", {
+    day: "2-digit",
+    month: "2-digit"
+  });
+}
 
 function renderEvents() {
   if (!dateList) return;
 
-  const search = (dateSearchInput?.value || "").toLowerCase();
   const category = dateCategoryFilter?.value || "all";
 
-  let events = getEvents().sort((a, b) => new Date(a.date) - new Date(b.date));
-
-  events = events.filter(event => {
-    const text = `${event.title} ${event.note || ""} ${categoryLabel(event.category)}`.toLowerCase();
-    const matchesSearch = text.includes(search);
-    const matchesCategory = category === "all" || event.category === category;
-    return matchesSearch && matchesCategory;
-  });
-
-  if (dateCount) {
-    dateCount.textContent = `${events.length} ${events.length === 1 ? "dato" : "datoer"}`;
-  }
+  let events = getEvents()
+    .filter(event => category === "all" || event.category === category)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   if (!events.length) {
-    dateList.innerHTML = `<p class="muted">Ingen datoer å vise.</p>`;
+    dateList.innerHTML = `<p class="muted">Ingen datoer lagt inn ennå.</p>`;
     return;
   }
 
-  dateList.innerHTML = events.map(event => `
-    <article class="date-item date-${event.category}">
-      <div class="date-item-top">
-        <div>
-          <strong>${formatNorwegianDate(event.date)} · ${event.title}</strong>
-          <span>${categoryEmoji(event.category)} ${categoryLabel(event.category)}${event.note ? ` · ${event.note}` : ""}</span>
-        </div>
-        <div class="date-actions">
-          <button class="date-edit" data-edit-date="${event.id}">Endre</button>
-          <button class="date-delete" data-delete-date="${event.id}">Slett</button>
-        </div>
+  const grouped = {};
+
+  events.forEach(event => {
+    const month = monthHeading(event.date);
+    if (!grouped[month]) grouped[month] = [];
+    grouped[month].push(event);
+  });
+
+  dateList.innerHTML = Object.entries(grouped).map(([month, monthEvents]) => `
+    <section class="month-group">
+      <h3>${month}</h3>
+
+      <div class="month-events">
+        ${monthEvents.map(event => `
+          <article class="date-item date-${event.category}">
+            <div class="date-item-top">
+              <div>
+                <strong>${shortDate(event.date)} · ${event.title}</strong>
+                <span>${categoryEmoji(event.category)} ${categoryLabel(event.category)}${event.note ? ` · ${event.note}` : ""}</span>
+              </div>
+
+              <div class="date-actions">
+                <button class="date-edit" type="button" data-edit-date="${event.id}">Endre</button>
+                <button class="date-delete" type="button" data-delete-date="${event.id}">Slett</button>
+              </div>
+            </div>
+          </article>
+        `).join("")}
       </div>
-    </article>
+    </section>
   `).join("");
 
   document.querySelectorAll("[data-edit-date]").forEach(button => {
@@ -614,6 +648,7 @@ function renderEvents() {
       eventTitle.value = event.title;
       eventCategory.value = event.category;
       eventNote.value = event.note || "";
+
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
   });
@@ -622,6 +657,7 @@ function renderEvents() {
     button.addEventListener("click", () => {
       const updated = getEvents().filter(item => item.id !== button.dataset.deleteDate);
       saveEvents(updated);
+
       renderEvents();
       renderDashboardEvents();
       renderWeekEvents();
@@ -629,9 +665,24 @@ function renderEvents() {
   });
 }
 
+if (eventCategory && eventTitle) {
+  eventCategory.addEventListener("change", () => {
+    if (!eventTitle.value.trim() || eventTitle.value === defaultEventTitle(eventCategory.dataset.previousCategory)) {
+      eventTitle.value = defaultEventTitle(eventCategory.value);
+    }
+
+    eventCategory.dataset.previousCategory = eventCategory.value;
+  });
+}
+
 if (dateForm) {
   if (eventDate && !eventDate.value) {
     eventDate.value = new Date().toISOString().slice(0, 10);
+  }
+
+  if (eventCategory && eventTitle && !eventTitle.value) {
+    eventTitle.value = defaultEventTitle(eventCategory.value);
+    eventCategory.dataset.previousCategory = eventCategory.value;
   }
 
   dateForm.addEventListener("submit", event => {
@@ -653,63 +704,26 @@ if (dateForm) {
       : [...events, eventData];
 
     saveEvents(updated);
+
     dateForm.reset();
     dateId.value = "";
     eventDate.value = new Date().toISOString().slice(0, 10);
+    eventTitle.value = defaultEventTitle(eventCategory.value);
+    eventCategory.dataset.previousCategory = eventCategory.value;
 
     renderEvents();
     renderDashboardEvents();
     renderWeekEvents();
   });
-}
-
-if (dateSearchInput) {
-  dateSearchInput.addEventListener("input", renderEvents);
 }
 
 if (dateCategoryFilter) {
   dateCategoryFilter.addEventListener("change", renderEvents);
 }
 
-if (seedDates) {
-  seedDates.addEventListener("click", () => {
-    const demoEvents = [
-      { date: "2026-08-14", title: "Planleggingsdager", category: "plandager", note: "Barnehagen er stengt." },
-      { date: "2026-08-20", title: "Foreldremøte", category: "foreldre", note: "For alle og litt ekstra møte for Maxi." },
-      { date: "2026-09-02", title: "Dugnad", category: "foreldre", note: "" },
-      { date: "2026-09-09", title: "Personalmøte", category: "personal", note: "" },
-      { date: "2026-09-17", title: "SU-møte", category: "su", note: "" },
-      { date: "2026-09-22", title: "Styremøte", category: "styre", note: "" },
-      { date: "2026-10-08", title: "Personalmøte", category: "personal", note: "" },
-      { date: "2026-10-29", title: "Dugnad", category: "foreldre", note: "" },
-      { date: "2026-11-03", title: "Plandag", category: "plandager", note: "" },
-      { date: "2026-11-17", title: "Styremøte", category: "styre", note: "" },
-      { date: "2026-12-11", title: "Lucia og julegløgg", category: "foreldre", note: "Med foreldre." },
-      { date: "2026-12-18", title: "Julebord", category: "personal", note: "" },
-      { date: "2027-01-04", title: "Planleggingsdag", category: "plandager", note: "Barnehagen er stengt." },
-      { date: "2027-01-14", title: "Personalmøte", category: "personal", note: "" },
-      { date: "2027-02-04", title: "Styremøte", category: "styre", note: "" },
-      { date: "2027-02-23", title: "Karneval", category: "general", note: "" },
-      { date: "2027-03-04", title: "Maxi skiovernatting", category: "overnatting", note: "" },
-      { date: "2027-03-11", title: "Personalmøte", category: "personal", note: "" },
-      { date: "2027-03-23", title: "Styremøte", category: "styre", note: "" },
-      { date: "2027-04-15", title: "Personalmøte", category: "personal", note: "" },
-      { date: "2027-05-05", title: "Dugnad", category: "foreldre", note: "" },
-      { date: "2027-05-13", title: "17. mai markering", category: "foreldre", note: "" },
-      { date: "2027-05-19", title: "Visittur for nye barn", category: "foreldre", note: "" },
-      { date: "2027-05-27", title: "SU-møte", category: "su", note: "" }
-    ].map(event => ({
-      id: crypto.randomUUID(),
-      ...event
-    }));
-
-    saveEvents(demoEvents);
-    renderEvents();
-    renderDashboardEvents();
-    renderWeekEvents();
-  });
-}
-
+renderEvents();
+renderDashboardEvents();
+renderWeekEvents();
 renderEvents();
 renderDashboardEvents();
 renderWeekEvents();
