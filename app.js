@@ -21,17 +21,21 @@ if (todayText) {
 
 const employeeFilter = document.getElementById("employeeFilter");
 const departmentFilter = document.getElementById("departmentFilter");
-const shiftRows = document.querySelectorAll("#shiftTable tbody tr");
 
 function filterShifts() {
   const employee = employeeFilter?.value || "all";
   const department = departmentFilter?.value || "all";
+  const rows = document.querySelectorAll(".shift-table tbody tr");
 
-  shiftRows.forEach(row => {
+  rows.forEach(row => {
     const matchesEmployee = employee === "all" || row.dataset.employee === employee;
     const matchesDepartment = department === "all" || row.dataset.department === department;
-
     row.style.display = matchesEmployee && matchesDepartment ? "" : "none";
+  });
+
+  document.querySelectorAll(".department-section").forEach(section => {
+    const visibleRows = section.querySelectorAll("tbody tr:not([style*='display: none'])");
+    section.style.display = visibleRows.length ? "" : "none";
   });
 }
 
