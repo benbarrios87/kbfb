@@ -721,6 +721,45 @@ if (dateCategoryFilter) {
   dateCategoryFilter.addEventListener("change", renderEvents);
 }
 
+function seedDefaultEventsIfEmpty() {
+  const existing = getEvents();
+  if (existing.length) return;
+
+  const defaultEvents = [
+    { date: "2026-08-14", title: "Planleggingsdag", category: "plandager", note: "Barnehagen stengt" },
+    { date: "2026-08-20", title: "Foreldremøte", category: "foreldre", note: "" },
+    { date: "2026-09-02", title: "Dugnad", category: "foreldre", note: "" },
+    { date: "2026-09-09", title: "Personalmøte", category: "personal", note: "" },
+    { date: "2026-09-17", title: "SU-møte", category: "su", note: "" },
+    { date: "2026-09-22", title: "Styremøte", category: "styre", note: "" },
+    { date: "2026-10-08", title: "Personalmøte", category: "personal", note: "" },
+    { date: "2026-10-29", title: "Dugnad", category: "foreldre", note: "" },
+    { date: "2026-11-03", title: "Planleggingsdag", category: "plandager", note: "" },
+    { date: "2026-11-17", title: "Styremøte", category: "styre", note: "" },
+    { date: "2026-12-11", title: "Lucia og julegløgg", category: "foreldre", note: "Med foreldre" },
+    { date: "2026-12-18", title: "Julebord", category: "personal", note: "" },
+    { date: "2027-01-04", title: "Planleggingsdag", category: "plandager", note: "Barnehagen stengt" },
+    { date: "2027-01-14", title: "Personalmøte", category: "personal", note: "" },
+    { date: "2027-02-04", title: "Styremøte", category: "styre", note: "" },
+    { date: "2027-02-23", title: "Karneval", category: "general", note: "" },
+    { date: "2027-03-04", title: "Maxi skiovernatting", category: "overnatting", note: "" },
+    { date: "2027-03-11", title: "Personalmøte", category: "personal", note: "" },
+    { date: "2027-03-23", title: "Styremøte", category: "styre", note: "" },
+    { date: "2027-04-15", title: "Personalmøte", category: "personal", note: "" },
+    { date: "2027-05-05", title: "Dugnad", category: "foreldre", note: "" },
+    { date: "2027-05-13", title: "17. mai markering", category: "foreldre", note: "" },
+    { date: "2027-05-19", title: "Visittur for nye barn", category: "foreldre", note: "" },
+    { date: "2027-05-27", title: "SU-møte", category: "su", note: "" }
+  ].map(event => ({
+    id: crypto.randomUUID(),
+    ...event
+  }));
+
+  saveEvents(defaultEvents);
+}
+
+seedDefaultEventsIfEmpty();
+
 renderEvents();
 renderDashboardEvents();
 renderWeekEvents();
