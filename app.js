@@ -528,3 +528,92 @@ function convertShiftCellsToDropdowns() {
 }
 
 convertShiftCellsToDropdowns();
+
+                                                   /* ---------- DROPDOWN VAKTER ---------- */
+
+const shiftValues = [
+  "",
+  "TV",
+  "TM",
+  "MV",
+  "SM",
+  "SV",
+  "PT",
+  "F",
+  "AVS",
+  "KONTOR",
+  "MØTE",
+  "ANNET"
+];
+
+function getShiftColorClass(value) {
+  switch (value) {
+    case "TV":
+      return "shift-tv";
+
+    case "TM":
+      return "shift-tm";
+
+    case "MV":
+      return "shift-mv";
+
+    case "SM":
+      return "shift-sm";
+
+    case "SV":
+      return "shift-sv";
+
+    case "PT":
+      return "shift-pt";
+
+    case "F":
+    case "AVS":
+      return "shift-free";
+
+    case "KONTOR":
+    case "MØTE":
+      return "shift-office";
+
+    case "ANNET":
+      return "shift-custom";
+
+    default:
+      return "";
+  }
+}
+
+function updateShiftDropdownColor(select) {
+  select.className = "shift-select";
+
+  const colorClass = getShiftColorClass(select.value);
+
+  if (colorClass) {
+    select.classList.add(colorClass);
+  }
+}
+
+document.querySelectorAll(".shift-cell").forEach((cell, index) => {
+  const defaultValue = cell.dataset.default || "";
+
+  const select = document.createElement("select");
+  select.className = "shift-select";
+
+  shiftValues.forEach(value => {
+    const option = document.createElement("option");
+
+    option.value = value;
+    option.textContent = value === "" ? "—" : value;
+
+    select.appendChild(option);
+  });
+
+  select.value = defaultValue;
+
+  updateShiftDropdownColor(select);
+
+  select.addEventListener("change", () => {
+    updateShiftDropdownColor(select);
+  });
+
+  cell.appendChild(select);
+});
