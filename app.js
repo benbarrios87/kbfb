@@ -428,4 +428,103 @@ document.querySelectorAll(".shift-select").forEach(select => {
       customField.style.display = "none";
     }
   });
-});
+
+  /* ---------- DROPDOWN-VAKTER ---------- */
+
+const shiftOptions = [
+  "",
+  "TV",
+  "TM",
+  "MV",
+  "SM",
+  "SV",
+  "PT",
+  "F",
+  "AVS",
+  "KONTOR",
+  "MØTE",
+  "ANNET"
+];
+
+function getShiftClass(value) {
+  if (value === "TV") return "tv";
+  if (value === "TM") return "tm";
+  if (value === "MV") return "mv";
+  if (value === "SM") return "sm";
+  if (value === "SV") return "sv";
+  if (value === "PT") return "pt";
+  if (value === "F" || value === "AVS") return "free";
+  if (value === "KONTOR" || value === "MØTE") return "office";
+  if (value === "ANNET") return "custom";
+  return "";
+}
+
+function applySelectColor(select) {
+  select.className = "shift-select";
+  const colorClass = getShiftClass(select.value);
+  if (colorClass) select.classList.add(colorClass);
+}
+
+function convertShiftCellsToDropdowns() {
+  document.querySelectorAll('.editable-shifts td[contenteditable="true"]').forEach(cell => {
+    if (cell.dataset.dropdownReady === "true") return;
+
+    const originalText = cell.textContent.trim();
+    const key = getCellKey(cell);
+    const saved = localStorage.getItem(key);
+    const value = saved !== null ? saved : originalText;
+
+    cell.removeAttribute("contenteditable");
+    cell.classList.add("shift-cell");
+    cell.dataset.dropdownReady = "true";
+
+    const select = document.createElement("select");
+    select.className = "shift-select";
+
+    shiftOptions.forEach(optionValue => {
+      const option = document.createElement("option");
+      option.value = optionValue;
+      option.textContent = optionValue === "" ? "—" : optionValue;
+      select.appendChild(option);
+    });
+
+    const customInput = document.createElement("input");
+    customInput.className = "custom-shift-input";
+    customInput.placeholder = "11–14, Maxi, Sharlene...";
+    customInput.style.display = "none";
+
+    if (shiftOptions.includes(value)) {
+      select.value = value;
+    } else if (value) {
+      select.value = "ANNET";
+      customInput.value = value;
+      customInput.style.display = "block";
+    }
+
+    applySelectColor(select);
+
+    select.addEventListener("change", () => {
+      applySelectColor(select);
+
+      if (select.value === "ANNET") {
+        customInput.style.display = "block";
+        customInput.focus();
+        localStorage.setItem(key, customInput.value.trim());
+      } else {
+        customInput.style.display = "none";
+        customInput.value = "";
+        localStorage.setItem(key, select.value);
+      }
+    });
+
+    customInput.addEventListener("input", () => {
+      localStorage.setItem(key, customInput.value.trim());
+    });
+
+    cell.innerHTML = "";
+    cell.appendChild(select);
+    cell.appendChild(customInput);
+  });
+}
+
+convertShiftCellsToDropdowns();
