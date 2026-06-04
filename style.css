@@ -795,3 +795,133 @@ select {
     padding: 16px;
   }
 }
+/* ===== KBFB VAKTPLAN 2.0 ===== */
+
+.forest-hero.compact {
+  padding: 28px;
+}
+
+.week-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  z-index: 2;
+}
+
+.week-controls button {
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+  padding: 12px 15px;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+.week-controls button:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.edit-help {
+  margin-top: 14px;
+}
+
+.editable-shifts td[contenteditable="true"] {
+  cursor: text;
+  background-clip: padding-box;
+}
+
+.editable-shifts td[contenteditable="true"]:focus {
+  outline: 3px solid rgba(47, 107, 63, 0.22);
+  background: white;
+  border-radius: 10px;
+}
+
+.editable-shifts td.shift-tv {
+  background: #edf8e9;
+}
+
+.editable-shifts td.shift-tm {
+  background: #edf6ff;
+}
+
+.editable-shifts td.shift-mv {
+  background: #f4efff;
+}
+
+.editable-shifts td.shift-sm {
+  background: #fff3e4;
+}
+
+.editable-shifts td.shift-sv {
+  background: #fff0f0;
+}
+
+.editable-shifts td.shift-pt {
+  background: #f1f1f1;
+}
+
+.editable-shifts td.shift-free {
+  background: #fff8d8;
+}
+
+.editable-shifts td.shift-office {
+  background: #e9f7ef;
+}
+
+.editable-shifts td.shift-custom {
+  background: #f8f5ef;
+}
+
+.support-row td {
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.support-row .person {
+  color: #7a5d2b;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--green-soft);
+  color: var(--green-dark);
+  font-size: 0.78rem;
+  font-weight: 950;
+  margin-right: 10px;
+  vertical-align: middle;
+  border: 2px solid rgba(47, 107, 63, 0.12);
+}
+
+.mini-week {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.mini-week span {
+  background: var(--sand);
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-weight: 700;
+}
+
+.day-head {
+  white-space: nowrap;
+}
+
+@media (max-width: 850px) {
+  .week-controls {
+    width: 100%;
+  }
+
+  .week-controls button {
+    flex: 1;
+  }
+}
