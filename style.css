@@ -1711,3 +1711,39 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .date-foreldre { border-left-color: #e6ca42; }
 .date-styre { border-left-color: #6bd36b; }
 .date-su { border-left-color: #a46be0; }
+
+              .month-list {
+  display: grid;
+  gap: 28px;
+}
+
+.month-group {
+  display: grid;
+  gap: 12px;
+}
+
+.month-group h3 {
+  margin: 0;
+  color: var(--green-dark);
+  font-size: 1.35rem;
+  text-transform: capitalize;
+  border-bottom: 2px solid var(--green-soft);
+  padding-bottom: 8px;
+}
+
+.month-events {
+  display: grid;
+  gap: 10px;
+}
+
+.compact-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.compact-filter select {
+  min-width: 180px;
+}
