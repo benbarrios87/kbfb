@@ -6,15 +6,21 @@
   <title>Datoer | KBFB Personal</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <div class="layout">
     <aside class="sidebar nature-sidebar">
-      <div class="brand"><div class="brand-icon">🌲</div><h2>KBFB</h2><p>Personalrommet</p></div>
+      <div class="brand">
+        <div class="brand-icon">🌲</div>
+        <h2>KBFB</h2>
+        <p>Personalrommet</p>
+      </div>
+
       <nav>
         <a href="dashboard.html">🏠 Hjem</a>
         <a href="vakter.html">📅 Vakter</a>
         <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
-        <a href="datoer.html" class="active">📆 Datoer</a>
+        <a class="active" href="datoer.html">📆 Datoer</a>
         <a href="vikarer.html">🕒 Vikarer</a>
         <a href="ferieogavspasering.html">🌴 Ferie og avspasering</a>
         <a href="filarkiv.html">📁 Filarkiv</a>
@@ -28,8 +34,8 @@
       <section class="forest-hero compact">
         <div>
           <p class="eyebrow">Årshjul</p>
-          <h1>Datoer 2026/2027</h1>
-          <p class="muted">Felles datooversikt som vises på dashboard, vaktliste og kjøkkenbok.</p>
+          <h1>Datoer</h1>
+          <p class="muted">Felles oversikt for møter, plandager, dugnader, turer og viktige datoer.</p>
         </div>
         <div class="hero-badge">📆 Felles kalender</div>
       </section>
@@ -37,14 +43,17 @@
       <section class="grid">
         <article class="card">
           <h2>Legg til / endre dato</h2>
+
           <form id="dateForm" class="form-grid">
             <input type="hidden" id="dateId" />
 
-            <label>Dato
+            <label>
+              Dato
               <input type="date" id="eventDate" required />
             </label>
 
-            <label>Kategori
+            <label>
+              Kategori
               <select id="eventCategory" required>
                 <option value="general">Generelt</option>
                 <option value="personal">Personalmøte / sosialt</option>
@@ -56,12 +65,14 @@
               </select>
             </label>
 
-            <label class="wide-field">Tittel
+            <label class="wide-field">
+              Tittel
               <input type="text" id="eventTitle" placeholder="F.eks. Personalmøte" required />
             </label>
 
-            <label class="wide-field">Notat
-              <input type="text" id="eventNote" placeholder="F.eks. barnehagen stengt, kl. 18.00 osv." />
+            <label class="wide-field">
+              Notat
+              <input type="text" id="eventNote" placeholder="F.eks. kl. 18.00, barnehagen stengt osv." />
             </label>
 
             <button class="primary-btn form-button" type="submit">Lagre dato</button>
@@ -71,11 +82,13 @@
         <article class="card">
           <h2>Finn dato raskt</h2>
 
-          <label class="simple-filter">Søk
+          <label class="simple-filter">
+            Søk
             <input type="search" id="dateSearchInput" placeholder="Søk etter dugnad, plandag, SU..." />
           </label>
 
-          <label class="simple-filter">Kategori
+          <label class="simple-filter">
+            Kategori
             <select id="dateCategoryFilter">
               <option value="all">Alle kategorier</option>
               <option value="general">Generelt</option>
