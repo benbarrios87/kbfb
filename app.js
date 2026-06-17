@@ -484,7 +484,7 @@ if (employeeFilter && departmentFilter) {
 updateWeekView();
 filterShifts();
 
-/* ---------- ENKEL KJØKKENBOK ---------- */
+/* ---------- ENKEL KJØKKENBOK - SUPABASE ---------- */
 
 const quickNoteForm = document.getElementById("quickNoteForm");
 const quickNoteAuthor = document.getElementById("quickNoteAuthor");
@@ -493,20 +493,53 @@ const quickNoteText = document.getElementById("quickNoteText");
 const quickNoteFeed = document.getElementById("quickNoteFeed");
 const clearQuickNotes = document.getElementById("clearQuickNotes");
 
-const quickNoteStorageKey = "kbfb-quick-kjokkenbok";
+let notesCache = [];
 
-function getQuickNotes() {
-  return JSON.parse(localStorage.getItem(quickNoteStorageKey) || "[]");
+async function loadNotesFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_notes")
+    .select("*")
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Kunne ikke hente kjøkkenbok:", error);
+    return [];
+  }
+
+  notesCache = data || [];
+  return notesCache;
 }
 
-function saveQuickNotes(notes) {
-  localStorage.setItem(quickNoteStorageKey, JSON.stringify(notes));
+async function saveNoteToSupabase(note) {
+  const { error } = await supabaseClient
+    .from("kbfb_notes")
+    .insert([{
+      author: note.author,
+      date: note.date,
+      text: note.text
+    }]);
+
+  if (error) {
+    console.error("Kunne ikke lagre beskjed:", error);
+  }
+}
+
+async function deleteNoteFromSupabase(id) {
+  const { error } = await supabaseClient
+    .from("kbfb_notes")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Kunne ikke slette beskjed:", error);
+  }
 }
 
 function renderQuickNotes() {
   if (!quickNoteFeed) return;
 
-  const notes = getQuickNotes().sort((a, b) => new Date(b.date) - new Date(a.date));
+  const notes = notesCache;
 
   if (!notes.length) {
     quickNoteFeed.innerHTML = `<p class="muted">Ingen beskjeder ennå.</p>`;
@@ -523,6 +556,7 @@ function renderQuickNotes() {
   quickNoteFeed.innerHTML = Object.entries(grouped).map(([date, dayNotes]) => `
     <div class="kitchen-day">
       <h3>${formatKitchenDate(date)}</h3>
+
       ${dayNotes.map(note => `
         <article class="kitchen-entry">
           <div class="kitchen-entry-top">
@@ -536,10 +570,11 @@ function renderQuickNotes() {
   `).join("");
 
   document.querySelectorAll("[data-quick-note-id]").forEach(button => {
-    button.addEventListener("click", () => {
-      const updated = getQuickNotes().filter(note => note.id !== button.dataset.quickNoteId);
-      saveQuickNotes(updated);
+    button.addEventListener("click", async () => {
+      await deleteNoteFromSupabase(button.dataset.quickNoteId);
+      await loadNotesFromSupabase();
       renderQuickNotes();
+      renderDashboardKitchenNotes();
     });
   });
 }
@@ -557,33 +592,38 @@ document.querySelectorAll(".quick-template").forEach(button => {
 });
 
 if (quickNoteForm) {
-  quickNoteForm.addEventListener("submit", event => {
+  quickNoteForm.addEventListener("submit", async event => {
     event.preventDefault();
 
     const note = {
-      id: crypto.randomUUID(),
       author: quickNoteAuthor.value,
       date: quickNoteDate.value,
       text: quickNoteText.value.trim()
     };
 
-    const notes = getQuickNotes();
-    notes.push(note);
-    saveQuickNotes(notes);
+    await saveNoteToSupabase(note);
+    await loadNotesFromSupabase();
 
     quickNoteText.value = "";
+
     renderQuickNotes();
+    renderDashboardKitchenNotes();
   });
 }
 
 if (clearQuickNotes) {
   clearQuickNotes.addEventListener("click", () => {
-    localStorage.removeItem(quickNoteStorageKey);
-    renderQuickNotes();
+    alert("Tøm testdata er skrudd av nå som kjøkkenboka bruker Supabase.");
   });
 }
 
-renderQuickNotes();
+async function initializeNotes() {
+  await loadNotesFromSupabase();
+  renderQuickNotes();
+  renderDashboardKitchenNotes();
+}
+
+initializeNotes();
 
 /* ---------- DATOER-SIDEN ---------- */
 
