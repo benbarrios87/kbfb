@@ -3,16 +3,18 @@ const SUPABASE_KEY = "sb_publishable_GnxwJ05PVpzN-MBGTBpI0Q_3HsQU0nb";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-console.log("SUPABASE.JS ER LASTET");
+console.log("1: SUPABASE.JS ER LASTET");
 
-async function loadEventsFromSupabase() {
+async function testSupabaseEvents() {
+  console.log("2: TEST STARTER");
+
   const { data, error } = await supabaseClient
     .from("kbfb_events")
     .select("*")
-    .order("date");
+    .order("date", { ascending: true });
 
-  console.log("EVENTS:", data);
-  console.log("ERROR:", error);
+  console.log("3: EVENTS DATA", data);
+  console.log("4: EVENTS ERROR", error);
 }
 
-loadEventsFromSupabase();
+testSupabaseEvents();
