@@ -64,7 +64,41 @@ function formatDateRange(startDate, endDate) {
 /* ---------- DATOER / ÅRSHJUL ---------- */
 
 const eventStorageKey = "kbfb-events";
+let eventsCache = [];
 
+async function loadEventsFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_events")
+    .select("*")
+    .order("date", { ascending: true });
+
+  if (error) {
+    console.error("Kunne ikke hente events:", error);
+    return [];
+  }
+
+  eventsCache = data || [];
+  return eventsCache;
+}
+
+async function saveEventToSupabase(eventData) {
+  const { error } = await supabaseClient
+    .from("kbfb_events")
+    .insert([{
+      date: eventData.date,
+      title: eventData.title,
+      category: eventData.category,
+      note: eventData.note
+    }]);
+
+  if (error) {
+    console.error("Kunne ikke lagre event:", error);
+  }
+}
+
+function getEvents() {
+  return eventsCache;
+}
 function getEvents() {
   return JSON.parse(localStorage.getItem(eventStorageKey) || "[]");
 }
@@ -685,7 +719,7 @@ if (dateForm) {
     eventCategory.dataset.previousCategory = eventCategory.value;
   }
 
-  dateForm.addEventListener("submit", event => {
+ dateForm.addEventListener("submit", async event => {
     event.preventDefault();
 
     const events = getEvents();
@@ -699,11 +733,9 @@ if (dateForm) {
       note: eventNote.value.trim()
     };
 
-    const updated = existingId
-      ? events.map(item => item.id === existingId ? eventData : item)
-      : [...events, eventData];
+    await saveEventToSupabase(eventData);
 
-    saveEvents(updated);
+await loadEventsFromSupabase();
 
     dateForm.reset();
     dateId.value = "";
@@ -758,11 +790,15 @@ function seedDefaultEventsIfEmpty() {
   saveEvents(defaultEvents);
 }
 
-seedDefaultEventsIfEmpty();
+async function initializeEvents() {
+  await loadEventsFromSupabase();
 
-renderEvents();
-renderDashboardEvents();
-renderWeekEvents();
+  renderEvents();
+  renderDashboardEvents();
+  renderWeekEvents();
+}
+
+initializeEvents();
 renderEvents();
 renderDashboardEvents();
 renderWeekEvents();
