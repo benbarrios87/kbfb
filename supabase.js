@@ -18,3 +18,19 @@ async function testSupabaseEvents() {
 }
 
 testSupabaseEvents();
+
+async function testNotes() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_notes")
+    .insert([{
+      author: "Benjamin",
+      date: "2026-06-23",
+      text: "Test fra kjøkkenboka"
+    }])
+    .select();
+
+  console.log("NOTES INSERT DATA", data);
+  console.log("NOTES INSERT ERROR", error);
+}
+
+testNotes();
