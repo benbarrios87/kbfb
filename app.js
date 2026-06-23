@@ -98,14 +98,6 @@ async function saveEventToSupabase(eventData) {
 
 function getEvents() {
   return eventsCache;
-}
-function getEvents() {
-  return JSON.parse(localStorage.getItem(eventStorageKey) || "[]");
-}
-
-function saveEvents(events) {
-  localStorage.setItem(eventStorageKey, JSON.stringify(events));
-}
 
 function categoryLabel(category) {
   const labels = {
@@ -523,6 +515,21 @@ async function saveNoteToSupabase(note) {
   if (error) {
     console.error("Kunne ikke lagre beskjed:", error);
   }
+}
+  async function saveNoteToSupabase(note) {
+  console.log("LAGRER NOTE", note);
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_notes")
+    .insert([{
+      author: note.author,
+      date: note.date,
+      text: note.text
+    }])
+    .select();
+
+  console.log("NOTE DATA", data);
+  console.log("NOTE ERROR", error);
 }
 
 async function deleteNoteFromSupabase(id) {
