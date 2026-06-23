@@ -98,7 +98,7 @@ async function saveEventToSupabase(eventData) {
 
 function getEvents() {
   return eventsCache;
-
+)
 function categoryLabel(category) {
   const labels = {
     general: "Generelt",
