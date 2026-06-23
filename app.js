@@ -186,7 +186,7 @@ function renderDashboardEvents() {
 function renderDashboardKitchenNotes() {
   if (!dashboardKitchenNotes) return;
 
-  const notes = JSON.parse(localStorage.getItem("kbfb-quick-kjokkenbok") || "[]")
+  const notes = notesCache
     .filter(note => dateIsInDashboardWeek(note.date))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -503,19 +503,7 @@ async function loadNotesFromSupabase() {
   return notesCache;
 }
 
-async function saveNoteToSupabase(note) {
-  const { error } = await supabaseClient
-    .from("kbfb_notes")
-    .insert([{
-      author: note.author,
-      date: note.date,
-      text: note.text
-    }]);
 
-  if (error) {
-    console.error("Kunne ikke lagre beskjed:", error);
-  }
-}
   async function saveNoteToSupabase(note) {
   console.log("LAGRER NOTE", note);
 
