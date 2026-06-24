@@ -210,7 +210,7 @@ function renderDashboardSubs() {
   dashboardSubs.innerHTML = subs.length
     ? subs.map(sub => `
       <div class="compact-item">
-        <strong>${formatKitchenDate(sub.date)} · ${sub.name}</strong>
+       <strong>${formatKitchenDate(sub.date)} · ${renderVikarBadge(sub.name)}</strong>
        <span>${sub.department} · ${sub.start_time}–${sub.end_time} · ${sub.hours} timer</span>
       </div>
     `).join("")
@@ -300,19 +300,27 @@ async function saveShiftToSupabase(shift) {
   );
 
   if (existing) {
-    await supabaseClient
+    const { error } = await supabaseClient
       .from("kbfb_shifts")
       .update({
         shift_value: shift.shift_value
       })
       .eq("id", existing.id);
 
+    if (error) {
+      console.error(error);
+    }
+
     return;
   }
 
-  await supabaseClient
+  const { error } = await supabaseClient
     .from("kbfb_shifts")
     .insert([shift]);
+
+  if (error) {
+    console.error(error);
+  }
 }
 
 /* ---------- VAKTLISTE MED DROPDOWN ---------- */
@@ -369,20 +377,22 @@ function colorShiftSelect(select) {
 
 function buildShiftDropdowns() {
   document.querySelectorAll(".shift-cell").forEach(cell => {
-    const key = getShiftStorageKey(cell);
     const row = cell.closest("tr");
 
-const existingShift = shiftsCache.find(item =>
-  item.week_start === getCurrentWeekKey() &&
-  item.department === row.dataset.department &&
-  item.employee === row.dataset.employee &&
-  item.day_index === Array.from(row.children).indexOf(cell) - 1
-);
+    const dayIndex =
+      Array.from(row.querySelectorAll(".shift-cell")).indexOf(cell);
 
-const defaultValue =
-  existingShift?.shift_value ||
-  cell.dataset.default ||
-  "";
+    const existingShift = shiftsCache.find(item =>
+      item.week_start === getCurrentWeekKey() &&
+      item.department === row.dataset.department &&
+      item.employee === row.dataset.employee &&
+      item.day_index === dayIndex
+    );
+
+    const defaultValue =
+      existingShift?.shift_value ||
+      cell.dataset.default ||
+      "";
 
     const select = document.createElement("select");
     select.className = "shift-select";
@@ -395,6 +405,7 @@ const defaultValue =
     });
 
     const customInput = document.createElement("input");
+    customInput.type = "text";
     customInput.className = "custom-shift-input";
     customInput.placeholder = "11–14, Maxi, Sharlene...";
     customInput.style.display = "none";
@@ -409,40 +420,54 @@ const defaultValue =
 
     colorShiftSelect(select);
 
-    select.addEventListener("change", () => {
+    select.addEventListener("change", async () => {
       colorShiftSelect(select);
 
       if (select.value === "ANNET") {
         customInput.style.display = "block";
         customInput.focus();
-        saveShiftToSupabase({
-  week_start: getCurrentWeekKey(),
-  department: row.dataset.department,
-  employee: row.dataset.employee,
-  day_index: Array.from(row.children).indexOf(cell) - 1,
-  shift_value: customInput.value.trim()
-});
-     } else {
-  customInput.style.display = "none";
-  customInput.value = "";
-customInput.addEventListener(...)
-        
-  saveShiftToSupabase({
-    week_start: getCurrentWeekKey(),
-    department: row.dataset.department,
-    employee: row.dataset.employee,
-    day_index: Array.from(row.children).indexOf(cell) - 1,
-    shift_value: select.value
-  });
-}
+
+        await saveShiftToSupabase({
+          week_start: getCurrentWeekKey(),
+          department: row.dataset.department,
+          employee: row.dataset.employee,
+          day_index: dayIndex,
+          shift_value: customInput.value.trim()
+        });
+
+      } else {
+        customInput.style.display = "none";
+        customInput.value = "";
+
+        await saveShiftToSupabase({
+          week_start: getCurrentWeekKey(),
+          department: row.dataset.department,
+          employee: row.dataset.employee,
+          day_index: dayIndex,
+          shift_value: select.value
+        });
+      }
+
+      await loadShiftsFromSupabase();
+    });
+
+    customInput.addEventListener("input", async () => {
+      await saveShiftToSupabase({
+        week_start: getCurrentWeekKey(),
+        department: row.dataset.department,
+        employee: row.dataset.employee,
+        day_index: dayIndex,
+        shift_value: customInput.value.trim()
       });
+
+      await loadShiftsFromSupabase();
+    });
 
     cell.innerHTML = "";
     cell.appendChild(select);
     cell.appendChild(customInput);
   });
 }
-
 function renderWeekEvents() {
   if (!weekEvents) return;
 
