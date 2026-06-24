@@ -858,6 +858,7 @@ const subPersonForm = document.getElementById("subPersonForm");
 const subPersonName = document.getElementById("subPersonName");
 const subPersonColor = document.getElementById("subPersonColor");
 const subPersonList = document.getElementById("subPersonList");
+const subMonthFilter = document.getElementById("subMonthFilter");
 
 async function loadSubPeopleFromSupabase() {
   const { data, error } = await supabaseClient
@@ -1049,36 +1050,50 @@ function renderSubSummary() {
     return;
   }
 
+  populateSubMonthFilter();
+
+  const selectedMonth = subMonthFilter?.value || getCurrentMonthKey();
+
+  const monthSubs = subsCache.filter(sub =>
+    sub.date && sub.date.slice(0, 7) === selectedMonth
+  );
+
+  if (!monthSubs.length) {
+    subSummary.innerHTML = `<p class="muted">Ingen vikarvakter i ${formatMonth(selectedMonth)}.</p>`;
+    return;
+  }
+
   const grouped = {};
 
-  subsCache.forEach(sub => {
-    const monthKey = sub.date.slice(0, 7);
-    const key = `${monthKey}-${sub.name}`;
-
-    if (!grouped[key]) {
-      grouped[key] = {
-        month: monthKey,
+  monthSubs.forEach(sub => {
+    if (!grouped[sub.name]) {
+      grouped[sub.name] = {
         name: sub.name,
         days: new Set(),
         hours: 0
       };
     }
 
-    grouped[key].days.add(sub.date);
-    grouped[key].hours += Number(sub.hours || 0);
+    grouped[sub.name].days.add(sub.date);
+    grouped[sub.name].hours += Number(sub.hours || 0);
   });
 
-  const sorted = Object.values(grouped).sort((a, b) => {
-    if (a.month !== b.month) return b.month.localeCompare(a.month);
-    return a.name.localeCompare(b.name);
-  });
+  const totalHours = Object.values(grouped)
+    .reduce((sum, item) => sum + item.hours, 0);
 
-  subSummary.innerHTML = sorted.map(item => `
+  subSummary.innerHTML = `
     <div class="compact-item">
-     <strong>${formatMonth(item.month)} · ${renderVikarBadge(item.name)}</strong>
-      <span>${item.days.size} dager · ${Math.round(item.hours * 100) / 100} timer</span>
+      <strong>${formatMonth(selectedMonth)}</strong>
+      <span>Totalt ${Math.round(totalHours * 100) / 100} timer</span>
     </div>
-  `).join("");
+
+    ${Object.values(grouped).map(item => `
+      <div class="compact-item">
+        <strong>${renderVikarBadge(item.name)}</strong>
+        <span>${item.days.size} dager · ${Math.round(item.hours * 100) / 100} timer</span>
+      </div>
+    `).join("")}
+  `;
 }
 
 function formatMonth(monthKey) {
@@ -1087,6 +1102,33 @@ function formatMonth(monthKey) {
     month: "long",
     year: "numeric"
   });
+}
+function getCurrentMonthKey() {
+  return new Date().toISOString().slice(0, 7);
+}
+
+function populateSubMonthFilter() {
+  if (!subMonthFilter) return;
+
+  const currentValue = subMonthFilter.value || getCurrentMonthKey();
+
+  const months = [...new Set(
+    subsCache
+      .filter(sub => sub.date)
+      .map(sub => sub.date.slice(0, 7))
+  )].sort((a, b) => b.localeCompare(a));
+
+  if (!months.includes(getCurrentMonthKey())) {
+    months.unshift(getCurrentMonthKey());
+  }
+
+  subMonthFilter.innerHTML = months.map(month => `
+    <option value="${month}">${formatMonth(month)}</option>
+  `).join("");
+
+  subMonthFilter.value = months.includes(currentValue)
+    ? currentValue
+    : getCurrentMonthKey();
 }
 
 function getWeekdaysBetween(startDate, endDate) {
@@ -1187,6 +1229,9 @@ async function initializeSubs() {
   renderSubPeople();
   renderSubs();
   renderDashboardSubs();
+}
+if (subMonthFilter) {
+  subMonthFilter.addEventListener("change", renderSubSummary);
 }
 
 initializeSubs();
