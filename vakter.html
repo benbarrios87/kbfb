@@ -20,6 +20,7 @@
         <a href="dashboard.html">🏠 Hjem</a>
         <a class="active" href="vakter.html">📅 Vakter</a>
         <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
+        <a href="datoer.html">📆 Datoer</a>
         <a href="vikarer.html">🕒 Vikarer</a>
         <a href="ferieogavspasering.html">🌴 Ferie og avspasering</a>
         <a href="filarkiv.html">📁 Filarkiv</a>
@@ -45,12 +46,17 @@
       </section>
 
       <section class="card">
+        <div class="view-toggle">
+          <button id="weekViewBtn" class="primary-btn" type="button">Ukevisning</button>
+          <button id="monthViewBtn" class="secondary-btn" type="button">Månedsvisning</button>
+        </div>
+
         <div class="filters">
           <label>
             Gå til dato
             <input id="dateSearch" type="date" />
           </label>
-          
+
           <label>
             Vis ansatt
             <select id="employeeFilter">
@@ -96,192 +102,209 @@
           Velg vakt i nedtrekksmenyen. Velg “ANNET” for egne notater som 11–14, Maxi eller Sharlene.
         </p>
       </section>
-      <section class="card">
-  <div class="section-heading">
-    <div>
-      <p class="eyebrow">Denne uka</p>
-      <h2>📆 Viktige datoer</h2>
-    </div>
-    <a class="mini-link" href="datoer.html">Endre datoer</a>
-  </div>
-  <div id="weekEvents" class="compact-feed">
-    <p class="muted">Ingen datoer denne uka.</p>
-  </div>
-</section>
 
-      <section class="department-section butterfly">
-        <div class="department-header">
+      <section class="card">
+        <div class="section-heading">
           <div>
-            <p class="eyebrow">Avdeling</p>
-            <h2>🦋 Sommerfuglen</h2>
+            <p class="eyebrow">Denne uka</p>
+            <h2>📆 Viktige datoer</h2>
           </div>
-          <span>Småbarn</span>
+          <a class="mini-link" href="datoer.html">Endre datoer</a>
         </div>
 
-        <div class="table-wrap">
-          <table class="shift-table department-table">
-            <thead>
-              <tr>
-                <th>Ansatt</th>
-                <th class="day-head" data-day="0">Mandag</th>
-                <th class="day-head" data-day="1">Tirsdag</th>
-                <th class="day-head" data-day="2">Onsdag</th>
-                <th class="day-head" data-day="3">Torsdag</th>
-                <th class="day-head" data-day="4">Fredag</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr data-employee="Imelda" data-department="Sommerfuglen">
-                <td class="person"><span class="avatar">I</span>Imelda</td>
-                <td class="shift-cell" data-default="TV"></td>
-                <td class="shift-cell" data-default="SV"></td>
-                <td class="shift-cell" data-default="TV"></td>
-                <td class="shift-cell" data-default="TM til 11:45 / PT"></td>
-                <td class="shift-cell" data-default="MV"></td>
-              </tr>
-
-              <tr data-employee="Nika" data-department="Sommerfuglen">
-                <td class="person"><span class="avatar">N</span>Nika</td>
-                <td class="shift-cell" data-default="TM"></td>
-                <td class="shift-cell" data-default="TV Ekorn overnatting"></td>
-                <td class="shift-cell" data-default="Ekorn overnatting"></td>
-                <td class="shift-cell" data-default="TV"></td>
-                <td class="shift-cell" data-default="TM"></td>
-              </tr>
-
-              <tr data-employee="Irina" data-department="Sommerfuglen">
-                <td class="person"><span class="avatar">I</span>Irina</td>
-                <td class="shift-cell" data-default="SV"></td>
-                <td class="shift-cell" data-default="AVS"></td>
-                <td class="shift-cell" data-default="TV"></td>
-                <td class="shift-cell" data-default="SV"></td>
-                <td class="shift-cell" data-default="TV"></td>
-              </tr>
-
-              <tr data-employee="Lola" data-department="Sommerfuglen">
-                <td class="person"><span class="avatar">L</span>Lola</td>
-                <td class="shift-cell" data-default=""></td>
-                <td class="shift-cell" data-default="TM"></td>
-                <td class="shift-cell" data-default="SV"></td>
-                <td class="shift-cell" data-default="MV"></td>
-                <td class="shift-cell" data-default="SV"></td>
-              </tr>
-
-              <tr data-employee="Vikar" data-department="Sommerfuglen" class="support-row">
-                <td class="person">Vikar</td>
-                <td class="shift-cell" data-default=""></td>
-                <td class="shift-cell" data-default="Sharlene 08:30–16"></td>
-                <td class="shift-cell" data-default="Sharlene TM"></td>
-                <td class="shift-cell" data-default=""></td>
-                <td class="shift-cell" data-default=""></td>
-              </tr>
-
-              <tr data-employee="Foreldreinnsats" data-department="Sommerfuglen" class="support-row">
-                <td class="person">Foreldreinnsats</td>
-                <td class="shift-cell" data-default=""></td>
-                <td class="shift-cell" data-default=""></td>
-                <td class="shift-cell" data-default=""></td>
-                <td class="shift-cell" data-default=""></td>
-                <td class="shift-cell" data-default=""></td>
-              </tr>
-            </tbody>
-          </table>
+        <div id="weekEvents" class="compact-feed">
+          <p class="muted">Ingen datoer denne uka.</p>
         </div>
       </section>
 
-      <section class="department-section rainbow">
-        <div class="department-header">
-          <div>
-            <p class="eyebrow">Avdeling</p>
-            <h2>🌈 Regnbuen</h2>
+      <section id="weekViewSection">
+        <section class="department-section butterfly">
+          <div class="department-header">
+            <div>
+              <p class="eyebrow">Avdeling</p>
+              <h2>🦋 Sommerfuglen</h2>
+            </div>
+            <span>Småbarn</span>
           </div>
-          <span>Storbarn</span>
+
+          <div class="table-wrap">
+            <table class="shift-table department-table">
+              <thead>
+                <tr>
+                  <th>Ansatt</th>
+                  <th class="day-head" data-day="0">Mandag</th>
+                  <th class="day-head" data-day="1">Tirsdag</th>
+                  <th class="day-head" data-day="2">Onsdag</th>
+                  <th class="day-head" data-day="3">Torsdag</th>
+                  <th class="day-head" data-day="4">Fredag</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr data-employee="Imelda" data-department="Sommerfuglen">
+                  <td class="person"><span class="avatar">I</span>Imelda</td>
+                  <td class="shift-cell" data-default="TV"></td>
+                  <td class="shift-cell" data-default="SV"></td>
+                  <td class="shift-cell" data-default="TV"></td>
+                  <td class="shift-cell" data-default="TM til 11:45 / PT"></td>
+                  <td class="shift-cell" data-default="MV"></td>
+                </tr>
+
+                <tr data-employee="Nika" data-department="Sommerfuglen">
+                  <td class="person"><span class="avatar">N</span>Nika</td>
+                  <td class="shift-cell" data-default="TM"></td>
+                  <td class="shift-cell" data-default="TV Ekorn overnatting"></td>
+                  <td class="shift-cell" data-default="Ekorn overnatting"></td>
+                  <td class="shift-cell" data-default="TV"></td>
+                  <td class="shift-cell" data-default="TM"></td>
+                </tr>
+
+                <tr data-employee="Irina" data-department="Sommerfuglen">
+                  <td class="person"><span class="avatar">I</span>Irina</td>
+                  <td class="shift-cell" data-default="SV"></td>
+                  <td class="shift-cell" data-default="AVS"></td>
+                  <td class="shift-cell" data-default="TV"></td>
+                  <td class="shift-cell" data-default="SV"></td>
+                  <td class="shift-cell" data-default="TV"></td>
+                </tr>
+
+                <tr data-employee="Lola" data-department="Sommerfuglen">
+                  <td class="person"><span class="avatar">L</span>Lola</td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default="TM"></td>
+                  <td class="shift-cell" data-default="SV"></td>
+                  <td class="shift-cell" data-default="MV"></td>
+                  <td class="shift-cell" data-default="SV"></td>
+                </tr>
+
+                <tr data-employee="Vikar" data-department="Sommerfuglen" class="support-row">
+                  <td class="person">Vikar</td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                </tr>
+
+                <tr data-employee="Foreldreinnsats" data-department="Sommerfuglen" class="support-row">
+                  <td class="person">Foreldreinnsats</td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="department-section rainbow">
+          <div class="department-header">
+            <div>
+              <p class="eyebrow">Avdeling</p>
+              <h2>🌈 Regnbuen</h2>
+            </div>
+            <span>Storbarn</span>
+          </div>
+
+          <div class="table-wrap">
+            <table class="shift-table department-table">
+              <thead>
+                <tr>
+                  <th>Ansatt</th>
+                  <th class="day-head" data-day="0">Mandag</th>
+                  <th class="day-head" data-day="1">Tirsdag</th>
+                  <th class="day-head" data-day="2">Onsdag</th>
+                  <th class="day-head" data-day="3">Torsdag</th>
+                  <th class="day-head" data-day="4">Fredag</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr data-employee="Mari" data-department="Regnbuen">
+                  <td class="person"><span class="avatar">M</span>Mari</td>
+                  <td class="shift-cell" data-default="SV"></td>
+                  <td class="shift-cell" data-default="MV Ekorn overnatting"></td>
+                  <td class="shift-cell" data-default="Ekorn overnatting"></td>
+                  <td class="shift-cell" data-default="PT 09:30–13"></td>
+                  <td class="shift-cell" data-default="TV"></td>
+                </tr>
+
+                <tr data-employee="Marianne R" data-department="Regnbuen">
+                  <td class="person"><span class="avatar">MR</span>Marianne R</td>
+                  <td class="shift-cell" data-default="MV"></td>
+                  <td class="shift-cell" data-default="TV"></td>
+                  <td class="shift-cell" data-default="SV"></td>
+                  <td class="shift-cell" data-default="SV"></td>
+                  <td class="shift-cell" data-default="MV"></td>
+                </tr>
+
+                <tr data-employee="Valantis" data-department="Regnbuen">
+                  <td class="person"><span class="avatar">V</span>Valantis</td>
+                  <td class="shift-cell" data-default="TV"></td>
+                  <td class="shift-cell" data-default="MV"></td>
+                  <td class="shift-cell" data-default="PT"></td>
+                  <td class="shift-cell" data-default="PT"></td>
+                  <td class="shift-cell" data-default="SV"></td>
+                </tr>
+
+                <tr data-employee="Marianne L" data-department="Regnbuen">
+                  <td class="person"><span class="avatar">ML</span>Marianne L</td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default="SV"></td>
+                  <td class="shift-cell" data-default="08:15–15:45 SF / Maxi"></td>
+                  <td class="shift-cell" data-default="TV"></td>
+                  <td class="shift-cell" data-default=""></td>
+                </tr>
+
+                <tr data-employee="Britt" data-department="Regnbuen">
+                  <td class="person"><span class="avatar">B</span>Britt</td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default="TV"></td>
+                  <td class="shift-cell" data-default="MV"></td>
+                  <td class="shift-cell" data-default=""></td>
+                </tr>
+
+                <tr data-employee="Vikar" data-department="Regnbuen" class="support-row">
+                  <td class="person">Vikar</td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                </tr>
+
+                <tr data-employee="Foreldreinnsats" data-department="Regnbuen" class="support-row">
+                  <td class="person">Foreldreinnsats</td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                  <td class="shift-cell" data-default=""></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section id="monthViewSection" class="card" style="display:none;">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Oversikt</p>
+            <h2>Månedsvisning</h2>
+          </div>
         </div>
 
-        <div class="table-wrap">
-          <table class="shift-table department-table">
-            <thead>
-              <tr>
-                <th>Ansatt</th>
-                <th class="day-head" data-day="0">Mandag</th>
-                <th class="day-head" data-day="1">Tirsdag</th>
-                <th class="day-head" data-day="2">Onsdag</th>
-                <th class="day-head" data-day="3">Torsdag</th>
-                <th class="day-head" data-day="4">Fredag</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr data-employee="Mari" data-department="Regnbuen">
-                <td class="person"><span class="avatar">M</span>Mari</td>
-                <td class="shift-cell" data-default="SV"></td>
-                <td class="shift-cell" data-default="MV Ekorn overnatting"></td>
-                <td class="shift-cell" data-default="Ekorn overnatting"></td>
-                <td class="shift-cell" data-default="PT 09:30–13"></td>
-                <td class="shift-cell" data-default="TV"></td>
-              </tr>
-
-              <tr data-employee="Marianne R" data-department="Regnbuen">
-                <td class="person"><span class="avatar">MR</span>Marianne R</td>
-                <td class="shift-cell" data-default="MV"></td>
-                <td class="shift-cell" data-default="TV"></td>
-                <td class="shift-cell" data-default="SV"></td>
-                <td class="shift-cell" data-default="SV"></td>
-                <td class="shift-cell" data-default="MV"></td>
-              </tr>
-
-              <tr data-employee="Valantis" data-department="Regnbuen">
-                <td class="person"><span class="avatar">V</span>Valantis</td>
-                <td class="shift-cell" data-default="TV"></td>
-                <td class="shift-cell" data-default="MV"></td>
-                <td class="shift-cell" data-default="PT"></td>
-                <td class="shift-cell" data-default="PT"></td>
-                <td class="shift-cell" data-default="SV"></td>
-              </tr>
-
-              <tr data-employee="Marianne L" data-department="Regnbuen">
-                <td class="person"><span class="avatar">ML</span>Marianne L</td>
-                <td class="shift-cell" data-default=""></td>
-                <td class="shift-cell" data-default="SV"></td>
-                <td class="shift-cell" data-default="08:15–15:45 SF / Maxi"></td>
-                <td class="shift-cell" data-default="TV"></td>
-                <td class="shift-cell" data-default=""></td>
-              </tr>
-
-              <tr data-employee="Britt" data-department="Regnbuen">
-                <td class="person"><span class="avatar">B</span>Britt</td>
-                <td class="shift-cell" data-default="Britt M"></td>
-                <td class="shift-cell" data-default=""></td>
-                <td class="shift-cell" data-default="TV"></td>
-                <td class="shift-cell" data-default="MV"></td>
-                <td class="shift-cell" data-default=""></td>
-              </tr>
-
-              <tr data-employee="Vikar" data-department="Regnbuen" class="support-row">
-                <td class="person">Vikar</td>
-                <td class="shift-cell" data-default=""></td>
-                <td class="shift-cell" data-default=""></td>
-                <td class="shift-cell" data-default="Sharlene 08:00–14:30"></td>
-                <td class="shift-cell" data-default=""></td>
-                <td class="shift-cell" data-default="Lola 11–14"></td>
-              </tr>
-
-              <tr data-employee="Foreldreinnsats" data-department="Regnbuen" class="support-row">
-                <td class="person">Foreldreinnsats</td>
-                <td class="shift-cell" data-default=""></td>
-                <td class="shift-cell" data-default="Vetle 08:30–16"></td>
-                <td class="shift-cell" data-default="Albert / Jonathan"></td>
-                <td class="shift-cell" data-default=""></td>
-                <td class="shift-cell" data-default=""></td>
-              </tr>
-            </tbody>
-          </table>
+        <div id="monthViewContent">
+          <p class="muted">Ingen data.</p>
         </div>
       </section>
     </main>
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js"></script>
-<script src="app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
