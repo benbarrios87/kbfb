@@ -837,3 +837,183 @@ initializeEvents();
 renderEvents();
 renderDashboardEvents();
 renderWeekEvents();
+/* ---------- VIKARER - SUPABASE ---------- */
+
+const subForm = document.getElementById("subForm");
+const subName = document.getElementById("subName");
+const subDate = document.getElementById("subDate");
+const subStart = document.getElementById("subStart");
+const subEnd = document.getElementById("subEnd");
+const subDepartment = document.getElementById("subDepartment");
+const subNote = document.getElementById("subNote");
+const subTableBody = document.getElementById("subTableBody");
+const subSummary = document.getElementById("subSummary");
+const clearSubs = document.getElementById("clearSubs");
+
+let subsCache = [];
+
+function calculateHours(start, end) {
+  if (!start || !end) return 0;
+
+  const [startHour, startMinute] = start.split(":").map(Number);
+  const [endHour, endMinute] = end.split(":").map(Number);
+
+  const startTotal = startHour * 60 + startMinute;
+  const endTotal = endHour * 60 + endMinute;
+
+  return Math.max(0, Math.round(((endTotal - startTotal) / 60) * 100) / 100);
+}
+
+async function loadSubsFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_sub_hours")
+    .select("*")
+    .order("date", { ascending: false });
+
+  if (error) {
+    console.error("Kunne ikke hente vikarvakter:", error);
+    return [];
+  }
+
+  subsCache = data || [];
+  return subsCache;
+}
+
+async function saveSubToSupabase(sub) {
+  const { data, error } = await supabaseClient
+    .from("kbfb_sub_hours")
+    .insert([{
+      name: sub.name,
+      date: sub.date,
+      department: sub.department,
+      start_time: sub.start_time,
+      end_time: sub.end_time,
+      hours: sub.hours,
+      note: sub.note
+    }])
+    .select();
+
+  console.log("VIKAR DATA", data);
+  console.log("VIKAR ERROR", error);
+}
+
+async function deleteSubFromSupabase(id) {
+  const { error } = await supabaseClient
+    .from("kbfb_sub_hours")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Kunne ikke slette vikarvakt:", error);
+  }
+}
+
+function renderSubs() {
+  if (!subTableBody || !subSummary) return;
+
+  subTableBody.innerHTML = "";
+
+  if (!subsCache.length) {
+    subSummary.innerHTML = `<p class="muted">Ingen vakter registrert ennå.</p>`;
+    return;
+  }
+
+  subsCache.forEach(sub => {
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+      <td>${formatNorwegianDate(sub.date)}</td>
+      <td>${sub.name}</td>
+      <td>${sub.department || ""}</td>
+      <td>${sub.start_time || ""}–${sub.end_time || ""}</td>
+      <td>${sub.hours || 0}</td>
+      <td>${sub.note || ""}</td>
+      <td><button class="kitchen-delete" data-sub-id="${sub.id}">Slett</button></td>
+    `;
+
+    subTableBody.appendChild(row);
+  });
+
+  renderSubSummary();
+
+  document.querySelectorAll("[data-sub-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      await deleteSubFromSupabase(button.dataset.subId);
+      await loadSubsFromSupabase();
+      renderSubs();
+      renderDashboardSubs();
+    });
+  });
+}
+
+function renderSubSummary() {
+  if (!subSummary) return;
+
+  const totals = {};
+
+  subsCache.forEach(sub => {
+    if (!totals[sub.name]) {
+      totals[sub.name] = {
+        hours: 0,
+        days: 0
+      };
+    }
+
+    totals[sub.name].hours += Number(sub.hours || 0);
+    totals[sub.name].days += 1;
+  });
+
+  subSummary.innerHTML = Object.entries(totals).map(([name, total]) => `
+    <div class="compact-item">
+      <strong>${name}</strong>
+      <span>${total.days} vakter · ${Math.round(total.hours * 100) / 100} timer</span>
+    </div>
+  `).join("");
+}
+
+if (subDate) {
+  subDate.value = new Date().toISOString().slice(0, 10);
+}
+
+if (subForm) {
+  subForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const hours = calculateHours(subStart.value, subEnd.value);
+
+    const sub = {
+      name: subName.value,
+      date: subDate.value,
+      department: subDepartment.value,
+      start_time: subStart.value,
+      end_time: subEnd.value,
+      hours,
+      note: subNote.value.trim()
+    };
+
+    await saveSubToSupabase(sub);
+    await loadSubsFromSupabase();
+
+    subForm.reset();
+    subDate.value = new Date().toISOString().slice(0, 10);
+    subStart.value = "08:30";
+    subEnd.value = "16:00";
+
+    renderSubs();
+    renderDashboardSubs();
+  });
+}
+
+if (clearSubs) {
+  clearSubs.addEventListener("click", () => {
+    alert("Tøm testdata er skrudd av nå som vikarer bruker Supabase.");
+  });
+}
+
+async function initializeSubs() {
+  await loadSubsFromSupabase();
+  renderSubs();
+  renderDashboardSubs();
+}
+
+initializeSubs();
