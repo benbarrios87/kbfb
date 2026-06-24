@@ -1755,3 +1755,11 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   font-weight: 900;
   color: #243225;
 }
+                                                                   .vikar-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-weight: 900;
+  color: #243225;
+}
