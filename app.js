@@ -849,6 +849,7 @@ const subNote = document.getElementById("subNote");
 const subTableBody = document.getElementById("subTableBody");
 const subSummary = document.getElementById("subSummary");
 const clearSubs = document.getElementById("clearSubs");
+const subEndDate = document.getElementById("subEndDate");
 
 let subsCache = [];
 let subPeopleCache = [];
@@ -1030,14 +1031,7 @@ function renderSubs() {
     });
   });
 }
-function getSubPersonColor(name) {
-  const person = subPeopleCache.find(p => p.name === name);
-  return person?.color || "#f3f4f6";
-}
 
-function renderVikarBadge(name) {
-  return `<span class="vikar-badge" style="background:${getSubPersonColor(name)}">${name}</span>`;
-}
 function getSubPersonColor(name) {
   const person = subPeopleCache.find(p => p.name === name);
   return person?.color || "#f3f4f6";
@@ -1094,6 +1088,42 @@ function formatMonth(monthKey) {
     year: "numeric"
   });
 }
+
+function getWeekdaysBetween(startDate, endDate) {
+  const dates = [];
+  const current = new Date(startDate + "T12:00:00");
+  const end = new Date(endDate + "T12:00:00");
+
+  while (current <= end) {
+    const day = current.getDay();
+
+    if (day !== 0 && day !== 6) {
+      dates.push(current.toISOString().slice(0, 10));
+    }
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  return dates;
+}
+function getWeekdaysBetween(startDate, endDate) {
+  const dates = [];
+  const current = new Date(startDate + "T12:00:00");
+  const end = new Date(endDate + "T12:00:00");
+
+  while (current <= end) {
+    const day = current.getDay();
+
+    if (day !== 0 && day !== 6) {
+      dates.push(current.toISOString().slice(0, 10));
+    }
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  return dates;
+}
+
 if (subDate) {
   subDate.value = new Date().toISOString().slice(0, 10);
 }
@@ -1104,33 +1134,38 @@ if (subForm) {
 
     const hours = calculateHours(subStart.value, subEnd.value);
 
-    const sub = {
-      name: subName.value,
-      date: subDate.value,
-      department: subDepartment.value,
-      start_time: subStart.value,
-      end_time: subEnd.value,
-      hours,
-      note: subNote.value.trim()
-    };
+    const startDate = subDate.value;
+    const endDate = subEndDate.value || subDate.value;
+    const dates = getWeekdaysBetween(startDate, endDate);
 
-    const duplicate = subsCache.some(existing =>
-      existing.name === sub.name &&
-      existing.date === sub.date &&
-      existing.start_time === sub.start_time &&
-      existing.end_time === sub.end_time
-    );
+    for (const date of dates) {
+      const sub = {
+        name: subName.value,
+        date,
+        department: subDepartment.value,
+        start_time: subStart.value,
+        end_time: subEnd.value,
+        hours,
+        note: subNote.value.trim()
+      };
 
-    if (duplicate) {
-      alert("Denne vikarvakten er allerede registrert.");
-      return;
+      const duplicate = subsCache.some(existing =>
+        existing.name === sub.name &&
+        existing.date === sub.date &&
+        existing.start_time === sub.start_time &&
+        existing.end_time === sub.end_time
+      );
+
+      if (!duplicate) {
+        await saveSubToSupabase(sub);
+      }
     }
 
-    await saveSubToSupabase(sub);
     await loadSubsFromSupabase();
 
     subForm.reset();
     subDate.value = new Date().toISOString().slice(0, 10);
+    subEndDate.value = "";
     subStart.value = "08:30";
     subEnd.value = "16:00";
 
