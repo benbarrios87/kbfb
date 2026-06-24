@@ -1038,6 +1038,14 @@ function getSubPersonColor(name) {
 function renderVikarBadge(name) {
   return `<span class="vikar-badge" style="background:${getSubPersonColor(name)}">${name}</span>`;
 }
+function getSubPersonColor(name) {
+  const person = subPeopleCache.find(p => p.name === name);
+  return person?.color || "#f3f4f6";
+}
+
+function renderVikarBadge(name) {
+  return `<span class="vikar-badge" style="background:${getSubPersonColor(name)}">${name}</span>`;
+}
 
 function renderSubSummary() {
   if (!subSummary) return;
@@ -1073,7 +1081,7 @@ function renderSubSummary() {
 
   subSummary.innerHTML = sorted.map(item => `
     <div class="compact-item">
-      <strong>${formatMonth(item.month)} · ${item.name}</strong>
+     <strong>${formatMonth(item.month)} · ${renderVikarBadge(item.name)}</strong>
       <span>${item.days.size} dager · ${Math.round(item.hours * 100) / 100} timer</span>
     </div>
   `).join("");
