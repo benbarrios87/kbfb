@@ -203,7 +203,7 @@ function renderDashboardKitchenNotes() {
 function renderDashboardSubs() {
   if (!dashboardSubs) return;
 
-  const subs = JSON.parse(localStorage.getItem("kbfb-vikarvakter") || "[]")
+  const subs = subsCache
     .filter(sub => dateIsInDashboardWeek(sub.date))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -211,7 +211,7 @@ function renderDashboardSubs() {
     ? subs.map(sub => `
       <div class="compact-item">
         <strong>${formatKitchenDate(sub.date)} · ${sub.name}</strong>
-        <span>${sub.department} · ${sub.start}–${sub.end} · ${sub.hours} timer</span>
+       <span>${sub.department} · ${sub.start_time}–${sub.end_time} · ${sub.hours} timer</span>
       </div>
     `).join("")
     : `<p class="muted">Ingen vikarvakter denne uka.</p>`;
@@ -949,28 +949,50 @@ function renderSubs() {
 function renderSubSummary() {
   if (!subSummary) return;
 
-  const totals = {};
+  if (!subsCache.length) {
+    subSummary.innerHTML = `<p class="muted">Ingen vakter registrert ennå.</p>`;
+    return;
+  }
+
+  const grouped = {};
 
   subsCache.forEach(sub => {
-    if (!totals[sub.name]) {
-      totals[sub.name] = {
-        hours: 0,
-        days: 0
+    const monthKey = sub.date.slice(0, 7);
+    const key = `${monthKey}-${sub.name}`;
+
+    if (!grouped[key]) {
+      grouped[key] = {
+        month: monthKey,
+        name: sub.name,
+        days: new Set(),
+        hours: 0
       };
     }
 
-    totals[sub.name].hours += Number(sub.hours || 0);
-    totals[sub.name].days += 1;
+    grouped[key].days.add(sub.date);
+    grouped[key].hours += Number(sub.hours || 0);
   });
 
-  subSummary.innerHTML = Object.entries(totals).map(([name, total]) => `
+  const sorted = Object.values(grouped).sort((a, b) => {
+    if (a.month !== b.month) return b.month.localeCompare(a.month);
+    return a.name.localeCompare(b.name);
+  });
+
+  subSummary.innerHTML = sorted.map(item => `
     <div class="compact-item">
-      <strong>${name}</strong>
-      <span>${total.days} vakter · ${Math.round(total.hours * 100) / 100} timer</span>
+      <strong>${formatMonth(item.month)} · ${item.name}</strong>
+      <span>${item.days.size} dager · ${Math.round(item.hours * 100) / 100} timer</span>
     </div>
   `).join("");
 }
 
+function formatMonth(monthKey) {
+  const [year, month] = monthKey.split("-");
+  return new Date(Number(year), Number(month) - 1, 1).toLocaleDateString("no-NO", {
+    month: "long",
+    year: "numeric"
+  });
+}
 if (subDate) {
   subDate.value = new Date().toISOString().slice(0, 10);
 }
@@ -991,6 +1013,18 @@ if (subForm) {
       note: subNote.value.trim()
     };
 
+    const duplicate = subsCache.some(existing =>
+      existing.name === sub.name &&
+      existing.date === sub.date &&
+      existing.start_time === sub.start_time &&
+      existing.end_time === sub.end_time
+    );
+
+    if (duplicate) {
+      alert("Denne vikarvakten er allerede registrert.");
+      return;
+    }
+
     await saveSubToSupabase(sub);
     await loadSubsFromSupabase();
 
@@ -1006,7 +1040,7 @@ if (subForm) {
 
 if (clearSubs) {
   clearSubs.addEventListener("click", () => {
-    alert("Tøm testdata er skrudd av nå som vikarer bruker Supabase.");
+    alert("Tøm testdata er deaktivert.");
   });
 }
 
