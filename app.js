@@ -855,6 +855,7 @@ let subPeopleCache = [];
 
 const subPersonForm = document.getElementById("subPersonForm");
 const subPersonName = document.getElementById("subPersonName");
+const subPersonColor = document.getElementById("subPersonColor");
 const subPersonList = document.getElementById("subPersonList");
 
 async function loadSubPeopleFromSupabase() {
@@ -873,10 +874,10 @@ async function loadSubPeopleFromSupabase() {
   return subPeopleCache;
 }
 
-async function saveSubPersonToSupabase(name) {
+async function saveSubPersonToSupabase(name, color) {
   const { data, error } = await supabaseClient
     .from("kbfb_subs")
-    .insert([{ name }])
+    .insert([{ name, color }])
     .select();
 
   console.log("NY VIKAR DATA", data);
@@ -899,8 +900,12 @@ function renderSubPeople() {
     subPersonList.innerHTML = subPeopleCache.length
       ? subPeopleCache.map(person => `
           <div class="compact-item">
-            <strong>${person.name}</strong>
-            <span>Aktiv vikar</span>
+            <strong>
+  <span class="vikar-badge" style="background:${person.color || '#f3f4f6'}">
+    ${person.name}
+  </span>
+</strong>
+<span>Aktiv vikar</span>
           </div>
         `).join("")
       : `<p class="muted">Ingen vikarer lagt inn ennå.</p>`;
@@ -924,7 +929,7 @@ if (subPersonForm) {
       return;
     }
 
-    await saveSubPersonToSupabase(name);
+    await saveSubPersonToSupabase(name, subPersonColor.value);
     await loadSubPeopleFromSupabase();
 
     subPersonName.value = "";
@@ -1003,7 +1008,7 @@ function renderSubs() {
 
     row.innerHTML = `
       <td>${formatNorwegianDate(sub.date)}</td>
-      <td>${sub.name}</td>
+      <td>${renderVikarBadge(sub.name)}</td>
       <td>${sub.department || ""}</td>
       <td>${sub.start_time || ""}–${sub.end_time || ""}</td>
       <td>${sub.hours || 0}</td>
@@ -1024,6 +1029,14 @@ function renderSubs() {
       renderDashboardSubs();
     });
   });
+}
+function getSubPersonColor(name) {
+  const person = subPeopleCache.find(p => p.name === name);
+  return person?.color || "#f3f4f6";
+}
+
+function renderVikarBadge(name) {
+  return `<span class="vikar-badge" style="background:${getSubPersonColor(name)}">${name}</span>`;
 }
 
 function renderSubSummary() {
