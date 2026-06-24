@@ -50,19 +50,6 @@
             Gå til dato
             <input id="dateSearch" type="date" />
           </label>
-
-          <section class="card">
-  <div class="section-heading">
-    <div>
-      <p class="eyebrow">Denne uka</p>
-      <h2>📆 Viktige datoer</h2>
-    </div>
-    <a class="mini-link" href="datoer.html">Endre datoer</a>
-  </div>
-  <div id="weekEvents" class="compact-feed">
-    <p class="muted">Ingen datoer denne uka.</p>
-  </div>
-</section>
           
           <label>
             Vis ansatt
@@ -109,6 +96,18 @@
           Velg vakt i nedtrekksmenyen. Velg “ANNET” for egne notater som 11–14, Maxi eller Sharlene.
         </p>
       </section>
+      <section class="card">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Denne uka</p>
+      <h2>📆 Viktige datoer</h2>
+    </div>
+    <a class="mini-link" href="datoer.html">Endre datoer</a>
+  </div>
+  <div id="weekEvents" class="compact-feed">
+    <p class="muted">Ingen datoer denne uka.</p>
+  </div>
+</section>
 
       <section class="department-section butterfly">
         <div class="department-header">
@@ -281,6 +280,8 @@
     </main>
   </div>
 
-  <script src="app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
