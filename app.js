@@ -335,6 +335,10 @@ const weekDates = document.getElementById("weekDates");
 const prevWeekBtn = document.getElementById("prevWeek");
 const nextWeekBtn = document.getElementById("nextWeek");
 const currentWeekBtn = document.getElementById("currentWeek");
+const weekViewBtn = document.getElementById("weekViewBtn");
+const monthViewBtn = document.getElementById("monthViewBtn");
+const monthViewSection = document.getElementById("monthViewSection");
+const monthViewContent = document.getElementById("monthViewContent");
 
 let viewedWeekStart = getMonday(new Date());
 const realCurrentWeekStart = getMonday(new Date());
@@ -567,6 +571,22 @@ if (employeeFilter && departmentFilter) {
 
 updateWeekView();
 filterShifts();
+
+if (monthViewBtn) {
+  monthViewBtn.addEventListener("click", async () => {
+    document.getElementById("weekViewSection").style.display = "none";
+    monthViewSection.style.display = "block";
+
+    await renderMonthView();
+  });
+}
+
+if (weekViewBtn) {
+  weekViewBtn.addEventListener("click", () => {
+    monthViewSection.style.display = "none";
+    document.getElementById("weekViewSection").style.display = "block";
+  });
+}
 
 /* ---------- ENKEL KJØKKENBOK - SUPABASE ---------- */
 
