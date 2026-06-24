@@ -851,6 +851,86 @@ const subSummary = document.getElementById("subSummary");
 const clearSubs = document.getElementById("clearSubs");
 
 let subsCache = [];
+let subPeopleCache = [];
+
+const subPersonForm = document.getElementById("subPersonForm");
+const subPersonName = document.getElementById("subPersonName");
+const subPersonList = document.getElementById("subPersonList");
+
+async function loadSubPeopleFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_subs")
+    .select("*")
+    .eq("active", true)
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("Kunne ikke hente vikarer:", error);
+    return [];
+  }
+
+  subPeopleCache = data || [];
+  return subPeopleCache;
+}
+
+async function saveSubPersonToSupabase(name) {
+  const { data, error } = await supabaseClient
+    .from("kbfb_subs")
+    .insert([{ name }])
+    .select();
+
+  console.log("NY VIKAR DATA", data);
+  console.log("NY VIKAR ERROR", error);
+}
+
+function renderSubPeople() {
+  if (subName) {
+    subName.innerHTML = `<option value="">Velg vikar</option>`;
+
+    subPeopleCache.forEach(person => {
+      const option = document.createElement("option");
+      option.value = person.name;
+      option.textContent = person.name;
+      subName.appendChild(option);
+    });
+  }
+
+  if (subPersonList) {
+    subPersonList.innerHTML = subPeopleCache.length
+      ? subPeopleCache.map(person => `
+          <div class="compact-item">
+            <strong>${person.name}</strong>
+            <span>Aktiv vikar</span>
+          </div>
+        `).join("")
+      : `<p class="muted">Ingen vikarer lagt inn ennå.</p>`;
+  }
+}
+
+if (subPersonForm) {
+  subPersonForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const name = subPersonName.value.trim();
+
+    if (!name) return;
+
+    const alreadyExists = subPeopleCache.some(person =>
+      person.name.toLowerCase() === name.toLowerCase()
+    );
+
+    if (alreadyExists) {
+      alert("Denne vikaren finnes allerede.");
+      return;
+    }
+
+    await saveSubPersonToSupabase(name);
+    await loadSubPeopleFromSupabase();
+
+    subPersonName.value = "";
+    renderSubPeople();
+  });
+}
 
 function calculateHours(start, end) {
   if (!start || !end) return 0;
@@ -1045,7 +1125,10 @@ if (clearSubs) {
 }
 
 async function initializeSubs() {
+  await loadSubPeopleFromSupabase();
   await loadSubsFromSupabase();
+
+  renderSubPeople();
   renderSubs();
   renderDashboardSubs();
 }
