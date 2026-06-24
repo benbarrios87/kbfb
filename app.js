@@ -272,6 +272,49 @@ if (dashboardCurrentWeek) {
 
 updateDashboardWeek();
 
+let shiftsCache = [];
+
+async function loadShiftsFromSupabase() {
+  const weekKey = getCurrentWeekKey();
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_shifts")
+    .select("*")
+    .eq("week_start", weekKey);
+
+  if (error) {
+    console.error("Kunne ikke hente vakter:", error);
+    return [];
+  }
+
+  shiftsCache = data || [];
+  return shiftsCache;
+}
+
+async function saveShiftToSupabase(shift) {
+  const existing = shiftsCache.find(item =>
+    item.week_start === shift.week_start &&
+    item.department === shift.department &&
+    item.employee === shift.employee &&
+    item.day_index === shift.day_index
+  );
+
+  if (existing) {
+    await supabaseClient
+      .from("kbfb_shifts")
+      .update({
+        shift_value: shift.shift_value
+      })
+      .eq("id", existing.id);
+
+    return;
+  }
+
+  await supabaseClient
+    .from("kbfb_shifts")
+    .insert([shift]);
+}
+
 /* ---------- VAKTLISTE MED DROPDOWN ---------- */
 
 const employeeFilter = document.getElementById("employeeFilter");
@@ -327,8 +370,19 @@ function colorShiftSelect(select) {
 function buildShiftDropdowns() {
   document.querySelectorAll(".shift-cell").forEach(cell => {
     const key = getShiftStorageKey(cell);
-    const saved = localStorage.getItem(key);
-    const defaultValue = saved !== null ? saved : cell.dataset.default || "";
+    const row = cell.closest("tr");
+
+const existingShift = shiftsCache.find(item =>
+  item.week_start === getCurrentWeekKey() &&
+  item.department === row.dataset.department &&
+  item.employee === row.dataset.employee &&
+  item.day_index === Array.from(row.children).indexOf(cell) - 1
+);
+
+const defaultValue =
+  existingShift?.shift_value ||
+  cell.dataset.default ||
+  "";
 
     const select = document.createElement("select");
     select.className = "shift-select";
@@ -361,17 +415,27 @@ function buildShiftDropdowns() {
       if (select.value === "ANNET") {
         customInput.style.display = "block";
         customInput.focus();
-        localStorage.setItem(key, customInput.value.trim());
-      } else {
-        customInput.style.display = "none";
-        customInput.value = "";
-        localStorage.setItem(key, select.value);
-      }
-    });
-
-    customInput.addEventListener("input", () => {
-      localStorage.setItem(key, customInput.value.trim());
-    });
+        saveShiftToSupabase({
+  week_start: getCurrentWeekKey(),
+  department: row.dataset.department,
+  employee: row.dataset.employee,
+  day_index: Array.from(row.children).indexOf(cell) - 1,
+  shift_value: customInput.value.trim()
+});
+     } else {
+  customInput.style.display = "none";
+  customInput.value = "";
+customInput.addEventListener(...)
+        
+  saveShiftToSupabase({
+    week_start: getCurrentWeekKey(),
+    department: row.dataset.department,
+    employee: row.dataset.employee,
+    day_index: Array.from(row.children).indexOf(cell) - 1,
+    shift_value: select.value
+  });
+}
+      });
 
     cell.innerHTML = "";
     cell.appendChild(select);
@@ -396,8 +460,11 @@ function renderWeekEvents() {
     : `<p class="muted">Ingen datoer denne uka.</p>`;
 }
 
-function updateWeekView() {
+async function updateWeekView() {
+  await loadShiftsFromSupabase();
+
   if (!weekTitle || !weekDates) return;
+
 
   const weekNumber = getWeekNumber(viewedWeekStart);
   const friday = addDays(viewedWeekStart, 4);
@@ -1131,23 +1198,6 @@ function populateSubMonthFilter() {
     : getCurrentMonthKey();
 }
 
-function getWeekdaysBetween(startDate, endDate) {
-  const dates = [];
-  const current = new Date(startDate + "T12:00:00");
-  const end = new Date(endDate + "T12:00:00");
-
-  while (current <= end) {
-    const day = current.getDay();
-
-    if (day !== 0 && day !== 6) {
-      dates.push(current.toISOString().slice(0, 10));
-    }
-
-    current.setDate(current.getDate() + 1);
-  }
-
-  return dates;
-}
 function getWeekdaysBetween(startDate, endDate) {
   const dates = [];
   const current = new Date(startDate + "T12:00:00");
