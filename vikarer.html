@@ -19,6 +19,8 @@
       <nav>
         <a href="dashboard.html">🏠 Hjem</a>
         <a href="vakter.html">📅 Vakter</a>
+        <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
+        <a href="datoer.html">📆 Datoer</a>
         <a class="active" href="vikarer.html">🕒 Vikarer</a>
         <a href="ferieogavspasering.html">🌴 Ferie og avspasering</a>
         <a href="filarkiv.html">📁 Filarkiv</a>
@@ -33,59 +35,27 @@
         <div>
           <p class="eyebrow">Vikaroversikt</p>
           <h1>Vikarer og timer</h1>
-          <p class="muted">Før opp vaktdager, timer og avdeling</p>
+          <p class="muted">Før opp vaktdager, timer og avdeling.</p>
         </div>
         <div class="hero-badge">🕒 Timeregistrering</div>
       </section>
 
       <section class="grid">
         <article class="card">
-          <h2>Registrer vikarvakt</h2>
+          <h2>Legg til vikar</h2>
 
-          <form id="subForm" class="form-grid">
-            <label>
-              Vikar
-              <select id="subName" required>
-                <option value="">Velg vikar</option>
-                <option value="Sharlene">Sharlene</option>
-                <option value="Lola">Lola</option>
-                <option value="Britt">Britt</option>
-                <option value="Annen vikar">Annen vikar</option>
-              </select>
-            </label>
-
-            <label>
-              Dato
-              <input id="subDate" type="date" required />
-            </label>
-
-            <label>
-              Fra
-              <input id="subStart" type="time" value="08:30" required />
-            </label>
-
-            <label>
-              Til
-              <input id="subEnd" type="time" value="16:00" required />
-            </label>
-
-            <label>
-              Avdeling
-              <select id="subDepartment">
-                <option value="Sommerfuglen">Sommerfuglen</option>
-                <option value="Regnbuen">Regnbuen</option>
-                <option value="Begge">Begge</option>
-                <option value="Annet">Annet</option>
-              </select>
-            </label>
-
+          <form id="subPersonForm" class="form-grid">
             <label class="wide-field">
-              Notat
-              <input id="subNote" type="text" placeholder="F.eks. tur, kort dag, ekstrahjelp" />
+              Navn
+              <input id="subPersonName" type="text" placeholder="F.eks. Sharlene" required />
             </label>
 
-            <button class="primary-btn form-button" type="submit">Lagre vakt</button>
+            <button class="primary-btn form-button" type="submit">Lagre vikar</button>
           </form>
+
+          <div id="subPersonList" class="summary-list">
+            <p class="muted">Ingen vikarer lagt inn ennå.</p>
+          </div>
         </article>
 
         <article class="card">
@@ -97,12 +67,57 @@
       </section>
 
       <section class="card">
+        <h2>Registrer vikarvakt</h2>
+
+        <form id="subForm" class="form-grid">
+          <label>
+            Vikar
+            <select id="subName" required>
+              <option value="">Velg vikar</option>
+            </select>
+          </label>
+
+          <label>
+            Dato
+            <input id="subDate" type="date" required />
+          </label>
+
+          <label>
+            Fra
+            <input id="subStart" type="time" value="08:30" required />
+          </label>
+
+          <label>
+            Til
+            <input id="subEnd" type="time" value="16:00" required />
+          </label>
+
+          <label>
+            Avdeling
+            <select id="subDepartment">
+              <option value="Sommerfuglen">Sommerfuglen</option>
+              <option value="Regnbuen">Regnbuen</option>
+              <option value="Begge">Begge</option>
+              <option value="Annet">Annet</option>
+            </select>
+          </label>
+
+          <label class="wide-field">
+            Notat
+            <input id="subNote" type="text" placeholder="F.eks. tur, kort dag, ekstrahjelp" />
+          </label>
+
+          <button class="primary-btn form-button" type="submit">Lagre vakt</button>
+        </form>
+      </section>
+
+      <section class="card">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Registrerte vakter</p>
             <h2>Vikarlogg</h2>
           </div>
-          <button id="clearSubs" class="secondary-btn">Tøm testdata</button>
+          <button id="clearSubs" class="secondary-btn" type="button">Tøm testdata</button>
         </div>
 
         <div class="table-wrap">
@@ -124,8 +139,9 @@
       </section>
     </main>
   </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js"></script>
-<script src="app.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
