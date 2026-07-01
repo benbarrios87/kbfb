@@ -98,6 +98,35 @@ async function loadEmployeesFromSupabase() {
   employeesCache = data || [];
   return employeesCache;
 }
+function populateEmployeeSelect(selectId, options = {}) {
+
+  const select = document.getElementById(selectId);
+  if (!select) return;
+
+  const {
+    includeBlank = true,
+    blankText = "Velg ansatt",
+    includeAll = false
+  } = options;
+
+  select.innerHTML = "";
+
+  if (includeAll) {
+    select.innerHTML += `<option value="all">Alle</option>`;
+  }
+
+  if (includeBlank) {
+    select.innerHTML += `<option value="">${blankText}</option>`;
+  }
+
+  employeesCache.forEach(employee => {
+    select.innerHTML += `
+      <option value="${employee.name}">
+        ${employee.name}
+      </option>
+    `;
+  });
+}
 
 async function saveEventToSupabase(eventData) {
   const { error } = await supabaseClient
@@ -866,45 +895,7 @@ function monthHeading(dateString) {
     year: "numeric"
   });
 }
-function populateEmployeeSelect(selectId, options = {}) {
 
-  const select = document.getElementById(selectId);
-  if (!select) return;
-
-  const {
-    includeBlank = true,
-    blankText = "Velg ansatt",
-    includeAll = false,
-    onlyDepartment = null
-  } = options;
-
-  select.innerHTML = "";
-
-  if (includeAll) {
-    select.innerHTML += `<option value="all">Alle</option>`;
-  }
-
-  if (includeBlank) {
-    select.innerHTML += `<option value="">${blankText}</option>`;
-  }
-
-  employeesCache
-    .filter(e => !onlyDepartment || e.department === onlyDepartment)
-    .forEach(e => {
-      select.innerHTML += `
-        <option value="${e.name}">
-          ${e.name}
-        </option>
-      `;
-    });
-}
-
-function shortDate(dateString) {
-  return new Date(dateString + "T12:00:00").toLocaleDateString("no-NO", {
-    day: "2-digit",
-    month: "2-digit"
-  });
-}
 
 function renderEvents() {
   if (!dateList) return;
@@ -1658,10 +1649,18 @@ function renderAbsenceSummary(records) {
 }
 
 async function initializeAbsences() {
+  await loadEmployeesFromSupabase();
+
+  populateEmployeeSelect("absenceName");
+  populateEmployeeSelect("absenceFilter", {
+    includeBlank: false,
+    includeAll: true
+  });
+
   await loadAbsencesFromSupabase();
+
   renderAbsences();
   renderDashboardAbsences();
 }
 
 initializeAbsences();
-loadEmployeesFromSupabase();
