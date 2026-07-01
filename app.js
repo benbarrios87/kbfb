@@ -80,6 +80,24 @@ async function loadEventsFromSupabase() {
   eventsCache = data || [];
   return eventsCache;
 }
+let employeesCache = [];
+
+async function loadEmployeesFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_employees")
+    .select("*")
+    .eq("active", true)
+    .order("department")
+    .order("name");
+
+  if (error) {
+    console.error("Kunne ikke hente ansatte:", error);
+    return [];
+  }
+
+  employeesCache = data || [];
+  return employeesCache;
+}
 
 async function saveEventToSupabase(eventData) {
   const { error } = await supabaseClient
@@ -848,6 +866,38 @@ function monthHeading(dateString) {
     year: "numeric"
   });
 }
+function populateEmployeeSelect(selectId, options = {}) {
+
+  const select = document.getElementById(selectId);
+  if (!select) return;
+
+  const {
+    includeBlank = true,
+    blankText = "Velg ansatt",
+    includeAll = false,
+    onlyDepartment = null
+  } = options;
+
+  select.innerHTML = "";
+
+  if (includeAll) {
+    select.innerHTML += `<option value="all">Alle</option>`;
+  }
+
+  if (includeBlank) {
+    select.innerHTML += `<option value="">${blankText}</option>`;
+  }
+
+  employeesCache
+    .filter(e => !onlyDepartment || e.department === onlyDepartment)
+    .forEach(e => {
+      select.innerHTML += `
+        <option value="${e.name}">
+          ${e.name}
+        </option>
+      `;
+    });
+}
 
 function shortDate(dateString) {
   return new Date(dateString + "T12:00:00").toLocaleDateString("no-NO", {
@@ -1614,3 +1664,4 @@ async function initializeAbsences() {
 }
 
 initializeAbsences();
+loadEmployeesFromSupabase();
