@@ -1571,8 +1571,20 @@ if (absenceForm) {
       note: absenceNote.value.trim()
     };
 
-    await saveAbsenceToSupabase(record);
-    await loadAbsencesFromSupabase();
+await saveAbsenceToSupabase(record);
+await loadAbsencesFromSupabase();
+
+if (record.type === "Ferie") {
+  showToast("Ferieønske sendt inn");
+} else if (record.type === "Avspasering brukt") {
+  showToast("Avspasering registrert");
+} else if (record.type === "Avspasering opptjent") {
+  showToast("Avspasering registrert");
+} else if (record.type === "Overtid") {
+  showToast("Overtid registrert");
+} else {
+  showToast("Føring lagret");
+}
 
     absenceForm.reset();
     absenceStartDate.value = new Date().toISOString().slice(0, 10);
