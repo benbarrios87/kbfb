@@ -1396,3 +1396,191 @@ if (subMonthFilter) {
 }
 
 initializeSubs();
+/* ---------- FERIE / FRAVÆR - SUPABASE ---------- */
+
+const absenceForm = document.getElementById("absenceForm");
+const absenceName = document.getElementById("absenceName");
+const absenceType = document.getElementById("absenceType");
+const absenceStartDate = document.getElementById("absenceStartDate");
+const absenceEndDate = document.getElementById("absenceEndDate");
+const absenceHours = document.getElementById("absenceHours");
+const absenceStatus = document.getElementById("absenceStatus");
+const absenceNote = document.getElementById("absenceNote");
+const absenceFilter = document.getElementById("absenceFilter");
+const absenceSummary = document.getElementById("absenceSummary");
+const absenceTableBody = document.getElementById("absenceTableBody");
+const clearAbsences = document.getElementById("clearAbsences");
+
+let absencesCache = [];
+
+async function loadAbsencesFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_absences")
+    .select("*")
+    .order("start_date", { ascending: false });
+
+  if (error) {
+    console.error("Kunne ikke hente fravær:", error);
+    return [];
+  }
+
+  absencesCache = data || [];
+  return absencesCache;
+}
+
+async function saveAbsenceToSupabase(record) {
+  const { data, error } = await supabaseClient
+    .from("kbfb_absences")
+    .insert([record])
+    .select();
+
+  console.log("FRAVÆR DATA", data);
+  console.log("FRAVÆR ERROR", error);
+}
+
+async function deleteAbsenceFromSupabase(id) {
+  const { error } = await supabaseClient
+    .from("kbfb_absences")
+    .delete()
+    .eq("id", id);
+
+  if (error) console.error("Kunne ikke slette fravær:", error);
+}
+
+function countWeekdays(startDate, endDate) {
+  const dates = getWeekdaysBetween(startDate, endDate);
+  return dates.length;
+}
+
+function getFilteredAbsences() {
+  const selected = absenceFilter?.value || "all";
+
+  return absencesCache.filter(record =>
+    selected === "all" || record.name === selected
+  );
+}
+
+function renderAbsences() {
+  if (!absenceTableBody || !absenceSummary) return;
+
+  const records = getFilteredAbsences();
+
+  if (!records.length) {
+    absenceTableBody.innerHTML = "";
+    absenceSummary.innerHTML = `<p class="muted">Ingen føringer ennå.</p>`;
+    return;
+  }
+
+  absenceTableBody.innerHTML = records.map(record => `
+    <tr>
+      <td>${record.name}</td>
+      <td>${record.type}</td>
+      <td>${formatDateRange(record.start_date, record.end_date)}</td>
+      <td>${countWeekdays(record.start_date, record.end_date)}</td>
+      <td>${record.hours || ""}</td>
+      <td>${record.status || "Registrert"}</td>
+      <td>${record.note || ""}</td>
+      <td><button class="kitchen-delete" data-absence-id="${record.id}">Slett</button></td>
+    </tr>
+  `).join("");
+
+  renderAbsenceSummary(records);
+
+  document.querySelectorAll("[data-absence-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      await deleteAbsenceFromSupabase(button.dataset.absenceId);
+      await loadAbsencesFromSupabase();
+      renderAbsences();
+      renderDashboardAbsences();
+    });
+  });
+}
+
+function renderAbsenceSummary(records) {
+  const grouped = {};
+
+  records.forEach(record => {
+    if (!grouped[record.name]) {
+      grouped[record.name] = {
+        ferie: 0,
+        avspaseringBrukt: 0,
+        avspaseringOpptjent: 0,
+        overtid: 0,
+        permisjon: 0
+      };
+    }
+
+    const days = countWeekdays(record.start_date, record.end_date);
+    const hours = Number(record.hours || 0);
+
+    if (record.type === "Ferie") grouped[record.name].ferie += days;
+    if (record.type === "Avspasering brukt") grouped[record.name].avspaseringBrukt += hours || days * 7.5;
+    if (record.type === "Avspasering opptjent") grouped[record.name].avspaseringOpptjent += hours;
+    if (record.type === "Overtid") grouped[record.name].overtid += hours;
+    if (record.type === "Permisjon") grouped[record.name].permisjon += days;
+  });
+
+  absenceSummary.innerHTML = Object.entries(grouped).map(([name, total]) => `
+    <div class="compact-item">
+      <strong>${name}</strong>
+      <span>
+        Ferie: ${total.ferie} dager · 
+        Avsp. brukt: ${total.avspaseringBrukt} t · 
+        Opptjent: ${total.avspaseringOpptjent} t · 
+        Overtid: ${total.overtid} t
+      </span>
+    </div>
+  `).join("");
+}
+
+if (absenceStartDate) {
+  absenceStartDate.value = new Date().toISOString().slice(0, 10);
+}
+
+if (absenceEndDate) {
+  absenceEndDate.value = new Date().toISOString().slice(0, 10);
+}
+
+if (absenceForm) {
+  absenceForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const record = {
+      name: absenceName.value,
+      type: absenceType.value,
+      start_date: absenceStartDate.value,
+      end_date: absenceEndDate.value,
+      hours: absenceHours.value ? Number(absenceHours.value) : null,
+      status: absenceStatus.value,
+      note: absenceNote.value.trim()
+    };
+
+    await saveAbsenceToSupabase(record);
+    await loadAbsencesFromSupabase();
+
+    absenceForm.reset();
+    absenceStartDate.value = new Date().toISOString().slice(0, 10);
+    absenceEndDate.value = new Date().toISOString().slice(0, 10);
+
+    renderAbsences();
+    renderDashboardAbsences();
+  });
+}
+
+if (absenceFilter) {
+  absenceFilter.addEventListener("change", renderAbsences);
+}
+
+if (clearAbsences) {
+  clearAbsences.addEventListener("click", () => {
+    alert("Tøm testdata er deaktivert.");
+  });
+}
+
+async function initializeAbsences() {
+  await loadAbsencesFromSupabase();
+  renderAbsences();
+  renderDashboardAbsences();
+}
+
+initializeAbsences();
