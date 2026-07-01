@@ -1784,3 +1784,39 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   opacity: 1;
   transform: translateY(0);
 }
+                                                                   .summary-card{
+    background:#fff;
+    border-radius:14px;
+    padding:18px;
+    margin-bottom:18px;
+    box-shadow:0 3px 12px rgba(0,0,0,.08);
+}
+
+.summary-card h3{
+    margin:0 0 14px;
+    color:#2f5e2f;
+}
+
+.summary-card div{
+    display:flex;
+    justify-content:space-between;
+    margin:7px 0;
+}
+
+.summary-card hr{
+    margin:14px 0;
+    border:none;
+    border-top:1px solid #e6e6e6;
+}
+
+.summary-card .saldo{
+    margin-top:10px;
+    padding-top:10px;
+    font-size:1.1rem;
+    font-weight:700;
+    color:#1f5f2f;
+}
+
+.summary-card .saldo.negative{
+    color:#b42318;
+}
