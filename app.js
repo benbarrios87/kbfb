@@ -290,6 +290,73 @@ async function loadShiftsFromSupabase() {
   shiftsCache = data || [];
   return shiftsCache;
 }
+async function renderMonthView() {
+  if (!monthViewContent) return;
+
+  const shifts = await loadMonthShiftsFromSupabase();
+
+  if (!shifts.length) {
+    monthViewContent.innerHTML = `<p class="muted">Ingen vakter denne måneden.</p>`;
+    return;
+  }
+
+  const grouped = {};
+
+  shifts.forEach(shift => {
+    if (!grouped[shift.employee]) {
+      grouped[shift.employee] = [];
+    }
+
+    grouped[shift.employee].push(shift);
+  });
+
+  monthViewContent.innerHTML = Object.entries(grouped)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([employee, employeeShifts]) => `
+      <div class="month-employee-card">
+        <h3>${employee}</h3>
+
+        ${employeeShifts
+          .sort((a, b) =>
+            a.week_start.localeCompare(b.week_start) ||
+            a.day_index - b.day_index
+          )
+          .map(shift => `
+            <div class="compact-item">
+              <strong>${formatMonthShiftDate(shift.week_start, shift.day_index)}</strong>
+              <span>${shift.shift_value || "-"}</span>
+            </div>
+          `)
+          .join("")}
+      </div>
+    `)
+    .join("");
+}
+
+function formatMonthShiftDate(weekStart, dayIndex) {
+  const date = addDays(new Date(weekStart + "T12:00:00"), dayIndex);
+  return date.toLocaleDateString("no-NO", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit"
+  });
+}
+async function loadMonthShiftsFromSupabase() {
+  const monthKey = viewedWeekStart.toISOString().slice(0, 7);
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_shifts")
+    .select("*")
+    .gte("week_start", `${monthKey}-01`)
+    .lt("week_start", `${monthKey}-32`);
+
+  if (error) {
+    console.error(error);
+    return [];
+  }
+
+  return data || [];
+}
 
 async function saveShiftToSupabase(shift) {
   const existing = shiftsCache.find(item =>
@@ -837,7 +904,7 @@ function renderEvents() {
   document.querySelectorAll("[data-delete-date]").forEach(button => {
     button.addEventListener("click", () => {
       const updated = getEvents().filter(item => item.id !== button.dataset.deleteDate);
-      saveEvents(updated);
+      
 
       renderEvents();
       renderDashboardEvents();
@@ -933,8 +1000,7 @@ function seedDefaultEventsIfEmpty() {
     id: crypto.randomUUID(),
     ...event
   }));
-
-  saveEvents(defaultEvents);
+  
 }
 
 async function initializeEvents() {
