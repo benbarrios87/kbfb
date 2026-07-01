@@ -199,6 +199,22 @@ function renderDashboardKitchenNotes() {
     `).join("")
     : `<p class="muted">Ingen beskjeder denne uka.</p>`;
 }
+function showToast(message) {
+  let toast = document.getElementById("toast");
+
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toast";
+    document.body.appendChild(toast);
+  }
+
+  toast.textContent = "✅ " + message;
+  toast.className = "show";
+
+  setTimeout(() => {
+    toast.className = "";
+  }, 2500);
+}
 
 function renderDashboardSubs() {
   if (!dashboardSubs) return;
