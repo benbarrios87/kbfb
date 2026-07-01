@@ -1519,90 +1519,92 @@ function renderAbsenceSummary(records) {
     if (!grouped[record.name]) {
       grouped[record.name] = {
         ferie: 0,
-        avspaseringBrukt: 0,
-        avspaseringOpptjent: 0,
+        tjenestefri: 0,
+        avsOpptjent: 0,
+        avsBrukt: 0,
         overtid: 0,
-        permisjon: 0
+        permisjonMed: 0,
+        permisjonUten: 0,
+        velferd: 0
       };
     }
 
     const days = countWeekdays(record.start_date, record.end_date);
     const hours = Number(record.hours || 0);
 
-    if (record.type === "Ferie") grouped[record.name].ferie += days;
-    if (record.type === "Avspasering brukt") grouped[record.name].avspaseringBrukt += hours || days * 7.5;
-    if (record.type === "Avspasering opptjent") grouped[record.name].avspaseringOpptjent += hours;
-    if (record.type === "Overtid") grouped[record.name].overtid += hours;
-    if (record.type === "Permisjon") grouped[record.name].permisjon += days;
+    switch (record.type) {
+
+      case "Ferie":
+        grouped[record.name].ferie += days;
+        break;
+
+      case "Tjenestefri":
+        grouped[record.name].tjenestefri += days;
+        break;
+
+      case "Avspasering opptjent":
+        grouped[record.name].avsOpptjent += hours;
+        break;
+
+      case "Avspasering brukt":
+        grouped[record.name].avsBrukt += hours || (days * 7.5);
+        break;
+
+      case "Overtid":
+        grouped[record.name].overtid += hours;
+        break;
+
+      case "Permisjon med lønn":
+        grouped[record.name].permisjonMed += days;
+        break;
+
+      case "Permisjon uten lønn":
+        grouped[record.name].permisjonUten += days;
+        break;
+
+      case "Velferdspermisjon":
+        grouped[record.name].velferd += days;
+        break;
+    }
   });
 
-  absenceSummary.innerHTML = Object.entries(grouped).map(([name, total]) => `
-    <div class="compact-item">
-      <strong>${name}</strong>
-      <span>
-        Ferie: ${total.ferie} dager · 
-        Avsp. brukt: ${total.avspaseringBrukt} t · 
-        Opptjent: ${total.avspaseringOpptjent} t · 
-        Overtid: ${total.overtid} t
-      </span>
-    </div>
-  `).join("");
-}
+  absenceSummary.innerHTML = Object.entries(grouped)
+    .sort(([a],[b]) => a.localeCompare(b))
+    .map(([name, t]) => {
 
-if (absenceStartDate) {
-  absenceStartDate.value = new Date().toISOString().slice(0, 10);
-}
+      const saldo = t.avsOpptjent - t.avsBrukt;
 
-if (absenceEndDate) {
-  absenceEndDate.value = new Date().toISOString().slice(0, 10);
-}
+      return `
+      <div class="summary-card">
 
-if (absenceForm) {
-  absenceForm.addEventListener("submit", async event => {
-    event.preventDefault();
+        <h3>${name}</h3>
 
-    const record = {
-      name: absenceName.value,
-      type: absenceType.value,
-      start_date: absenceStartDate.value,
-      end_date: absenceEndDate.value,
-      hours: absenceHours.value ? Number(absenceHours.value) : null,
-      status: absenceStatus.value,
-      note: absenceNote.value.trim()
-    };
+        <div>🌴 Ferie: <strong>${t.ferie}</strong> dager</div>
 
-await saveAbsenceToSupabase(record);
-await loadAbsencesFromSupabase();
+        <div>🏡 Tjenestefri: <strong>${t.tjenestefri}</strong> dager</div>
 
-if (record.type === "Ferie") {
-  showToast("Ferieønske sendt inn");
-} else if (record.type === "Avspasering brukt") {
-  showToast("Avspasering registrert");
-} else if (record.type === "Avspasering opptjent") {
-  showToast("Avspasering registrert");
-} else if (record.type === "Overtid") {
-  showToast("Overtid registrert");
-} else {
-  showToast("Føring lagret");
-}
+        <div>💰 Overtid: <strong>${t.overtid.toFixed(1)}</strong> t</div>
 
-    absenceForm.reset();
-    absenceStartDate.value = new Date().toISOString().slice(0, 10);
-    absenceEndDate.value = new Date().toISOString().slice(0, 10);
+        <div>📄 Permisjon m/lønn: <strong>${t.permisjonMed}</strong> dager</div>
 
-    renderAbsences();
-    renderDashboardAbsences();
-  });
-}
+        <div>📄 Permisjon u/lønn: <strong>${t.permisjonUten}</strong> dager</div>
 
-if (absenceFilter) {
-  absenceFilter.addEventListener("change", renderAbsences);
-}
+        <div>❤️ Velferd: <strong>${t.velferd}</strong> dager</div>
 
-if (clearAbsences) {
-  clearAbsences.addEventListener("click", () => {
-    alert("Tøm testdata er deaktivert.");
-  });
+        <hr>
+
+        <div>➕ Opptjent avsp.: ${t.avsOpptjent.toFixed(1)} t</div>
+
+        <div>➖ Brukt avsp.: ${t.avsBrukt.toFixed(1)} t</div>
+
+        <div style="font-size:1.1rem;font-weight:bold;margin-top:6px;">
+            Saldo: ${saldo.toFixed(1)} t
+        </div>
+
+      </div>
+      `;
+    })
+    .join("");
 }
 
 async function initializeAbsences() {
