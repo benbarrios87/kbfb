@@ -228,7 +228,12 @@ select {
 .shift-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 850px;
+  table-layout: fixed;
+}
+
+.shift-table .person {
+  width: 130px;
+  white-space: normal;
 }
 
 .shift-table th,
