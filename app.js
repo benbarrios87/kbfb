@@ -542,15 +542,13 @@ function buildShiftDropdowns() {
     const isVikarRow = row.dataset.employee === "Vikar";
     const isParentRow = row.dataset.employee === "Foreldreinnsats";
 
-    if (isVikarRow || isParentRow) {
+    if (isParentRow) {
       cell.innerHTML = "";
 
       const freeTextInput = document.createElement("input");
       freeTextInput.type = "text";
       freeTextInput.className = "custom-shift-input";
-      freeTextInput.placeholder = isVikarRow
-        ? "Klokkeslett, f.eks. 08:00–16:00"
-        : "Navn på forelder";
+      freeTextInput.placeholder = "Navn på forelder";
       freeTextInput.style.display = "block";
       freeTextInput.value = defaultValue;
 
@@ -566,46 +564,102 @@ function buildShiftDropdowns() {
         await loadShiftsFromSupabase();
       });
 
-      if (isVikarRow) {
-        const vikarPicker = document.createElement("select");
-        vikarPicker.className = "vikar-picker";
+      cell.appendChild(freeTextInput);
+      return;
+    }
 
-        const emptyOption = document.createElement("option");
-        emptyOption.value = "";
-        emptyOption.textContent = "Velg vikar...";
-        vikarPicker.appendChild(emptyOption);
+    if (isVikarRow) {
+      cell.innerHTML = "";
 
-        (subPeopleCache || []).forEach(person => {
-          const option = document.createElement("option");
-          option.value = person.name;
-          option.textContent = person.name;
-          vikarPicker.appendChild(option);
-        });
+      // A saved value looks like "Kari 08:00-16:00" - split off the name
+      // (if it matches someone in the pool) from the time/note that follows.
+      const matchedPerson = (subPeopleCache || []).find(person =>
+        defaultValue === person.name ||
+        defaultValue.toLowerCase().startsWith(`${person.name.toLowerCase()} `)
+      );
+      const initialName = matchedPerson ? matchedPerson.name : "";
+      const initialTime = matchedPerson
+        ? defaultValue.slice(matchedPerson.name.length).trim()
+        : defaultValue;
 
-        vikarPicker.addEventListener("change", async () => {
-          if (!vikarPicker.value) return;
+      const vikarPicker = document.createElement("select");
+      vikarPicker.className = "vikar-picker";
 
-          freeTextInput.value = freeTextInput.value
-            ? `${vikarPicker.value} ${freeTextInput.value}`
-            : vikarPicker.value;
+      const emptyOption = document.createElement("option");
+      emptyOption.value = "";
+      emptyOption.textContent = "Velg vikar...";
+      vikarPicker.appendChild(emptyOption);
+
+      (subPeopleCache || []).forEach(person => {
+        const option = document.createElement("option");
+        option.value = person.name;
+        option.textContent = person.name;
+        vikarPicker.appendChild(option);
+      });
+
+      const nameChip = document.createElement("div");
+      nameChip.className = "vikar-chip";
+
+      const nameChipLabel = document.createElement("span");
+      const nameChipClear = document.createElement("button");
+      nameChipClear.type = "button";
+      nameChipClear.className = "vikar-chip-clear";
+      nameChipClear.textContent = "×";
+      nameChip.appendChild(nameChipLabel);
+      nameChip.appendChild(nameChipClear);
+
+      const timeInput = document.createElement("input");
+      timeInput.type = "text";
+      timeInput.className = "custom-shift-input";
+      timeInput.placeholder = "Klokkeslett, f.eks. 08:00–16:00";
+      timeInput.value = initialTime;
+
+      function setVikarName(name) {
+        if (name) {
+          nameChipLabel.textContent = name;
+          nameChip.style.display = "flex";
+          vikarPicker.style.display = "none";
+        } else {
+          nameChip.style.display = "none";
+          vikarPicker.style.display = "block";
           vikarPicker.value = "";
-          freeTextInput.focus();
-
-          await saveShiftToSupabase({
-            week_start: getCurrentWeekKey(),
-            department: row.dataset.department,
-            employee: row.dataset.employee,
-            day_index: dayIndex,
-            shift_value: freeTextInput.value.trim()
-          });
-
-          await loadShiftsFromSupabase();
-        });
-
-        cell.appendChild(vikarPicker);
+        }
       }
 
-      cell.appendChild(freeTextInput);
+      async function saveVikarCell() {
+        const name = nameChip.style.display === "none" ? "" : nameChipLabel.textContent;
+        const combined = [name, timeInput.value.trim()].filter(Boolean).join(" ").trim();
+
+        await saveShiftToSupabase({
+          week_start: getCurrentWeekKey(),
+          department: row.dataset.department,
+          employee: row.dataset.employee,
+          day_index: dayIndex,
+          shift_value: combined
+        });
+
+        await loadShiftsFromSupabase();
+      }
+
+      vikarPicker.addEventListener("change", async () => {
+        if (!vikarPicker.value) return;
+        setVikarName(vikarPicker.value);
+        timeInput.focus();
+        await saveVikarCell();
+      });
+
+      nameChipClear.addEventListener("click", async () => {
+        setVikarName("");
+        await saveVikarCell();
+      });
+
+      timeInput.addEventListener("input", saveVikarCell);
+
+      setVikarName(initialName);
+
+      cell.appendChild(vikarPicker);
+      cell.appendChild(nameChip);
+      cell.appendChild(timeInput);
       return;
     }
 

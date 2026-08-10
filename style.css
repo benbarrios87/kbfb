@@ -442,11 +442,28 @@ select {
 }
 
 .department-section.butterfly {
-  background: linear-gradient(135deg, #f7fbff, #eef7ff);
+  background: linear-gradient(135deg, #fff6ec, #ffefdc);
+  border-left: 6px solid #c97a3f;
+}
+
+.department-section.butterfly .department-header span {
+  background: rgba(201, 122, 63, 0.18);
+  color: #8a4d1f;
 }
 
 .department-section.rainbow {
-  background: linear-gradient(135deg, #fff9ef, #f4fbef);
+  background: linear-gradient(135deg, #eef6fa, #e3eff5);
+  border-left: 6px solid #3e6e86;
+}
+
+.department-section.rainbow .department-header span {
+  background: rgba(62, 110, 134, 0.16);
+  color: #2b4f61;
+}
+
+.card.dates-highlight {
+  background: linear-gradient(135deg, #fffaf0, #fef3db);
+  border-left: 6px solid #d9a441;
 }
 
 .department-header h2 {
@@ -671,11 +688,28 @@ select {
 }
 
 .department-section.butterfly {
-  background: linear-gradient(135deg, #f7fbff, #eef7ff);
+  background: linear-gradient(135deg, #fff6ec, #ffefdc);
+  border-left: 6px solid #c97a3f;
+}
+
+.department-section.butterfly .department-header span {
+  background: rgba(201, 122, 63, 0.18);
+  color: #8a4d1f;
 }
 
 .department-section.rainbow {
-  background: linear-gradient(135deg, #fff9ef, #f4fbef);
+  background: linear-gradient(135deg, #eef6fa, #e3eff5);
+  border-left: 6px solid #3e6e86;
+}
+
+.department-section.rainbow .department-header span {
+  background: rgba(62, 110, 134, 0.16);
+  color: #2b4f61;
+}
+
+.card.dates-highlight {
+  background: linear-gradient(135deg, #fffaf0, #fef3db);
+  border-left: 6px solid #d9a441;
 }
 
 .department-header h2 {
@@ -1635,6 +1669,33 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   background: white;
   font-weight: 700;
   margin-bottom: 6px;
+}
+
+.vikar-chip {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--green-soft);
+  color: var(--green-dark);
+  border-radius: 12px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  font-weight: 800;
+}
+
+.vikar-chip-clear {
+  border: 0;
+  background: transparent;
+  color: var(--green-dark);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.vikar-chip-clear:hover {
+  color: #8d1c1c;
 }
 
 .custom-shift-input {
