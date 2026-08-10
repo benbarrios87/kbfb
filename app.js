@@ -510,6 +510,8 @@ function colorShiftSelect(select) {
 }
 
 function buildShiftDropdowns() {
+  const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
+
   document.querySelectorAll(".shift-cell").forEach(cell => {
     const row = cell.closest("tr");
 
@@ -527,6 +529,15 @@ function buildShiftDropdowns() {
       existingShift?.shift_value ||
       cell.dataset.default ||
       "";
+
+    if (!isAdmin) {
+      cell.innerHTML = "";
+      const badge = document.createElement("span");
+      badge.className = `badge ${getShiftSelectClass(defaultValue)}`;
+      badge.textContent = defaultValue || "—";
+      cell.appendChild(badge);
+      return;
+    }
 
     const select = document.createElement("select");
     select.className = "shift-select";

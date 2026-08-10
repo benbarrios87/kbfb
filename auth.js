@@ -29,6 +29,13 @@ async function requireAuth() {
   currentEmployee = data;
   applyRoleVisibility();
   renderUserBadge();
+
+  // vakter.html may have already rendered the shift table before we knew
+  // whether this person is admin - re-render now that we know for sure.
+  if (typeof buildShiftDropdowns === "function") {
+    buildShiftDropdowns();
+  }
+
   return currentEmployee;
 }
 
