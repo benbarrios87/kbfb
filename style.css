@@ -1543,9 +1543,6 @@ body.edit-mode .editable-shifts td[contenteditable="true"] {
 body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   background: #eaf7ea;
 }
-.shift-cell {
-  min-width: 130px;
-}
 
 .shift-select,
 .custom-shift-input {
@@ -1622,18 +1619,22 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   background: #f4f1ea;
 }
 
-                                                                   .shift-cell {
-  min-width: 145px;
-}
-
 .shift-select,
-.custom-shift-input {
+.custom-shift-input,
+.vikar-picker {
   width: 100%;
   border: 0;
   border-radius: 12px;
   padding: 9px 10px;
   font-weight: 900;
   font: inherit;
+}
+
+.vikar-picker {
+  border: 1px solid var(--line);
+  background: white;
+  font-weight: 700;
+  margin-bottom: 6px;
 }
 
 .custom-shift-input {

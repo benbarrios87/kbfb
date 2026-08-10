@@ -539,6 +539,76 @@ function buildShiftDropdowns() {
       return;
     }
 
+    const isVikarRow = row.dataset.employee === "Vikar";
+    const isParentRow = row.dataset.employee === "Foreldreinnsats";
+
+    if (isVikarRow || isParentRow) {
+      cell.innerHTML = "";
+
+      const freeTextInput = document.createElement("input");
+      freeTextInput.type = "text";
+      freeTextInput.className = "custom-shift-input";
+      freeTextInput.placeholder = isVikarRow
+        ? "Klokkeslett, f.eks. 08:00–16:00"
+        : "Navn på forelder";
+      freeTextInput.style.display = "block";
+      freeTextInput.value = defaultValue;
+
+      freeTextInput.addEventListener("input", async () => {
+        await saveShiftToSupabase({
+          week_start: getCurrentWeekKey(),
+          department: row.dataset.department,
+          employee: row.dataset.employee,
+          day_index: dayIndex,
+          shift_value: freeTextInput.value.trim()
+        });
+
+        await loadShiftsFromSupabase();
+      });
+
+      if (isVikarRow) {
+        const vikarPicker = document.createElement("select");
+        vikarPicker.className = "vikar-picker";
+
+        const emptyOption = document.createElement("option");
+        emptyOption.value = "";
+        emptyOption.textContent = "Velg vikar...";
+        vikarPicker.appendChild(emptyOption);
+
+        (subPeopleCache || []).forEach(person => {
+          const option = document.createElement("option");
+          option.value = person.name;
+          option.textContent = person.name;
+          vikarPicker.appendChild(option);
+        });
+
+        vikarPicker.addEventListener("change", async () => {
+          if (!vikarPicker.value) return;
+
+          freeTextInput.value = freeTextInput.value
+            ? `${vikarPicker.value} ${freeTextInput.value}`
+            : vikarPicker.value;
+          vikarPicker.value = "";
+          freeTextInput.focus();
+
+          await saveShiftToSupabase({
+            week_start: getCurrentWeekKey(),
+            department: row.dataset.department,
+            employee: row.dataset.employee,
+            day_index: dayIndex,
+            shift_value: freeTextInput.value.trim()
+          });
+
+          await loadShiftsFromSupabase();
+        });
+
+        cell.appendChild(vikarPicker);
+      }
+
+      cell.appendChild(freeTextInput);
+      return;
+    }
+
     const select = document.createElement("select");
     select.className = "shift-select";
 
@@ -635,6 +705,7 @@ async function updateWeekView() {
 
   if (!weekTitle || !weekDates) return;
 
+  await loadSubPeopleFromSupabase();
 
   const weekNumber = getWeekNumber(viewedWeekStart);
   const friday = addDays(viewedWeekStart, 4);
