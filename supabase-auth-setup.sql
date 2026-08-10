@@ -65,6 +65,26 @@ AS $$
 $$;
 
 -- =========================================================
+-- STEP 2B: kbfb_employees itself
+--   RLS was already ON here with no policy letting a logged-in
+--   person read their own row - that silently broke login (auth.js
+--   looks up your row right after sign-in; zero rows back = signed
+--   back out a second later). This is what fixes that.
+-- =========================================================
+
+ALTER TABLE public.kbfb_employees ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_employees_select_authenticated" ON public.kbfb_employees;
+CREATE POLICY "kbfb_employees_select_authenticated" ON public.kbfb_employees
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "kbfb_employees_admin_write" ON public.kbfb_employees;
+CREATE POLICY "kbfb_employees_admin_write" ON public.kbfb_employees
+  FOR UPDATE TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());
+
+-- =========================================================
 -- STEP 3: kbfb_events (currently has NO rules at all - wide open)
 -- =========================================================
 
