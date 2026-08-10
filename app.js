@@ -857,7 +857,7 @@ if (weekViewBtn) {
 /* ---------- ENKEL KJØKKENBOK - SUPABASE ---------- */
 
 const quickNoteForm = document.getElementById("quickNoteForm");
-const quickNoteAuthor = document.getElementById("quickNoteAuthor");
+const quickNoteAuthorDisplay = document.getElementById("quickNoteAuthorDisplay");
 const quickNoteDate = document.getElementById("quickNoteDate");
 const quickNoteText = document.getElementById("quickNoteText");
 const quickNoteFeed = document.getElementById("quickNoteFeed");
@@ -909,6 +909,18 @@ async function deleteNoteFromSupabase(id) {
   }
 }
 
+function canDeleteNote(note) {
+  const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
+  const isAuthor = typeof currentEmployee !== "undefined" && currentEmployee?.name === note.author;
+  return isAdmin || isAuthor;
+}
+
+function renderQuickNoteAuthor() {
+  if (quickNoteAuthorDisplay && typeof currentEmployee !== "undefined" && currentEmployee) {
+    quickNoteAuthorDisplay.value = currentEmployee.name;
+  }
+}
+
 function renderQuickNotes() {
   if (!quickNoteFeed) return;
 
@@ -934,7 +946,7 @@ function renderQuickNotes() {
         <article class="kitchen-entry">
           <div class="kitchen-entry-top">
             <strong>${note.author}</strong>
-            <button class="kitchen-delete" data-quick-note-id="${note.id}">Slett</button>
+            ${canDeleteNote(note) ? `<button class="kitchen-delete" data-quick-note-id="${note.id}">Slett</button>` : ""}
           </div>
           <p>${note.text}</p>
         </article>
@@ -968,8 +980,13 @@ if (quickNoteForm) {
   quickNoteForm.addEventListener("submit", async event => {
     event.preventDefault();
 
+    if (typeof currentEmployee === "undefined" || !currentEmployee) {
+      alert("Fant ikke innlogget bruker. Prøv å laste siden på nytt.");
+      return;
+    }
+
     const note = {
-      author: quickNoteAuthor.value,
+      author: currentEmployee.name,
       date: quickNoteDate.value,
       text: quickNoteText.value.trim()
     };

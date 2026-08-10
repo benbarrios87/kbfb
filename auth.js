@@ -30,10 +30,18 @@ async function requireAuth() {
   applyRoleVisibility();
   renderUserBadge();
 
-  // vakter.html may have already rendered the shift table before we knew
-  // whether this person is admin - re-render now that we know for sure.
+  // Some pages may have already rendered before we knew who's logged in
+  // (or whether they're admin) - re-render now that we know for sure.
   if (typeof buildShiftDropdowns === "function") {
     buildShiftDropdowns();
+  }
+
+  if (typeof renderQuickNoteAuthor === "function") {
+    renderQuickNoteAuthor();
+  }
+
+  if (typeof renderQuickNotes === "function") {
+    renderQuickNotes();
   }
 
   return currentEmployee;
