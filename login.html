@@ -1,1 +1,78 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logg inn | KBFB Personal</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
 
+<body>
+  <main class="login-page">
+    <form id="loginForm" class="login-card">
+      <div>
+        <p class="eyebrow">Kirkerudbakken Friluftsbarnehage</p>
+        <h1 style="font-size: 1.8rem;">Logg inn</h1>
+        <p class="muted">Personalrommet er kun for ansatte.</p>
+      </div>
+
+      <label>
+        E-post
+        <input type="email" id="loginEmail" required autocomplete="username" />
+      </label>
+
+      <label>
+        Passord
+        <input type="password" id="loginPassword" required autocomplete="current-password" />
+      </label>
+
+      <p id="loginError" class="login-error"></p>
+
+      <button type="submit" class="primary-btn form-button" id="loginSubmit">Logg inn</button>
+    </form>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script>
+    const loginForm = document.getElementById("loginForm");
+    const loginError = document.getElementById("loginError");
+    const loginSubmit = document.getElementById("loginSubmit");
+
+    function showLoginError(message) {
+      loginError.textContent = message;
+      loginError.classList.add("visible");
+    }
+
+    async function redirectIfAlreadyLoggedIn() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        window.location.href = "dashboard.html";
+      }
+    }
+
+    redirectIfAlreadyLoggedIn();
+
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      loginError.classList.remove("visible");
+      loginSubmit.disabled = true;
+      loginSubmit.textContent = "Logger inn...";
+
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        showLoginError("Feil e-post eller passord. Prøv igjen.");
+        loginSubmit.disabled = false;
+        loginSubmit.textContent = "Logg inn";
+        return;
+      }
+
+      window.location.href = "dashboard.html";
+    });
+  </script>
+</body>
+</html>

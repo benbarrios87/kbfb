@@ -27,8 +27,13 @@
         <a href="filarkiv.html">📁 Filarkiv</a>
         <a href="aarshjul.html">🗓️ Årshjul</a>
         <a href="turbank.html">🏕️ Turbank</a>
-        <a href="admin.html">⚙️ Admin</a>
+        <a href="admin.html" data-admin-only>⚙️ Admin</a>
       </nav>
+
+      <div class="sidebar-footer">
+        <span class="user-badge" id="userBadge"></span>
+        <button class="logout-btn" id="logoutBtn">Logg ut</button>
+      </div>
     </aside>
 
     <main class="main">
@@ -107,6 +112,7 @@
   </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
+<script src="auth.js"></script>
 <script src="app.js"></script>
 
 </body>

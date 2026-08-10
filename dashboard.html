@@ -24,8 +24,13 @@
         <a href="vikarer.html">🕒 Vikarer</a>
         <a href="ferieogavspasering.html">🌴 Ferie og avspasering</a>
         <a href="kalender.html">👦 Benjamin sin kalender </a>
-        <a href="admin.html">⚙️ Admin</a>
+        <a href="admin.html" data-admin-only>⚙️ Admin</a>
       </nav>
+
+      <div class="sidebar-footer">
+        <span class="user-badge" id="userBadge"></span>
+        <button class="logout-btn" id="logoutBtn">Logg ut</button>
+      </div>
     </aside>
 
     <main class="main">
@@ -150,6 +155,9 @@
     </main>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
