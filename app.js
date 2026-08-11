@@ -1680,6 +1680,25 @@ if (clearSubs) {
   });
 }
 
+function applySubFormVisibility() {
+  const section = document.getElementById("subFormSection");
+  if (!section || typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  const isAdmin = !!currentEmployee.is_admin;
+  const isVikar = currentEmployee.role === "Vikar";
+
+  section.style.display = (isAdmin || isVikar) ? "" : "none";
+
+  if (subName) {
+    if (isVikar && !isAdmin) {
+      subName.value = currentEmployee.name;
+      subName.disabled = true;
+    } else {
+      subName.disabled = false;
+    }
+  }
+}
+
 async function initializeSubs() {
   await loadSubPeopleFromSupabase();
   await loadSubsFromSupabase();
@@ -1687,6 +1706,7 @@ async function initializeSubs() {
   renderSubPeople();
   renderSubs();
   renderDashboardSubs();
+  applySubFormVisibility();
 }
 if (subMonthFilter) {
   subMonthFilter.addEventListener("change", renderSubSummary);

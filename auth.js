@@ -64,13 +64,26 @@ async function requireAuth() {
     renderSubs();
   }
 
+  if (typeof applySubFormVisibility === "function") {
+    applySubFormVisibility();
+  }
+
   return currentEmployee;
+}
+
+function isSubstitute() {
+  return !!(currentEmployee && currentEmployee.role === "Vikar");
 }
 
 function applyRoleVisibility() {
   const isAdmin = !!(currentEmployee && currentEmployee.is_admin);
   document.querySelectorAll("[data-admin-only]").forEach((el) => {
     el.style.display = isAdmin ? "" : "none";
+  });
+
+  const substitute = isSubstitute();
+  document.querySelectorAll("[data-hide-from-vikar]").forEach((el) => {
+    el.style.display = substitute ? "none" : "";
   });
 }
 

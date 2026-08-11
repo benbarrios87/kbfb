@@ -238,10 +238,22 @@ CREATE POLICY "kbfb_sub_hours_select_authenticated" ON public.kbfb_sub_hours
   FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "kbfb_sub_hours_admin_write" ON public.kbfb_sub_hours;
-CREATE POLICY "kbfb_sub_hours_admin_write" ON public.kbfb_sub_hours
-  FOR ALL TO authenticated
+DROP POLICY IF EXISTS "kbfb_sub_hours_admin_update" ON public.kbfb_sub_hours;
+CREATE POLICY "kbfb_sub_hours_admin_update" ON public.kbfb_sub_hours
+  FOR UPDATE TO authenticated
   USING (public.kbfb_is_admin())
   WITH CHECK (public.kbfb_is_admin());
+
+DROP POLICY IF EXISTS "kbfb_sub_hours_admin_delete" ON public.kbfb_sub_hours;
+CREATE POLICY "kbfb_sub_hours_admin_delete" ON public.kbfb_sub_hours
+  FOR DELETE TO authenticated
+  USING (public.kbfb_is_admin());
+
+-- Substitutes with their own login can log their own hours too, not just admin
+DROP POLICY IF EXISTS "kbfb_sub_hours_insert_own_or_admin" ON public.kbfb_sub_hours;
+CREATE POLICY "kbfb_sub_hours_insert_own_or_admin" ON public.kbfb_sub_hours
+  FOR INSERT TO authenticated
+  WITH CHECK (name = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
 
 -- =========================================================
 -- Done. After running this, nobody who isn't logged in can read or
