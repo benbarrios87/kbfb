@@ -836,20 +836,22 @@ function updateShiftHeadcounts() {
         const select = cell.querySelector("select.shift-select");
         const customInput = cell.querySelector(".custom-shift-input");
         const badge = cell.querySelector(".badge");
+        const vikarChip = cell.querySelector(".vikar-chip");
 
-        let value = "";
+        let hasSomeone = false;
 
         if (select) {
-          value = select.value === "ANNET" ? (customInput?.value.trim() || "") : select.value;
+          const value = select.value === "ANNET" ? (customInput?.value.trim() || "") : select.value;
+          hasSomeone = !!value && !absenceShiftCodes.includes(value);
         } else if (badge) {
-          value = badge.textContent === "—" ? "" : badge.textContent.trim();
-        } else if (customInput) {
-          value = customInput.value.trim();
+          const value = badge.textContent === "—" ? "" : badge.textContent.trim();
+          hasSomeone = !!value && !absenceShiftCodes.includes(value);
+        } else {
+          const vikarNamed = !!vikarChip && vikarChip.style.display !== "none";
+          hasSomeone = vikarNamed || !!customInput?.value.trim();
         }
 
-        if (value && !absenceShiftCodes.includes(value)) {
-          count++;
-        }
+        if (hasSomeone) count++;
       });
 
       const countCell = table.querySelector(`.day-count[data-day="${dayIndex}"]`);
