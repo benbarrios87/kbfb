@@ -1114,8 +1114,10 @@ function renderEvents() {
       <h3>${month}</h3>
 
       <div class="month-events">
-        ${monthEvents.map(event => `
-          <article class="date-item date-${event.category}">
+        ${monthEvents.map(event => {
+          const isPast = new Date(event.date + "T23:59:59") < new Date();
+          return `
+          <article class="date-item date-${event.category} ${isPast ? "date-past" : ""}">
             <div class="date-item-top">
               <div>
                 <strong>${shortDate(event.date)} · ${event.title}</strong>
@@ -1130,7 +1132,8 @@ function renderEvents() {
               ` : ""}
             </div>
           </article>
-        `).join("")}
+        `;
+        }).join("")}
       </div>
     </section>
   `).join("");

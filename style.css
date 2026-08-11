@@ -1771,6 +1771,14 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   color: #8d1c1c;
 }
 
+.date-past {
+  opacity: 0.55;
+}
+
+.date-past strong {
+  text-decoration: line-through;
+}
+
 .date-general { border-left-color: #999; background: #f4f4f2; }
 .date-personal { border-left-color: #f29b38; background: #fff2e2; }
 .date-plandager { border-left-color: #e85c5c; background: #fdeaea; }
