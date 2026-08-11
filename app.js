@@ -61,6 +61,14 @@ function formatDateRange(startDate, endDate) {
   return `${formatNorwegianDate(startDate)} – ${formatNorwegianDate(endDate)}`;
 }
 
+function shortDate(dateString) {
+  if (!dateString) return "";
+  return new Date(dateString + "T12:00:00").toLocaleDateString("no-NO", {
+    day: "2-digit",
+    month: "2-digit"
+  });
+}
+
 /* ---------- DATOER / ÅRSHJUL ---------- */
 
 const eventStorageKey = "kbfb-events";
