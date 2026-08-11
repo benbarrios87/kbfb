@@ -1657,6 +1657,7 @@ const absenceStartDate = document.getElementById("absenceStartDate");
 const absenceEndDate = document.getElementById("absenceEndDate");
 const absenceHours = document.getElementById("absenceHours");
 const absenceStatus = document.getElementById("absenceStatus");
+const absenceStatusField = document.getElementById("absenceStatusField");
 const absenceNote = document.getElementById("absenceNote");
 const absenceFilter = document.getElementById("absenceFilter");
 const absenceSummary = document.getElementById("absenceSummary");
@@ -1887,6 +1888,27 @@ function renderAbsenceSummary(records) {
     .join("");
 }
 
+const noApprovalNeededTypes = ["Overtid", "Avspasering brukt", "Avspasering opptjent"];
+
+function updateAbsenceStatusVisibility() {
+  if (!absenceType || !absenceStatusField || !absenceStatus) return;
+
+  if (noApprovalNeededTypes.includes(absenceType.value)) {
+    absenceStatusField.style.display = "none";
+    absenceStatus.value = "Registrert";
+  } else {
+    absenceStatusField.style.display = "";
+    if (absenceType.value === "Ferie") {
+      absenceStatus.value = "Ønsket";
+    }
+  }
+}
+
+if (absenceType) {
+  absenceType.addEventListener("change", updateAbsenceStatusVisibility);
+  updateAbsenceStatusVisibility();
+}
+
 if (absenceForm) {
   absenceForm.addEventListener("submit", async event => {
     event.preventDefault();
@@ -1919,6 +1941,7 @@ if (absenceForm) {
 
     absenceForm.reset();
     lockAbsenceNameToSelf();
+    updateAbsenceStatusVisibility();
 
     renderAbsences();
     renderDashboardAbsences();
