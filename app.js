@@ -1490,7 +1490,7 @@ function renderSubs() {
       <td>${sub.start_time || ""}–${sub.end_time || ""}</td>
       <td>${sub.hours || 0}</td>
       <td>${sub.note || ""}</td>
-      <td><button class="kitchen-delete" data-sub-id="${sub.id}">Slett</button></td>
+      <td>${typeof currentEmployee !== "undefined" && currentEmployee?.is_admin ? `<button class="kitchen-delete" data-sub-id="${sub.id}">Slett</button>` : ""}</td>
     `;
 
     subTableBody.appendChild(row);

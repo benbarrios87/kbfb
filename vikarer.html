@@ -60,7 +60,7 @@
         </article>
       </section>
 
-      <section class="card">
+      <section class="card" data-admin-only>
         <h2>Registrer vikarvakt</h2>
 
         <form id="subForm" class="form-grid">
@@ -134,7 +134,7 @@
           </table>
         </div>
       </section>
-      <article class="card">
+      <article class="card" data-admin-only>
           <h2>Legg til vikar</h2>
 
           <form id="subPersonForm" class="form-grid">
@@ -142,10 +142,17 @@
               Navn
               <input id="subPersonName" type="text" placeholder="F.eks. Sharlene" required />
             </label>
-<label>
-  Farge
-  <input id="subPersonColor" type="color" value="#dbeafe" />
-</label>
+            <label>
+              Farge
+              <select id="subPersonColor">
+                <option value="#fef3c7">Gul</option>
+                <option value="#dbeafe">Blå</option>
+                <option value="#dcfce7">Grønn</option>
+                <option value="#f3e8ff">Lilla</option>
+                <option value="#ffe4e6">Rosa</option>
+                <option value="#e0f2fe">Lys blå</option>
+              </select>
+            </label>
             <button class="primary-btn form-button" type="submit">Lagre vikar</button>
           </form>
 
@@ -153,17 +160,6 @@
             <p class="muted">Ingen vikarer lagt inn ennå.</p>
           </div>
         </article>
-      <label>
-  Farge
-  <select id="subPersonColor">
-    <option value="#fef3c7">Gul</option>
-    <option value="#dbeafe">Blå</option>
-    <option value="#dcfce7">Grønn</option>
-    <option value="#f3e8ff">Lilla</option>
-    <option value="#ffe4e6">Rosa</option>
-    <option value="#e0f2fe">Lys blå</option>
-  </select>
-</label>
     </main>
   </div>
 

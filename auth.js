@@ -60,6 +60,10 @@ async function requireAuth() {
     renderVacationQuotaEditor();
   }
 
+  if (typeof renderSubs === "function") {
+    renderSubs();
+  }
+
   return currentEmployee;
 }
 
