@@ -1779,6 +1779,23 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   text-decoration: line-through;
 }
 
+.legend-dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-right: 2px;
+}
+
+.legend-dot.date-general { background: #999; }
+.legend-dot.date-personal { background: #f29b38; }
+.legend-dot.date-plandager { background: #e85c5c; }
+.legend-dot.date-overnatting { background: #4f8edb; }
+.legend-dot.date-foreldre { background: #e6ca42; }
+.legend-dot.date-styre { background: #6bd36b; }
+.legend-dot.date-su { background: #a46be0; }
+
 .date-general { border-left-color: #999; background: #f4f4f2; }
 .date-personal { border-left-color: #f29b38; background: #fff2e2; }
 .date-plandager { border-left-color: #e85c5c; background: #fdeaea; }
