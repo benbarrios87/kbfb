@@ -1902,6 +1902,19 @@ if (absenceForm) {
     };
 
     await saveAbsenceToSupabase(record);
+
+    if (record.type === "Overtid" && record.hours) {
+      await saveAbsenceToSupabase({
+        name: record.name,
+        type: "Avspasering opptjent",
+        start_date: record.start_date,
+        end_date: record.end_date,
+        hours: record.hours,
+        status: record.status,
+        note: record.note ? `Fra overtid: ${record.note}` : "Automatisk opptjent fra overtid"
+      });
+    }
+
     await loadAbsencesFromSupabase();
 
     absenceForm.reset();
