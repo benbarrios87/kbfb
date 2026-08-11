@@ -2228,3 +2228,125 @@ async function initializeAbsences() {
 }
 
 initializeAbsences();
+
+/* ---------- ADMIN - ANSATTSTYRING ---------- */
+
+const newEmployeeForm = document.getElementById("newEmployeeForm");
+const newEmployeeName = document.getElementById("newEmployeeName");
+const newEmployeeRole = document.getElementById("newEmployeeRole");
+const newEmployeeDepartment = document.getElementById("newEmployeeDepartment");
+const adminEmployeeTableBody = document.getElementById("adminEmployeeTableBody");
+
+let adminEmployeesCache = [];
+
+async function loadAllEmployeesForAdmin() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_employees")
+    .select("*")
+    .order("name");
+
+  if (error) {
+    console.error("Kunne ikke hente ansatte (admin):", error);
+    return [];
+  }
+
+  adminEmployeesCache = data || [];
+  return adminEmployeesCache;
+}
+
+async function updateEmployeeField(id, fields) {
+  const { error } = await supabaseClient
+    .from("kbfb_employees")
+    .update(fields)
+    .eq("id", id);
+
+  if (error) {
+    console.error("Kunne ikke oppdatere ansatt:", error);
+    alert("Kunne ikke lagre endringen. Sjekk at du er logget inn som admin.");
+  }
+}
+
+function renderAdminEmployeeTable() {
+  if (!adminEmployeeTableBody) return;
+
+  adminEmployeeTableBody.innerHTML = adminEmployeesCache.map(employee => `
+    <tr>
+      <td><strong>${employee.name}</strong></td>
+      <td>
+        <input type="text" class="admin-field" data-id="${employee.id}" data-field="role" value="${employee.role || ""}" style="width: 140px;" />
+      </td>
+      <td>
+        <input type="text" class="admin-field" data-id="${employee.id}" data-field="department" value="${employee.department || ""}" style="width: 130px;" />
+      </td>
+      <td style="text-align: center;">
+        <input type="checkbox" class="admin-field" data-id="${employee.id}" data-field="is_admin" ${employee.is_admin ? "checked" : ""} />
+      </td>
+      <td style="text-align: center;">
+        <input type="checkbox" class="admin-field" data-id="${employee.id}" data-field="active" ${employee.active ? "checked" : ""} />
+      </td>
+      <td>
+        <input type="text" class="admin-field" data-id="${employee.id}" data-field="user_id" value="${employee.user_id || ""}" placeholder="Ikke koblet ennå" style="width: 260px; font-family: monospace; font-size: 0.85rem;" />
+      </td>
+    </tr>
+  `).join("");
+
+  document.querySelectorAll(".admin-field").forEach(field => {
+    const eventName = field.type === "checkbox" ? "change" : "change";
+
+    field.addEventListener(eventName, async () => {
+      const id = field.dataset.id;
+      const key = field.dataset.field;
+      const value = field.type === "checkbox" ? field.checked : field.value.trim();
+
+      await updateEmployeeField(id, { [key]: value === "" ? null : value });
+      await loadAllEmployeesForAdmin();
+    });
+  });
+}
+
+if (newEmployeeForm) {
+  newEmployeeForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const name = newEmployeeName.value.trim();
+    if (!name) return;
+
+    const alreadyExists = adminEmployeesCache.some(employee =>
+      employee.name.toLowerCase() === name.toLowerCase()
+    );
+
+    if (alreadyExists) {
+      alert("Det finnes allerede en ansatt med dette navnet.");
+      return;
+    }
+
+    const { error } = await supabaseClient
+      .from("kbfb_employees")
+      .insert([{
+        name,
+        role: newEmployeeRole.value.trim() || null,
+        department: newEmployeeDepartment.value.trim() || null,
+        is_admin: false,
+        active: true
+      }]);
+
+    if (error) {
+      console.error("Kunne ikke legge til ansatt:", error);
+      alert("Kunne ikke legge til ansatt. Sjekk at du er logget inn som admin.");
+      return;
+    }
+
+    newEmployeeForm.reset();
+    await loadAllEmployeesForAdmin();
+    renderAdminEmployeeTable();
+  });
+}
+
+async function initializeAdmin() {
+  if (!adminEmployeeTableBody) return;
+
+  await loadAllEmployeesForAdmin();
+  renderAdminEmployeeTable();
+}
+
+initializeAdmin();

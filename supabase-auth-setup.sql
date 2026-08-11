@@ -84,6 +84,12 @@ CREATE POLICY "kbfb_employees_admin_write" ON public.kbfb_employees
   USING (public.kbfb_is_admin())
   WITH CHECK (public.kbfb_is_admin());
 
+-- Lets admin add new employees/substitutes from the Admin page instead of SQL
+DROP POLICY IF EXISTS "kbfb_employees_admin_insert" ON public.kbfb_employees;
+CREATE POLICY "kbfb_employees_admin_insert" ON public.kbfb_employees
+  FOR INSERT TO authenticated
+  WITH CHECK (public.kbfb_is_admin());
+
 -- =========================================================
 -- STEP 3: kbfb_events (currently has NO rules at all - wide open)
 -- =========================================================
