@@ -56,6 +56,10 @@ async function requireAuth() {
     lockAbsenceFilterToSelf();
   }
 
+  if (typeof renderVacationQuotaEditor === "function") {
+    renderVacationQuotaEditor();
+  }
+
   return currentEmployee;
 }
 

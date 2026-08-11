@@ -512,7 +512,7 @@ const monthViewContent = document.getElementById("monthViewContent");
 let viewedWeekStart = getMonday(new Date());
 const realCurrentWeekStart = getMonday(new Date());
 
-const shiftValues = ["", "TV", "TM", "MV", "SM", "SV", "PT", "F", "AVS", "TJ", "KONTOR", "MØTE", "ANNET"];
+const shiftValues = ["", "TV", "TM", "MV", "SM", "SV", "PT", "F", "AVS", "TJ", "PERM", "KONTOR", "MØTE", "ANNET"];
 
 function getCurrentWeekKey() {
   return viewedWeekStart.toISOString().slice(0, 10);
@@ -536,7 +536,7 @@ function getShiftSelectClass(value) {
   if (value === "SM") return "sm";
   if (value === "SV") return "sv";
   if (value === "PT") return "pt";
-  if (value === "F" || value === "AVS" || value === "TJ") return "free";
+  if (value === "F" || value === "AVS" || value === "TJ" || value === "PERM") return "free";
   if (value === "KONTOR" || value === "MØTE") return "office";
   if (value === "ANNET") return "custom";
   return "";
@@ -1783,7 +1783,8 @@ async function updateAbsenceStatusInSupabase(id, status) {
 
 const shiftTypesFromAbsence = {
   "Ferie": "F",
-  "Tjenestefri": "TJ"
+  "Tjenestefri": "TJ",
+  "Permisjon": "PERM"
 };
 
 async function upsertShiftForApproval(week_start, department, employee, day_index, shift_value) {

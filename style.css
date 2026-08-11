@@ -528,7 +528,8 @@ select {
 }
 
 .badge.free {
-  background: #fff1b8;
+  background: #ff8a8a;
+  color: #5c0000;
 }
 
 .badge.office {
@@ -774,7 +775,8 @@ select {
 }
 
 .badge.free {
-  background: #fff1b8;
+  background: #ff8a8a;
+  color: #5c0000;
 }
 
 .badge.office {
@@ -1601,7 +1603,7 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .shift-select.sm { background: #ffe6c7; }
 .shift-select.sv { background: #ffd8d8; }
 .shift-select.pt { background: #e6e6e6; }
-.shift-select.free { background: #fff1b8; }
+.shift-select.free { background: #ff8a8a; color: #5c0000; }
 .shift-select.office { background: #d7f3e5; }
 .shift-select.custom { background: #f8f5ef; }
 
@@ -1711,7 +1713,7 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .shift-select.sm { background: #ffe6c7; }
 .shift-select.sv { background: #ffd8d8; }
 .shift-select.pt { background: #e6e6e6; }
-.shift-select.free { background: #fff1b8; }
+.shift-select.free { background: #ff8a8a; color: #5c0000; }
 .shift-select.office { background: #d7f3e5; }
 .shift-select.custom { background: #f8f5ef; }
 
