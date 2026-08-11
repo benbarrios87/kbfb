@@ -512,7 +512,7 @@ const monthViewContent = document.getElementById("monthViewContent");
 let viewedWeekStart = getMonday(new Date());
 const realCurrentWeekStart = getMonday(new Date());
 
-const shiftValues = ["", "TV", "TM", "MV", "SM", "SV", "PT", "F", "AVS", "KONTOR", "MØTE", "ANNET"];
+const shiftValues = ["", "TV", "TM", "MV", "SM", "SV", "PT", "F", "AVS", "TJ", "KONTOR", "MØTE", "ANNET"];
 
 function getCurrentWeekKey() {
   return viewedWeekStart.toISOString().slice(0, 10);
@@ -536,7 +536,7 @@ function getShiftSelectClass(value) {
   if (value === "SM") return "sm";
   if (value === "SV") return "sv";
   if (value === "PT") return "pt";
-  if (value === "F" || value === "AVS") return "free";
+  if (value === "F" || value === "AVS" || value === "TJ") return "free";
   if (value === "KONTOR" || value === "MØTE") return "office";
   if (value === "ANNET") return "custom";
   return "";
@@ -1769,6 +1769,74 @@ async function deleteAbsenceFromSupabase(id) {
   if (error) console.error("Kunne ikke slette fravær:", error);
 }
 
+async function updateAbsenceStatusInSupabase(id, status) {
+  const { error } = await supabaseClient
+    .from("kbfb_absences")
+    .update({ status })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Kunne ikke oppdatere status:", error);
+  }
+}
+
+const shiftTypesFromAbsence = {
+  "Ferie": "F",
+  "Tjenestefri": "TJ"
+};
+
+async function upsertShiftForApproval(week_start, department, employee, day_index, shift_value) {
+  const { data: existing, error: selectError } = await supabaseClient
+    .from("kbfb_shifts")
+    .select("id")
+    .eq("week_start", week_start)
+    .eq("department", department)
+    .eq("employee", employee)
+    .eq("day_index", day_index)
+    .maybeSingle();
+
+  if (selectError) {
+    console.error("Kunne ikke sjekke eksisterende vakt:", selectError);
+    return;
+  }
+
+  if (existing) {
+    const { error } = await supabaseClient
+      .from("kbfb_shifts")
+      .update({ shift_value })
+      .eq("id", existing.id);
+
+    if (error) console.error("Kunne ikke oppdatere vakt:", error);
+  } else {
+    const { error } = await supabaseClient
+      .from("kbfb_shifts")
+      .insert([{ week_start, department, employee, day_index, shift_value }]);
+
+    if (error) console.error("Kunne ikke opprette vakt:", error);
+  }
+}
+
+async function applyApprovedAbsenceToShifts(record) {
+  const shiftValue = shiftTypesFromAbsence[record.type];
+  if (!shiftValue) return;
+
+  const employee = employeesCache.find(e => e.name === record.name);
+  if (!employee || !employee.department) {
+    console.error("Fant ikke avdeling for", record.name, "- kan ikke oppdatere vaktplanen automatisk.");
+    return;
+  }
+
+  const weekdays = getWeekdaysBetween(record.start_date, record.end_date);
+
+  for (const dateStr of weekdays) {
+    const date = new Date(dateStr + "T12:00:00");
+    const weekStart = getMonday(date).toISOString().slice(0, 10);
+    const dayIndex = date.getDay() - 1;
+
+    await upsertShiftForApproval(weekStart, employee.department, record.name, dayIndex, shiftValue);
+  }
+}
+
 function countWeekdays(startDate, endDate) {
   const dates = getWeekdaysBetween(startDate, endDate);
   return dates.length;
@@ -1835,6 +1903,8 @@ function renderAbsences() {
     return;
   }
 
+  const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
+
   absenceTableBody.innerHTML = records.map(record => `
     <tr>
       <td>${record.name}</td>
@@ -1844,7 +1914,13 @@ function renderAbsences() {
       <td>${record.hours || ""}</td>
       <td>${record.status || "Registrert"}</td>
       <td>${record.note || ""}</td>
-      <td>${typeof currentEmployee !== "undefined" && currentEmployee?.is_admin ? `<button class="kitchen-delete" data-absence-id="${record.id}">Slett</button>` : ""}</td>
+      <td>
+        ${isAdmin && record.status === "Ønsket" ? `
+          <button class="secondary-btn" data-approve-id="${record.id}">Godkjenn</button>
+          <button class="secondary-btn" data-reject-id="${record.id}">Avslå</button>
+        ` : ""}
+        ${isAdmin ? `<button class="kitchen-delete" data-absence-id="${record.id}">Slett</button>` : ""}
+      </td>
     </tr>
   `).join("");
 
@@ -1853,6 +1929,32 @@ function renderAbsences() {
   document.querySelectorAll("[data-absence-id]").forEach(button => {
     button.addEventListener("click", async () => {
       await deleteAbsenceFromSupabase(button.dataset.absenceId);
+      await loadAbsencesFromSupabase();
+      renderAbsences();
+      renderDashboardAbsences();
+    });
+  });
+
+  document.querySelectorAll("[data-approve-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.approveId;
+      const record = absencesCache.find(item => String(item.id) === String(id));
+
+      await updateAbsenceStatusInSupabase(id, "Godkjent");
+
+      if (record && shiftTypesFromAbsence[record.type]) {
+        await applyApprovedAbsenceToShifts(record);
+      }
+
+      await loadAbsencesFromSupabase();
+      renderAbsences();
+      renderDashboardAbsences();
+    });
+  });
+
+  document.querySelectorAll("[data-reject-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      await updateAbsenceStatusInSupabase(button.dataset.rejectId, "Avslått");
       await loadAbsencesFromSupabase();
       renderAbsences();
       renderDashboardAbsences();
@@ -1965,7 +2067,7 @@ function updateAbsenceStatusVisibility() {
     absenceStatus.value = "Registrert";
   } else {
     absenceStatusField.style.display = "";
-    if (absenceType.value === "Ferie") {
+    if (absenceType.value === "Ferie" || absenceType.value === "Tjenestefri") {
       absenceStatus.value = "Ønsket";
     }
   }
