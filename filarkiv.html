@@ -1,1 +1,63 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Filarkiv | KBFB Personal</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
 
+<body>
+  <div class="layout">
+    <aside class="sidebar nature-sidebar">
+      <div class="brand">
+        <div class="brand-icon">🌲</div>
+        <h2>KBFB</h2>
+        <p>Personalrommet</p>
+      </div>
+
+      <nav>
+        <a href="dashboard.html">🏠 Hjem</a>
+        <a href="vakter.html">📅 Vakter</a>
+        <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
+        <a data-hide-from-vikar href="datoer.html">📆 Datoer</a>
+        <a href="vikarer.html">🕒 Vikarer</a>
+        <a data-hide-from-vikar href="ferieogavspasering.html">🌴 Ferie/avsp/overtid</a>
+        <a class="active" data-hide-from-vikar href="filarkiv.html">📁 Filarkiv</a>
+        <a data-hide-from-vikar href="aarshjul.html">🗓️ Årshjul</a>
+        <a data-hide-from-vikar href="turbank.html">🏕️ Turbank</a>
+        <a href="admin.html" data-admin-only>⚙️ Admin</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="user-badge" id="userBadge"></span>
+        <button class="logout-btn" id="logoutBtn">Logg ut</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="forest-hero compact">
+        <div>
+          <p class="eyebrow">Kommer etter hvert</p>
+          <h1>Filarkiv</h1>
+          <p class="muted">Denne siden er ikke bygget ennå.</p>
+        </div>
+        <div class="hero-badge">🚧 Under arbeid</div>
+      </section>
+
+      <section class="card">
+        <h2>📁 Filarkiv kommer etter hvert</h2>
+        <p class="muted">
+          Tanken er at dette skal bli stedet for delte dokumenter og filer for personalet.
+          Ikke bygget ennå - si ifra til Benjamin hvis dette haster.
+        </p>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

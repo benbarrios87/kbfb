@@ -262,6 +262,36 @@ CREATE POLICY "kbfb_sub_hours_insert_own_or_admin" ON public.kbfb_sub_hours
   WITH CHECK (name = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
 
 -- =========================================================
+-- STEP 10: kbfb_feedback (new table - "Forbedringsbehov" box)
+--   Anyone logged in can send in a suggestion from the Hjem page.
+--   Only admin can read/clear them, on the Admin page.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_feedback (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  text text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_feedback ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_feedback_select_admin" ON public.kbfb_feedback;
+CREATE POLICY "kbfb_feedback_select_admin" ON public.kbfb_feedback
+  FOR SELECT TO authenticated
+  USING (public.kbfb_is_admin());
+
+DROP POLICY IF EXISTS "kbfb_feedback_insert_own" ON public.kbfb_feedback;
+CREATE POLICY "kbfb_feedback_insert_own" ON public.kbfb_feedback
+  FOR INSERT TO authenticated
+  WITH CHECK (name = public.kbfb_current_employee_name());
+
+DROP POLICY IF EXISTS "kbfb_feedback_admin_delete" ON public.kbfb_feedback;
+CREATE POLICY "kbfb_feedback_admin_delete" ON public.kbfb_feedback
+  FOR DELETE TO authenticated
+  USING (public.kbfb_is_admin());
+
+-- =========================================================
 -- Done. After running this, nobody who isn't logged in can read or
 -- write anything anymore - including your own app, until login.html
 -- and auth.js are wired up. That's expected and is the next step.

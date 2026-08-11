@@ -2462,6 +2462,73 @@ async function initializeAdmin() {
   await loadAllEmployeesForAdmin();
   renderAdminEmployeeTable();
   loadPendingApprovalsSummary();
+  loadFeedbackForAdmin();
 }
 
 initializeAdmin();
+
+/* ---------- FORBEDRINGSBEHOV (FEEDBACK) ---------- */
+
+const feedbackForm = document.getElementById("feedbackForm");
+const feedbackText = document.getElementById("feedbackText");
+const feedbackStatus = document.getElementById("feedbackStatus");
+
+if (feedbackForm) {
+  feedbackForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (typeof currentEmployee === "undefined" || !currentEmployee) {
+      if (feedbackStatus) feedbackStatus.textContent = "Fant ikke innlogget bruker. Prøv å laste siden på nytt.";
+      return;
+    }
+
+    const { error } = await supabaseClient
+      .from("kbfb_feedback")
+      .insert([{ name: currentEmployee.name, text: feedbackText.value.trim() }]);
+
+    if (error) {
+      console.error("Kunne ikke sende inn forbedringsbehov:", error);
+      if (feedbackStatus) feedbackStatus.textContent = "Kunne ikke sende inn. Prøv igjen.";
+      return;
+    }
+
+    feedbackForm.reset();
+    if (feedbackStatus) feedbackStatus.textContent = "Takk! Sendt inn.";
+  });
+}
+
+async function loadFeedbackForAdmin() {
+  const container = document.getElementById("feedbackAdminList");
+  if (!container) return;
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_feedback")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Kunne ikke hente forbedringsbehov:", error);
+    container.innerHTML = `<p class="muted">Kunne ikke hente innspill.</p>`;
+    return;
+  }
+
+  if (!data.length) {
+    container.innerHTML = `<p class="muted">Ingen innspill ennå.</p>`;
+    return;
+  }
+
+  container.innerHTML = data.map(item => `
+    <div class="summary-item">
+      <strong>${item.name} · ${formatNorwegianDate(item.created_at.slice(0, 10))}</strong>
+      <span>${item.text}</span>
+      <button class="secondary-btn" type="button" data-feedback-id="${item.id}" style="margin-top: 6px; width: fit-content;">Fjern</button>
+    </div>
+  `).join("");
+
+  container.querySelectorAll("[data-feedback-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      await supabaseClient.from("kbfb_feedback").delete().eq("id", button.dataset.feedbackId);
+      await loadFeedbackForAdmin();
+    });
+  });
+}
