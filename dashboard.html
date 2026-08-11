@@ -27,6 +27,15 @@
         <a href="admin.html" data-admin-only>⚙️ Admin</a>
       </nav>
 
+      <div class="sidebar-feedback">
+        <p>💬 Innspill?</p>
+        <form id="feedbackForm">
+          <textarea id="feedbackText" rows="2" placeholder="Skriv her..." required></textarea>
+          <button type="submit">Send</button>
+        </form>
+        <p id="feedbackStatus"></p>
+      </div>
+
       <div class="sidebar-footer">
         <span class="user-badge" id="userBadge"></span>
         <button class="logout-btn" id="logoutBtn">Logg ut</button>
@@ -150,16 +159,6 @@
             <a data-hide-from-vikar href="filarkiv.html">📁 Filarkiv</a>
             <a data-hide-from-vikar href="turbank.html">🏕️ Turbank</a>
           </div>
-        </article>
-
-        <article class="card dash-card large">
-          <h2>💬 Forbedringsbehov</h2>
-          <p class="muted">Sett du noe som burde vært annerledes eller fikset? Skriv det her - Benjamin leser alt.</p>
-          <form id="feedbackForm" class="quick-note-form">
-            <textarea id="feedbackText" rows="3" placeholder="Skriv innspillet ditt her..." required></textarea>
-            <button class="primary-btn form-button" type="submit" style="margin-top: 10px;">Send inn</button>
-          </form>
-          <p id="feedbackStatus" class="muted" style="margin-top: 8px;"></p>
         </article>
       </section>
     </main>

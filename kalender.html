@@ -27,6 +27,15 @@
         <a href="admin.html" data-admin-only>⚙️ Admin</a>
       </nav>
 
+      <div class="sidebar-feedback">
+        <p>💬 Innspill?</p>
+        <form id="feedbackForm">
+          <textarea id="feedbackText" rows="2" placeholder="Skriv her..." required></textarea>
+          <button type="submit">Send</button>
+        </form>
+        <p id="feedbackStatus"></p>
+      </div>
+
       <div class="sidebar-footer">
         <span class="user-badge" id="userBadge"></span>
         <button class="logout-btn" id="logoutBtn">Logg ut</button>

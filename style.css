@@ -1934,6 +1934,59 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 
 /* ===== AUTH: sidebar footer + login page ===== */
 
+.sidebar-feedback {
+  margin-top: 26px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  display: grid;
+  gap: 8px;
+}
+
+.sidebar-feedback p {
+  margin: 0;
+  color: #dcebd7;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.sidebar-feedback textarea {
+  width: 100%;
+  resize: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4fff0;
+  border-radius: 12px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.sidebar-feedback textarea::placeholder {
+  color: rgba(244, 255, 240, 0.55);
+}
+
+.sidebar-feedback button {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  color: #f4fff0;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  justify-self: start;
+}
+
+.sidebar-feedback button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.sidebar-feedback #feedbackStatus {
+  font-weight: 600;
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
 .sidebar-footer {
   margin-top: 26px;
   padding-top: 16px;
