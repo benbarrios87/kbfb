@@ -1,9 +1,11 @@
 // KBFB Personal: create-employee-login
 //
-// Lets an admin create a brand-new login (Supabase Auth user + kbfb_employees
-// row) in one step from the Admin page, without ever touching Supabase
-// directly. Runs server-side so the powerful service-role key never reaches
-// the browser - only this function holds it, read from environment secrets.
+// Two admin actions that both need the powerful service-role key, so they
+// share one function (avoids deploying a second one for password resets):
+//   - action "create" (default): new Auth user + kbfb_employees row, in one step
+//   - action "reset_password": set a new password for an existing login
+// Runs server-side so that key never reaches the browser - only this
+// function holds it, read from environment secrets.
 //
 // Deploy via Supabase Studio -> Edge Functions -> paste this file -> Deploy.
 // No CLI required. SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided
@@ -60,7 +62,26 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Kun admin kan opprette nye brukere." }, 403);
     }
 
-    const { name, email, password, role, department } = await req.json();
+    const body = await req.json();
+    const action = body.action || "create";
+
+    if (action === "reset_password") {
+      const { user_id, password } = body;
+
+      if (!user_id || !password) {
+        return jsonResponse({ error: "user_id og passord er påkrevd." }, 400);
+      }
+
+      const { error: resetError } = await adminClient.auth.admin.updateUserById(user_id, { password });
+
+      if (resetError) {
+        return jsonResponse({ error: resetError.message }, 400);
+      }
+
+      return jsonResponse({ success: true });
+    }
+
+    const { name, email, password, role, department } = body;
 
     if (!name || !email || !password) {
       return jsonResponse({ error: "Navn, e-post og passord er påkrevd." }, 400);

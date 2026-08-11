@@ -2332,8 +2332,48 @@ function renderAdminEmployeeTable() {
       <td>
         <input type="text" class="admin-field" data-id="${employee.id}" data-field="user_id" value="${employee.user_id || ""}" placeholder="Ikke koblet ennå" style="width: 260px; font-family: monospace; font-size: 0.85rem;" />
       </td>
+      <td>
+        ${employee.user_id ? `
+          <div style="display: flex; gap: 6px;">
+            <input type="text" class="reset-password-input" data-id="${employee.id}" placeholder="Nytt passord" style="width: 130px;" />
+            <button type="button" class="secondary-btn reset-password-btn" data-id="${employee.id}">Nullstill</button>
+          </div>
+        ` : `<span class="muted">Ikke koblet</span>`}
+      </td>
     </tr>
   `).join("");
+
+  document.querySelectorAll(".reset-password-btn").forEach(button => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.id;
+      const input = document.querySelector(`.reset-password-input[data-id="${id}"]`);
+      const employee = adminEmployeesCache.find(e => String(e.id) === String(id));
+      const newPassword = input?.value.trim();
+
+      if (!newPassword) {
+        alert("Skriv inn et nytt passord først.");
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "...";
+
+      const { data, error } = await supabaseClient.functions.invoke("create-employee-login", {
+        body: { action: "reset_password", user_id: employee.user_id, password: newPassword }
+      });
+
+      button.disabled = false;
+      button.textContent = "Nullstill";
+
+      if (error || data?.error) {
+        alert("Kunne ikke nullstille passord: " + (data?.error || error?.message || "Ukjent feil."));
+        return;
+      }
+
+      input.value = "";
+      alert(`Passord nullstilt for ${employee.name}.`);
+    });
+  });
 
   document.querySelectorAll(".admin-field").forEach(field => {
     const eventName = field.type === "checkbox" ? "change" : "change";
@@ -2387,11 +2427,41 @@ if (newEmployeeForm) {
   });
 }
 
+async function loadPendingApprovalsSummary() {
+  const container = document.getElementById("pendingApprovalsSummary");
+  if (!container) return;
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_absences")
+    .select("*")
+    .eq("status", "Ønsket")
+    .order("start_date");
+
+  if (error) {
+    console.error("Kunne ikke hente ubehandlede søknader:", error);
+    container.innerHTML = `<p class="muted">Kunne ikke hente søknader.</p>`;
+    return;
+  }
+
+  if (!data.length) {
+    container.innerHTML = `<p class="muted">Ingen ubehandlede søknader akkurat nå.</p>`;
+    return;
+  }
+
+  container.innerHTML = data.map(record => `
+    <div class="summary-item">
+      <strong>${record.name} · ${record.type}</strong>
+      <span>${formatDateRange(record.start_date, record.end_date)}${record.note ? ` · ${record.note}` : ""}</span>
+    </div>
+  `).join("");
+}
+
 async function initializeAdmin() {
   if (!adminEmployeeTableBody) return;
 
   await loadAllEmployeesForAdmin();
   renderAdminEmployeeTable();
+  loadPendingApprovalsSummary();
 }
 
 initializeAdmin();
