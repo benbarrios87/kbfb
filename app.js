@@ -1879,6 +1879,20 @@ function lockAbsenceNameToSelf() {
   }
 }
 
+function lockAbsenceFilterToSelf() {
+  if (!absenceFilter || typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  if (!currentEmployee.is_admin) {
+    absenceFilter.innerHTML = `<option value="${currentEmployee.name}">${currentEmployee.name}</option>`;
+    absenceFilter.value = currentEmployee.name;
+    absenceFilter.disabled = true;
+  } else {
+    absenceFilter.disabled = false;
+  }
+
+  renderAbsences();
+}
+
 async function initializeAbsences() {
   await loadEmployeesFromSupabase();
 
@@ -1888,6 +1902,7 @@ async function initializeAbsences() {
     includeAll: true
   });
   lockAbsenceNameToSelf();
+  lockAbsenceFilterToSelf();
 
   await loadAbsencesFromSupabase();
 

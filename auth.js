@@ -52,8 +52,8 @@ async function requireAuth() {
     lockAbsenceNameToSelf();
   }
 
-  if (typeof renderAbsences === "function") {
-    renderAbsences();
+  if (typeof lockAbsenceFilterToSelf === "function") {
+    lockAbsenceFilterToSelf();
   }
 
   return currentEmployee;
