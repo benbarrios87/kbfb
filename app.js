@@ -1667,6 +1667,73 @@ const overtimeSummary = document.getElementById("overtimeSummary");
 const overtimeSummaryMonth = document.getElementById("overtimeSummaryMonth");
 
 let absencesCache = [];
+let employeeSettingsCache = [];
+
+async function loadEmployeeSettingsFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_employee_settings")
+    .select("*");
+
+  if (error) {
+    console.error("Kunne ikke hente feriedager-innstillinger:", error);
+    return [];
+  }
+
+  employeeSettingsCache = data || [];
+  return employeeSettingsCache;
+}
+
+function getVacationDaysFor(name) {
+  const setting = employeeSettingsCache.find(s => s.employee === name);
+  return setting && setting.vacation_days != null ? setting.vacation_days : 25;
+}
+
+async function saveVacationDaysToSupabase(name, days) {
+  const { data, error } = await supabaseClient
+    .from("kbfb_employee_settings")
+    .update({ vacation_days: days })
+    .eq("employee", name)
+    .select();
+
+  if (error) {
+    console.error("Kunne ikke oppdatere feriedager:", error);
+    return;
+  }
+
+  if (!data || !data.length) {
+    const { error: insertError } = await supabaseClient
+      .from("kbfb_employee_settings")
+      .insert([{ employee: name, vacation_days: days }]);
+
+    if (insertError) {
+      console.error("Kunne ikke opprette feriedager-rad:", insertError);
+    }
+  }
+}
+
+function renderVacationQuotaEditor() {
+  const container = document.getElementById("vacationQuotaList");
+  if (!container) return;
+
+  container.innerHTML = employeesCache.map(employee => `
+    <div class="summary-item">
+      <strong>${employee.name}</strong>
+      <span>
+        Feriedager:
+        <input type="number" min="0" step="1" class="vacation-days-input" data-employee="${employee.name}" value="${getVacationDaysFor(employee.name)}" style="width:60px;" />
+      </span>
+    </div>
+  `).join("");
+
+  container.querySelectorAll(".vacation-days-input").forEach(input => {
+    input.addEventListener("change", async () => {
+      const days = Number(input.value) || 0;
+      await saveVacationDaysToSupabase(input.dataset.employee, days);
+      await loadEmployeeSettingsFromSupabase();
+      renderAbsences();
+    });
+  });
+}
 
 async function loadAbsencesFromSupabase() {
   const { data, error } = await supabaseClient
@@ -1860,7 +1927,7 @@ function renderAbsenceSummary(records) {
 
         <h3>${name}</h3>
 
-        <div>🌴 Ferie: <strong>${t.ferie}</strong> dager</div>
+        <div>🌴 Ferie: <strong>${t.ferie}/${getVacationDaysFor(name)}</strong> dager</div>
 
         <div>🏡 Tjenestefri: <strong>${t.tjenestefri}</strong> dager</div>
 
@@ -1975,6 +2042,7 @@ function lockAbsenceFilterToSelf() {
 
 async function initializeAbsences() {
   await loadEmployeesFromSupabase();
+  await loadEmployeeSettingsFromSupabase();
 
   populateEmployeeSelect("absenceName");
   populateEmployeeSelect("absenceFilter", {
@@ -1983,6 +2051,7 @@ async function initializeAbsences() {
   });
   lockAbsenceNameToSelf();
   lockAbsenceFilterToSelf();
+  renderVacationQuotaEditor();
 
   await loadAbsencesFromSupabase();
 
