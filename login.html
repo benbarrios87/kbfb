@@ -53,6 +53,10 @@
 
     redirectIfAlreadyLoggedIn();
 
+    if (new URLSearchParams(window.location.search).get("deactivated") === "1") {
+      showLoginError("Denne kontoen er deaktivert. Ta kontakt med daglig leder.");
+    }
+
     loginForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       loginError.classList.remove("visible");

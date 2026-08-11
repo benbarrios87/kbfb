@@ -26,6 +26,13 @@ async function requireAuth() {
     return null;
   }
 
+  if (data.active === false) {
+    console.error("Denne kontoen er deaktivert.");
+    await supabaseClient.auth.signOut();
+    window.location.href = "login.html?deactivated=1";
+    return null;
+  }
+
   currentEmployee = data;
   applyRoleVisibility();
   renderUserBadge();
