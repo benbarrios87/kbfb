@@ -2013,13 +2013,12 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 
 .forest-hero.team-photo {
   min-height: 320px;
-  background-color: #1f4a2d;
   background-image:
-    linear-gradient(120deg, rgba(18, 46, 27, 0.5), rgba(33, 71, 45, 0.4)),
+    linear-gradient(120deg, rgba(18, 46, 27, 0.55), rgba(33, 71, 45, 0.45)),
     url('images/teamtur.jpg');
-  background-size: auto, contain;
-  background-position: center, center;
-  background-repeat: no-repeat, no-repeat;
+  background-size: cover;
+  background-position: center 35%;
+  background-repeat: no-repeat;
 }
 
 .forest-hero.team-photo::after {
