@@ -816,7 +816,49 @@ async function updateWeekView() {
   });
 
   buildShiftDropdowns();
+  updateShiftHeadcounts();
   renderWeekEvents();
+}
+
+const absenceShiftCodes = ["F", "AVS", "TJ", "PERM"];
+
+function updateShiftHeadcounts() {
+  document.querySelectorAll(".department-table").forEach(table => {
+    const rows = Array.from(table.querySelectorAll("tbody tr"));
+
+    for (let dayIndex = 0; dayIndex < 5; dayIndex++) {
+      let count = 0;
+
+      rows.forEach(row => {
+        const cell = row.querySelectorAll(".shift-cell")[dayIndex];
+        if (!cell) return;
+
+        const select = cell.querySelector("select.shift-select");
+        const customInput = cell.querySelector(".custom-shift-input");
+        const badge = cell.querySelector(".badge");
+
+        let value = "";
+
+        if (select) {
+          value = select.value === "ANNET" ? (customInput?.value.trim() || "") : select.value;
+        } else if (badge) {
+          value = badge.textContent === "—" ? "" : badge.textContent.trim();
+        } else if (customInput) {
+          value = customInput.value.trim();
+        }
+
+        if (value && !absenceShiftCodes.includes(value)) {
+          count++;
+        }
+      });
+
+      const countCell = table.querySelector(`.day-count[data-day="${dayIndex}"]`);
+      if (!countCell) continue;
+
+      countCell.textContent = `(${count})`;
+      countCell.classList.toggle("thin", count <= 1);
+    }
+  });
 }
 
 function filterShifts() {

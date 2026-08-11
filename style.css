@@ -1915,6 +1915,23 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
     color:#b42318;
 }
 
+.headcount-row th {
+  padding: 0 14px 4px;
+  border-bottom: 0;
+  text-align: left;
+  font-weight: 900;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.headcount-row .day-count {
+  color: var(--green-dark);
+}
+
+.headcount-row .day-count.thin {
+  color: #b42318;
+}
+
 /* ===== AUTH: sidebar footer + login page ===== */
 
 .sidebar-footer {
