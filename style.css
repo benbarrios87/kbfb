@@ -2008,3 +2008,17 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .login-error.visible {
   display: block;
 }
+
+/* ===== DASHBOARD TEAM PHOTO ===== */
+
+.forest-hero.team-photo {
+  background:
+    linear-gradient(120deg, rgba(18, 46, 27, 0.88), rgba(33, 71, 45, 0.8)),
+    url('images/teamtur.jpg');
+  background-size: cover;
+  background-position: center 30%;
+}
+
+.forest-hero.team-photo::after {
+  content: none;
+}
