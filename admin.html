@@ -46,20 +46,64 @@
       </section>
 
       <section class="card">
-        <h2>Slik kobler du en innlogging</h2>
+        <h2>Ny ansatt eller vikar - med innlogging med det samme</h2>
         <p class="muted">
-          Dette ene steget må fortsatt gjøres i Supabase, av sikkerhetsgrunner - appen kan ikke lage
-          ekte innloggingskontoer selv. Alt annet gjøres her på siden.
+          Dette skjemaet oppretter en ekte innloggingskonto og legger personen til i lista under - i ett steg.
+          Krever at "create-employee-login"-funksjonen er satt opp i Supabase (én gang, se instruksjonen
+          nedenfor). Er den ikke satt opp ennå, bruk fallback-skjemaet lenger ned i stedet.
         </p>
+
+        <form id="newEmployeeLoginForm" class="form-grid">
+          <label>
+            Navn
+            <input id="loginEmployeeName" type="text" placeholder="F.eks. Sharlene" required />
+          </label>
+
+          <label>
+            Rolle
+            <input id="loginEmployeeRole" type="text" placeholder="F.eks. Vikar, Pedagog, Assistent" />
+          </label>
+
+          <label>
+            Avdeling
+            <input id="loginEmployeeDepartment" type="text" placeholder="F.eks. Sommerfuglen (valgfritt)" />
+          </label>
+
+          <label>
+            E-post
+            <input id="loginEmployeeEmail" type="email" placeholder="f.eks. sharlene@eksempel.no" required />
+          </label>
+
+          <label>
+            Passord
+            <input id="loginEmployeePassword" type="text" placeholder="Midlertidig passord" required />
+          </label>
+
+          <button class="primary-btn form-button" type="submit">Opprett med innlogging</button>
+        </form>
+        <p id="loginEmployeeStatus" class="muted" style="margin-top: 10px;"></p>
+        <p class="muted" style="margin-top: 6px;">
+          "Rolle" styrer tilgang: skriv nøyaktig <strong>Vikar</strong> for begrenset tilgang (kun Hjem, Vakter,
+          Kjøkkenboka, Vikarer). Alt annet blir behandlet som vanlig ansatt med full tilgang.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Engangsoppsett: koble til Edge Function</h2>
+        <p class="muted">Gjøres én gang, av den som setter opp systemet. Ikke noe fremtidig admin trenger å røre.</p>
         <ol style="margin: 10px 0 0; padding-left: 20px; color: var(--muted); font-weight: 650;">
-          <li>Gå til Supabase → Authentication → Users → Add user. Opprett med e-post og passord.</li>
-          <li>Kopier UUID-en som dukker opp ved siden av brukeren.</li>
-          <li>Lim UUID-en inn i "Bruker-ID"-feltet for riktig person i tabellen under, og trykk ut av feltet - lagres automatisk.</li>
+          <li>Gå til Supabase → Edge Functions → Create a new function. Kall den <strong>create-employee-login</strong>.</li>
+          <li>Lim inn koden fra <code>supabase/functions/create-employee-login/index.ts</code> i repoet.</li>
+          <li>Trykk Deploy. Ferdig - skjemaet over fungerer med en gang etter det.</li>
         </ol>
       </section>
 
       <section class="card">
-        <h2>Legg til ny ansatt eller vikar</h2>
+        <h2>Fallback: legg til uten innlogging (koble til manuelt senere)</h2>
+        <p class="muted">
+          Bruk denne hvis Edge Function-en ikke er satt opp ennå. Legger bare til personen i lista -
+          du må da fortsatt opprette innloggingen i Supabase manuelt og lime inn UUID-en i tabellen under.
+        </p>
 
         <form id="newEmployeeForm" class="form-grid">
           <label>
@@ -77,12 +121,8 @@
             <input id="newEmployeeDepartment" type="text" placeholder="F.eks. Sommerfuglen (valgfritt)" />
           </label>
 
-          <button class="primary-btn form-button" type="submit">Legg til</button>
+          <button class="secondary-btn form-button" type="submit">Legg til uten innlogging</button>
         </form>
-        <p class="muted" style="margin-top: 10px;">
-          "Rolle" styrer tilgang: skriv nøyaktig <strong>Vikar</strong> for begrenset tilgang (kun Hjem, Vakter,
-          Kjøkkenboka, Vikarer). Alt annet blir behandlet som vanlig ansatt med full tilgang.
-        </p>
       </section>
 
       <section class="card">

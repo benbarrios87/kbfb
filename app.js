@@ -2237,6 +2237,51 @@ const newEmployeeRole = document.getElementById("newEmployeeRole");
 const newEmployeeDepartment = document.getElementById("newEmployeeDepartment");
 const adminEmployeeTableBody = document.getElementById("adminEmployeeTableBody");
 
+const newEmployeeLoginForm = document.getElementById("newEmployeeLoginForm");
+const loginEmployeeName = document.getElementById("loginEmployeeName");
+const loginEmployeeRole = document.getElementById("loginEmployeeRole");
+const loginEmployeeDepartment = document.getElementById("loginEmployeeDepartment");
+const loginEmployeeEmail = document.getElementById("loginEmployeeEmail");
+const loginEmployeePassword = document.getElementById("loginEmployeePassword");
+const loginEmployeeStatus = document.getElementById("loginEmployeeStatus");
+
+if (newEmployeeLoginForm) {
+  newEmployeeLoginForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (loginEmployeeStatus) {
+      loginEmployeeStatus.textContent = "Oppretter...";
+    }
+
+    const { data, error } = await supabaseClient.functions.invoke("create-employee-login", {
+      body: {
+        name: loginEmployeeName.value.trim(),
+        role: loginEmployeeRole.value.trim(),
+        department: loginEmployeeDepartment.value.trim(),
+        email: loginEmployeeEmail.value.trim(),
+        password: loginEmployeePassword.value
+      }
+    });
+
+    if (error || data?.error) {
+      const message = data?.error || error?.message || "Ukjent feil.";
+      console.error("Kunne ikke opprette ansatt med innlogging:", message);
+      if (loginEmployeeStatus) {
+        loginEmployeeStatus.textContent = `Feilet: ${message} (Er Edge Function-en satt opp? Bruk fallback-skjemaet under i mellomtiden.)`;
+      }
+      return;
+    }
+
+    if (loginEmployeeStatus) {
+      loginEmployeeStatus.textContent = `${loginEmployeeName.value.trim()} er lagt til med innlogging.`;
+    }
+
+    newEmployeeLoginForm.reset();
+    await loadAllEmployeesForAdmin();
+    renderAdminEmployeeTable();
+  });
+}
+
 let adminEmployeesCache = [];
 
 async function loadAllEmployeesForAdmin() {
