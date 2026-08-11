@@ -44,6 +44,10 @@ async function requireAuth() {
     renderQuickNotes();
   }
 
+  if (typeof renderEvents === "function") {
+    renderEvents();
+  }
+
   return currentEmployee;
 }
 

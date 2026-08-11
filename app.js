@@ -129,6 +129,24 @@ function populateEmployeeSelect(selectId, options = {}) {
 }
 
 async function saveEventToSupabase(eventData) {
+  if (eventData.id) {
+    const { error } = await supabaseClient
+      .from("kbfb_events")
+      .update({
+        date: eventData.date,
+        title: eventData.title,
+        category: eventData.category,
+        note: eventData.note
+      })
+      .eq("id", eventData.id);
+
+    if (error) {
+      console.error("Kunne ikke oppdatere event:", error);
+    }
+
+    return;
+  }
+
   const { error } = await supabaseClient
     .from("kbfb_events")
     .insert([{
@@ -140,6 +158,17 @@ async function saveEventToSupabase(eventData) {
 
   if (error) {
     console.error("Kunne ikke lagre event:", error);
+  }
+}
+
+async function deleteEventFromSupabase(id) {
+  const { error } = await supabaseClient
+    .from("kbfb_events")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Kunne ikke slette event:", error);
   }
 }
 
@@ -1085,10 +1114,12 @@ function renderEvents() {
                 <span>${categoryEmoji(event.category)} ${categoryLabel(event.category)}${event.note ? ` · ${event.note}` : ""}</span>
               </div>
 
+              ${typeof currentEmployee !== "undefined" && currentEmployee?.is_admin ? `
               <div class="date-actions">
                 <button class="date-edit" type="button" data-edit-date="${event.id}">Endre</button>
                 <button class="date-delete" type="button" data-delete-date="${event.id}">Slett</button>
               </div>
+              ` : ""}
             </div>
           </article>
         `).join("")}
@@ -1112,9 +1143,9 @@ function renderEvents() {
   });
 
   document.querySelectorAll("[data-delete-date]").forEach(button => {
-    button.addEventListener("click", () => {
-      const updated = getEvents().filter(item => item.id !== button.dataset.deleteDate);
-      
+    button.addEventListener("click", async () => {
+      await deleteEventFromSupabase(button.dataset.deleteDate);
+      await loadEventsFromSupabase();
 
       renderEvents();
       renderDashboardEvents();
@@ -1150,7 +1181,7 @@ if (dateForm) {
     const existingId = dateId.value;
 
     const eventData = {
-      id: existingId || crypto.randomUUID(),
+      id: existingId || null,
       date: eventDate.value,
       title: eventTitle.value.trim(),
       category: eventCategory.value,
