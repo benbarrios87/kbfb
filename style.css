@@ -1771,13 +1771,13 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   color: #8d1c1c;
 }
 
-.date-general { border-left-color: #999; }
-.date-personal { border-left-color: #f29b38; }
-.date-plandager { border-left-color: #e85c5c; }
-.date-overnatting { border-left-color: #4f8edb; }
-.date-foreldre { border-left-color: #e6ca42; }
-.date-styre { border-left-color: #6bd36b; }
-.date-su { border-left-color: #a46be0; }
+.date-general { border-left-color: #999; background: #f4f4f2; }
+.date-personal { border-left-color: #f29b38; background: #fff2e2; }
+.date-plandager { border-left-color: #e85c5c; background: #fdeaea; }
+.date-overnatting { border-left-color: #4f8edb; background: #e9f1fc; }
+.date-foreldre { border-left-color: #e6ca42; background: #fdf8e3; }
+.date-styre { border-left-color: #6bd36b; background: #ecf9ec; }
+.date-su { border-left-color: #a46be0; background: #f4ecfc; }
 
               .month-list {
   display: grid;
