@@ -512,7 +512,7 @@ const monthViewContent = document.getElementById("monthViewContent");
 let viewedWeekStart = getMonday(new Date());
 const realCurrentWeekStart = getMonday(new Date());
 
-const shiftValues = ["", "TV", "TM", "MV", "SM", "SV", "PT", "F", "AVS", "TJ", "PERM", "KONTOR", "MØTE", "ANNET"];
+const shiftValues = ["", "TV", "TM", "MV", "SM", "SV", "F", "AVS", "TJ", "PERM", "MØTE", "ANNET"];
 
 function getCurrentWeekKey() {
   return viewedWeekStart.toISOString().slice(0, 10);
