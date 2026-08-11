@@ -20,7 +20,7 @@
         <a href="dashboard.html">🏠 Hjem</a>
         <a href="vakter.html">📅 Vakter</a>
         <a href="vikarer.html">🕒 Vikarer</a>
-        <a class="active" href="ferieogavspasering.html">🌴 Ferie og avspasering</a>
+        <a class="active" href="ferieogavspasering.html">🌴 Ferie/avspasering/overtid</a>
         <a href="filarkiv.html">📁 Filarkiv</a>
         <a href="aarshjul.html">🗓️ Årshjul</a>
         <a href="turbank.html">🏕️ Turbank</a>
@@ -38,9 +38,22 @@
         <div>
           <p class="eyebrow">Fravær og timer</p>
           <h1>Ferie, avspasering og overtid</h1>
-          <p class="muted">Før opp egne dager og timer. Adminoversikt kommer senere.</p>
+          <p class="muted">Før opp egne dager og timer.</p>
         </div>
         <div class="hero-badge">🌴 Personlig oversikt</div>
+      </section>
+
+      <section class="card dates-highlight" data-admin-only>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow" id="overtimeSummaryMonth">Denne måneden</p>
+            <h2>⏱️ Overtid</h2>
+          </div>
+        </div>
+
+        <div id="overtimeSummary" class="summary-list">
+          <p class="muted">Ingen overtid registrert denne måneden.</p>
+        </div>
       </section>
 
       <section class="grid">

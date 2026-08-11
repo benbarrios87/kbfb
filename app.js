@@ -71,6 +71,8 @@ function shortDate(dateString) {
 
 /* ---------- DATOER / ÅRSHJUL ---------- */
 
+let notesCache = [];
+
 const eventStorageKey = "kbfb-events";
 let eventsCache = [];
 
@@ -900,8 +902,6 @@ const quickNoteText = document.getElementById("quickNoteText");
 const quickNoteFeed = document.getElementById("quickNoteFeed");
 const clearQuickNotes = document.getElementById("clearQuickNotes");
 
-let notesCache = [];
-
 async function loadNotesFromSupabase() {
   const { data, error } = await supabaseClient
     .from("kbfb_notes")
@@ -1662,6 +1662,8 @@ const absenceFilter = document.getElementById("absenceFilter");
 const absenceSummary = document.getElementById("absenceSummary");
 const absenceTableBody = document.getElementById("absenceTableBody");
 const clearAbsences = document.getElementById("clearAbsences");
+const overtimeSummary = document.getElementById("overtimeSummary");
+const overtimeSummaryMonth = document.getElementById("overtimeSummaryMonth");
 
 let absencesCache = [];
 
@@ -1712,7 +1714,49 @@ function getFilteredAbsences() {
   );
 }
 
+function renderOvertimeSummary() {
+  if (!overtimeSummary) return;
+
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  if (overtimeSummaryMonth) {
+    overtimeSummaryMonth.textContent = now.toLocaleDateString("no-NO", { month: "long", year: "numeric" });
+  }
+
+  const overtimeRecords = absencesCache.filter(record => {
+    if (record.type !== "Overtid") return false;
+    const recordDate = new Date(record.start_date + "T12:00:00");
+    return recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear;
+  });
+
+  if (!overtimeRecords.length) {
+    overtimeSummary.innerHTML = `<p class="muted">Ingen overtid registrert denne måneden.</p>`;
+    return;
+  }
+
+  const grouped = {};
+
+  overtimeRecords.forEach(record => {
+    if (!grouped[record.name]) grouped[record.name] = { hours: 0, entries: [] };
+    grouped[record.name].hours += Number(record.hours) || 0;
+    grouped[record.name].entries.push(record);
+  });
+
+  overtimeSummary.innerHTML = Object.entries(grouped).map(([name, info]) => `
+    <div class="summary-item">
+      <strong>${name} · ${info.hours} t</strong>
+      <span>${info.entries
+        .map(entry => `${formatDateRange(entry.start_date, entry.end_date)}${entry.note ? ` · ${entry.note}` : ""}`)
+        .join(" · ")}</span>
+    </div>
+  `).join("");
+}
+
 function renderAbsences() {
+  renderOvertimeSummary();
+
   if (!absenceTableBody || !absenceSummary) return;
 
   const records = getFilteredAbsences();
