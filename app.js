@@ -580,14 +580,15 @@ function buildShiftDropdowns() {
 
     const isVikarRow = row.dataset.employee === "Vikar";
     const isParentRow = row.dataset.employee === "Foreldreinnsats";
+    const isExtraRow = row.dataset.employee === "Ekstra";
 
-    if (isParentRow) {
+    if (isParentRow || isExtraRow) {
       cell.innerHTML = "";
 
       const freeTextInput = document.createElement("input");
       freeTextInput.type = "text";
       freeTextInput.className = "custom-shift-input";
-      freeTextInput.placeholder = "Navn på forelder";
+      freeTextInput.placeholder = isExtraRow ? "Navn på ansatt, f.eks. Benjamin" : "Navn på forelder";
       freeTextInput.style.display = "block";
       freeTextInput.value = defaultValue;
 
