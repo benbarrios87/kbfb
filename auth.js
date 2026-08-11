@@ -48,6 +48,14 @@ async function requireAuth() {
     renderEvents();
   }
 
+  if (typeof lockAbsenceNameToSelf === "function") {
+    lockAbsenceNameToSelf();
+  }
+
+  if (typeof renderAbsences === "function") {
+    renderAbsences();
+  }
+
   return currentEmployee;
 }
 

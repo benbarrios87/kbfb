@@ -188,9 +188,10 @@ CREATE POLICY "kbfb_absences_select_own_or_admin" ON public.kbfb_absences
   USING (name = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
 
 DROP POLICY IF EXISTS "kbfb_absences_insert_own" ON public.kbfb_absences;
-CREATE POLICY "kbfb_absences_insert_own" ON public.kbfb_absences
+DROP POLICY IF EXISTS "kbfb_absences_insert_own_or_admin" ON public.kbfb_absences;
+CREATE POLICY "kbfb_absences_insert_own_or_admin" ON public.kbfb_absences
   FOR INSERT TO authenticated
-  WITH CHECK (name = public.kbfb_current_employee_name());
+  WITH CHECK (name = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
 
 DROP POLICY IF EXISTS "kbfb_absences_admin_update_delete" ON public.kbfb_absences;
 CREATE POLICY "kbfb_absences_admin_update_delete" ON public.kbfb_absences

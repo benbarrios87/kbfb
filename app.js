@@ -1732,7 +1732,7 @@ function renderAbsences() {
       <td>${record.hours || ""}</td>
       <td>${record.status || "Registrert"}</td>
       <td>${record.note || ""}</td>
-      <td><button class="kitchen-delete" data-absence-id="${record.id}">Slett</button></td>
+      <td>${typeof currentEmployee !== "undefined" && currentEmployee?.is_admin ? `<button class="kitchen-delete" data-absence-id="${record.id}">Slett</button>` : ""}</td>
     </tr>
   `).join("");
 
@@ -1843,6 +1843,42 @@ function renderAbsenceSummary(records) {
     .join("");
 }
 
+if (absenceForm) {
+  absenceForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const record = {
+      name: absenceName.value,
+      type: absenceType.value,
+      start_date: absenceStartDate.value,
+      end_date: absenceEndDate.value,
+      hours: absenceHours.value ? Number(absenceHours.value) : null,
+      status: absenceStatus.value,
+      note: absenceNote.value.trim()
+    };
+
+    await saveAbsenceToSupabase(record);
+    await loadAbsencesFromSupabase();
+
+    absenceForm.reset();
+    lockAbsenceNameToSelf();
+
+    renderAbsences();
+    renderDashboardAbsences();
+  });
+}
+
+function lockAbsenceNameToSelf() {
+  if (!absenceName || typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  if (!currentEmployee.is_admin) {
+    absenceName.value = currentEmployee.name;
+    absenceName.disabled = true;
+  } else {
+    absenceName.disabled = false;
+  }
+}
+
 async function initializeAbsences() {
   await loadEmployeesFromSupabase();
 
@@ -1851,6 +1887,7 @@ async function initializeAbsences() {
     includeBlank: false,
     includeAll: true
   });
+  lockAbsenceNameToSelf();
 
   await loadAbsencesFromSupabase();
 
