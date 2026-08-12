@@ -891,14 +891,38 @@ const swapPreview = document.getElementById("swapPreview");
 const swapRequestStatus = document.getElementById("swapRequestStatus");
 const swapInboxList = document.getElementById("swapInboxList");
 
-function findShiftValue(weekStartValue, department, employee, dayIndex) {
-  const match = shiftsCache.find(item =>
-    item.week_start === weekStartValue &&
-    item.department === department &&
-    item.employee === employee &&
-    item.day_index === dayIndex
-  );
-  return match?.shift_value || "";
+// shiftsCache only holds whatever week is currently displayed on vakter.html,
+// but a swap request can point at any date - so look up the real row from
+// Supabase directly instead of trusting the cache.
+async function fetchShiftValue(weekStartValue, department, employee, dayIndex) {
+  if (!department || !employee) return "";
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_shifts")
+    .select("shift_value")
+    .eq("week_start", weekStartValue)
+    .eq("department", department)
+    .eq("employee", employee)
+    .eq("day_index", dayIndex)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Kunne ikke hente vakt for bytte:", error);
+    return "";
+  }
+
+  return data?.shift_value || "";
+}
+
+// currentEmployee.department (from kbfb_employees) doesn't reliably match
+// which department someone's shifts are actually logged under in
+// kbfb_shifts (e.g. Daglig leder isn't tied to one department) - so read it
+// straight off the schedule grid instead, same source used for the person
+// you're swapping with.
+function findEmployeeDepartmentFromGrid(name) {
+  const row = Array.from(document.querySelectorAll(".department-table tbody tr[data-employee]"))
+    .find(r => !r.classList.contains("support-row") && r.dataset.employee === name);
+  return row?.dataset.department || null;
 }
 
 function populateSwapWithSelect() {
@@ -932,7 +956,7 @@ function swapDayIndexFromDate(dateString) {
   return { date, dayIndex: dayOfWeek - 1 };
 }
 
-function updateSwapPreview() {
+async function updateSwapPreview() {
   if (!swapPreview) return;
 
   if (!swapDate?.value || !swapWithEmployee?.value) {
@@ -940,8 +964,8 @@ function updateSwapPreview() {
     return;
   }
 
-  if (typeof currentEmployee === "undefined" || !currentEmployee?.department) {
-    swapPreview.innerHTML = `<p class="muted">Fant ikke din avdeling.</p>`;
+  if (typeof currentEmployee === "undefined" || !currentEmployee) {
+    swapPreview.innerHTML = `<p class="muted">Fant ikke innlogget bruker.</p>`;
     return;
   }
 
@@ -951,12 +975,22 @@ function updateSwapPreview() {
     return;
   }
 
+  const myDepartment = findEmployeeDepartmentFromGrid(currentEmployee.name);
+  if (!myDepartment) {
+    swapPreview.innerHTML = `<p class="muted">Fant ikke din avdeling.</p>`;
+    return;
+  }
+
   const weekStartValue = toDateKey(getMonday(parsed.date));
   const targetOption = swapWithEmployee.options[swapWithEmployee.selectedIndex];
   const targetDepartment = targetOption?.dataset.department;
 
-  const myShift = findShiftValue(weekStartValue, currentEmployee.department, currentEmployee.name, parsed.dayIndex);
-  const theirShift = findShiftValue(weekStartValue, targetDepartment, swapWithEmployee.value, parsed.dayIndex);
+  swapPreview.innerHTML = `<p class="muted">Henter vakter...</p>`;
+
+  const [myShift, theirShift] = await Promise.all([
+    fetchShiftValue(weekStartValue, myDepartment, currentEmployee.name, parsed.dayIndex),
+    fetchShiftValue(weekStartValue, targetDepartment, swapWithEmployee.value, parsed.dayIndex)
+  ]);
 
   swapPreview.innerHTML = `
     <div class="summary-item">
@@ -996,15 +1030,23 @@ if (swapRequestForm) {
     const targetDepartment = targetOption?.dataset.department;
     const weekStartValue = toDateKey(getMonday(parsed.date));
 
-    const myShift = findShiftValue(weekStartValue, currentEmployee.department, currentEmployee.name, parsed.dayIndex);
-    const theirShift = findShiftValue(weekStartValue, targetDepartment, targetName, parsed.dayIndex);
+    const myDepartment = findEmployeeDepartmentFromGrid(currentEmployee.name);
+    if (!myDepartment) {
+      swapRequestStatus.textContent = "Fant ikke din avdeling.";
+      return;
+    }
+
+    const [myShift, theirShift] = await Promise.all([
+      fetchShiftValue(weekStartValue, myDepartment, currentEmployee.name, parsed.dayIndex),
+      fetchShiftValue(weekStartValue, targetDepartment, targetName, parsed.dayIndex)
+    ]);
 
     const { error } = await supabaseClient
       .from("kbfb_shift_swap_requests")
       .insert([{
         from_employee: currentEmployee.name,
         to_employee: targetName,
-        from_department: currentEmployee.department,
+        from_department: myDepartment,
         to_department: targetDepartment,
         week_start: weekStartValue,
         day_index: parsed.dayIndex,
@@ -1075,6 +1117,8 @@ async function loadSwapInbox() {
     `;
   }).join("");
 
+  const swapInboxActionStatus = document.getElementById("swapInboxActionStatus");
+
   document.querySelectorAll("[data-accept-swap]").forEach(button => {
     button.addEventListener("click", async () => {
       button.disabled = true;
@@ -1086,6 +1130,7 @@ async function loadSwapInbox() {
         return;
       }
 
+      if (swapInboxActionStatus) swapInboxActionStatus.textContent = "Bytte godtatt ✓";
       await loadShiftsFromSupabase();
       buildShiftDropdowns();
       updateShiftHeadcounts();
@@ -1115,6 +1160,7 @@ async function loadSwapInbox() {
         return;
       }
 
+      if (swapInboxActionStatus) swapInboxActionStatus.textContent = "Avslag sendt ✓";
       await loadSwapInbox();
     });
   });
