@@ -86,6 +86,13 @@ function shortDate(dateString) {
 
 let notesCache = [];
 
+// Declared this early (not down by the rest of the vikarer.html code) because
+// dashboard.html's updateDashboardWeek() -> renderDashboardSubs() reads it
+// synchronously at page-load time, before the script has reached that part
+// of the file - same reason notesCache lives up here too.
+let subsCache = [];
+let subPeopleCache = [];
+
 const eventStorageKey = "kbfb-events";
 let eventsCache = [];
 
@@ -1698,9 +1705,6 @@ const subTableBody = document.getElementById("subTableBody");
 const subSummary = document.getElementById("subSummary");
 const clearSubs = document.getElementById("clearSubs");
 const subEndDate = document.getElementById("subEndDate");
-
-let subsCache = [];
-let subPeopleCache = [];
 
 const subPersonForm = document.getElementById("subPersonForm");
 const subPersonName = document.getElementById("subPersonName");
