@@ -452,3 +452,50 @@ CREATE POLICY "kbfb_shifts_admin_write" ON public.kbfb_shifts
 -- write anything anymore - including your own app, until login.html
 -- and auth.js are wired up. That's expected and is the next step.
 -- =========================================================
+
+-- =========================================================
+-- STEP 12: kbfb_supplies (Bestillinger - "things we need" list)
+--   Any logged-in employee can report something is needed. Everyone can
+--   see the list (so people don't report duplicates). Only admin can
+--   check something off as ordered or remove it.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_supplies (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  item text NOT NULL,
+  requested_by text NOT NULL,
+  ordered boolean NOT NULL DEFAULT false,
+  ordered_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_supplies ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_supplies_select_all" ON public.kbfb_supplies;
+CREATE POLICY "kbfb_supplies_select_all" ON public.kbfb_supplies
+  FOR SELECT TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "kbfb_supplies_insert_own" ON public.kbfb_supplies;
+CREATE POLICY "kbfb_supplies_insert_own" ON public.kbfb_supplies
+  FOR INSERT TO authenticated
+  WITH CHECK (requested_by = public.kbfb_current_employee_name());
+
+DROP POLICY IF EXISTS "kbfb_supplies_admin_update" ON public.kbfb_supplies;
+CREATE POLICY "kbfb_supplies_admin_update" ON public.kbfb_supplies
+  FOR UPDATE TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());
+
+DROP POLICY IF EXISTS "kbfb_supplies_admin_delete" ON public.kbfb_supplies;
+CREATE POLICY "kbfb_supplies_admin_delete" ON public.kbfb_supplies
+  FOR DELETE TO authenticated
+  USING (public.kbfb_is_admin());
+
+-- Seed a few known-needed items
+INSERT INTO public.kbfb_supplies (item, requested_by) VALUES
+  ('Permer', 'Benjamin'),
+  ('Plaster', 'Benjamin'),
+  ('Plastlommer', 'Benjamin'),
+  ('Tørkepapir', 'Benjamin'),
+  ('Engangshansker', 'Benjamin');

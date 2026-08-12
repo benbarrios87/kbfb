@@ -95,6 +95,10 @@ async function requireAuth() {
     renderMyAvatarPreview();
   }
 
+  if (typeof renderSupplies === "function") {
+    renderSupplies();
+  }
+
   if (typeof applyEmployeeAvatarsToGrid === "function") {
     applyEmployeeAvatarsToGrid();
   }

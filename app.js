@@ -3066,3 +3066,136 @@ if (avatarUploadInput) {
     avatarUploadStatus.textContent = "Bilde lagret ✓";
   });
 }
+
+/* ---------- BESTILLINGER ---------- */
+
+const supplyForm = document.getElementById("supplyForm");
+const supplyItem = document.getElementById("supplyItem");
+const supplyOpenList = document.getElementById("supplyOpenList");
+const supplyOrderedList = document.getElementById("supplyOrderedList");
+const supplyOrderedSection = document.getElementById("supplyOrderedSection");
+
+let suppliesCache = [];
+
+async function loadSuppliesFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_supplies")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Kunne ikke hente bestillinger:", error);
+    return [];
+  }
+
+  suppliesCache = data || [];
+  return suppliesCache;
+}
+
+function renderSupplies() {
+  if (!supplyOpenList) return;
+
+  const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
+  const open = suppliesCache.filter(s => !s.ordered);
+  const ordered = suppliesCache.filter(s => s.ordered);
+
+  supplyOpenList.innerHTML = open.length
+    ? open.map(s => `
+      <div class="summary-item">
+        <strong>${s.item}</strong>
+        <span>Meldt av ${s.requested_by}</span>
+        ${isAdmin ? `
+          <div style="display: flex; gap: 8px; margin-top: 6px;">
+            <button class="secondary-btn" type="button" data-mark-ordered="${s.id}">Bestilt ✓</button>
+            <button class="secondary-btn" type="button" data-delete-supply="${s.id}">Fjern</button>
+          </div>
+        ` : ""}
+      </div>
+    `).join("")
+    : `<p class="muted">Ingenting meldt inn ennå.</p>`;
+
+  if (supplyOrderedSection) {
+    supplyOrderedSection.style.display = ordered.length ? "" : "none";
+  }
+
+  if (supplyOrderedList) {
+    supplyOrderedList.innerHTML = ordered.map(s => `
+      <div class="summary-item">
+        <strong>${s.item}</strong>
+        <span>Meldt av ${s.requested_by} · Bestilt ✓</span>
+        ${isAdmin ? `<button class="secondary-btn" type="button" data-delete-supply="${s.id}" style="margin-top: 6px; width: fit-content;">Fjern</button>` : ""}
+      </div>
+    `).join("");
+  }
+
+  document.querySelectorAll("[data-mark-ordered]").forEach(button => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      const { error } = await supabaseClient
+        .from("kbfb_supplies")
+        .update({ ordered: true, ordered_at: new Date().toISOString() })
+        .eq("id", button.dataset.markOrdered);
+
+      if (error) {
+        alert("Kunne ikke merke som bestilt: " + error.message);
+        button.disabled = false;
+        return;
+      }
+
+      await loadSuppliesFromSupabase();
+      renderSupplies();
+    });
+  });
+
+  document.querySelectorAll("[data-delete-supply]").forEach(button => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      const { error } = await supabaseClient
+        .from("kbfb_supplies")
+        .delete()
+        .eq("id", button.dataset.deleteSupply);
+
+      if (error) {
+        alert("Kunne ikke fjerne: " + error.message);
+        button.disabled = false;
+        return;
+      }
+
+      await loadSuppliesFromSupabase();
+      renderSupplies();
+    });
+  });
+}
+
+if (supplyForm) {
+  supplyForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (typeof currentEmployee === "undefined" || !currentEmployee) {
+      alert("Fant ikke innlogget bruker. Prøv å laste siden på nytt.");
+      return;
+    }
+
+    const { error } = await supabaseClient
+      .from("kbfb_supplies")
+      .insert([{ item: supplyItem.value.trim(), requested_by: currentEmployee.name }]);
+
+    if (error) {
+      console.error("Kunne ikke legge til bestilling:", error);
+      alert("Kunne ikke legge til. Prøv igjen.");
+      return;
+    }
+
+    supplyForm.reset();
+    await loadSuppliesFromSupabase();
+    renderSupplies();
+  });
+}
+
+async function initializeSupplies() {
+  if (!supplyOpenList) return;
+  await loadSuppliesFromSupabase();
+  renderSupplies();
+}
+
+initializeSupplies();
