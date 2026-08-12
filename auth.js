@@ -79,6 +79,10 @@ async function requireAuth() {
     loadSwapInbox();
   }
 
+  if (typeof loadSwapNavBadge === "function") {
+    loadSwapNavBadge();
+  }
+
   if (typeof applySubFormVisibility === "function") {
     applySubFormVisibility();
   }

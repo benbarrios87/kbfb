@@ -1039,6 +1039,18 @@ async function loadSwapInbox() {
     return;
   }
 
+  const swapAlertBanner = document.getElementById("swapAlertBanner");
+  const swapAlertText = document.getElementById("swapAlertText");
+
+  if (swapAlertBanner) {
+    swapAlertBanner.style.display = data.length ? "flex" : "none";
+    if (swapAlertText) {
+      swapAlertText.textContent = data.length === 1
+        ? "🔔 Du har 1 ny vaktbytte-forespørsel"
+        : `🔔 Du har ${data.length} nye vaktbytte-forespørsler`;
+    }
+  }
+
   if (!data.length) {
     swapInboxList.innerHTML = `<p class="muted">Ingen ventende forespørsler.</p>`;
     return;
@@ -1105,6 +1117,29 @@ async function loadSwapInbox() {
 
       await loadSwapInbox();
     });
+  });
+}
+
+// Runs on every page (not just vakter.html) so the "Vakter" nav link
+// shows a badge no matter where someone is when a swap request comes in.
+async function loadSwapNavBadge() {
+  const badges = document.querySelectorAll(".nav-badge");
+  if (!badges.length || typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  const { count, error } = await supabaseClient
+    .from("kbfb_shift_swap_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("to_employee", currentEmployee.name)
+    .eq("status", "pending");
+
+  if (error) {
+    console.error("Kunne ikke hente antall byttforespørsler:", error);
+    return;
+  }
+
+  badges.forEach(badge => {
+    badge.textContent = count || "";
+    badge.style.display = count ? "inline-flex" : "none";
   });
 }
 

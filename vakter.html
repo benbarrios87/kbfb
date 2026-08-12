@@ -18,7 +18,7 @@
 
       <nav>
         <a href="dashboard.html">🏠 Hjem</a>
-        <a class="active" href="vakter.html">📅 Vakter</a>
+        <a class="active" href="vakter.html">📅 Vakter<span class="nav-badge" style="display:none;"></span></a>
         <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
         <a data-hide-from-vikar href="datoer.html">📆 Datoer</a>
         <a href="vikarer.html">🕒 Vikarer</a>
@@ -45,6 +45,11 @@
     </aside>
 
     <main class="main">
+      <div class="swap-alert-banner" id="swapAlertBanner" style="display: none;">
+        <span id="swapAlertText">🔔 Du har nye vaktbytte-forespørsler</span>
+        <a href="#swapInboxSection">Se forespørsel ↓</a>
+      </div>
+
       <section class="forest-hero compact">
         <div>
           <p class="eyebrow">Vaktplan</p>

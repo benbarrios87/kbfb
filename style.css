@@ -2078,3 +2078,41 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .forest-hero.team-photo::after {
   content: none;
 }
+
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e85c5c;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 900;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.swap-alert-banner {
+  background: linear-gradient(120deg, #e85c5c, #f2897f);
+  color: white;
+  border-radius: 22px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  font-weight: 800;
+}
+
+.swap-alert-banner a {
+  color: white;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 8px 14px;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+}
