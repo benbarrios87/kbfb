@@ -292,6 +292,162 @@ CREATE POLICY "kbfb_feedback_admin_delete" ON public.kbfb_feedback
   USING (public.kbfb_is_admin());
 
 -- =========================================================
+-- STEP 11: kbfb_shift_swap_requests (Vaktbytte - phase 1, no push yet)
+--   Anyone except vikarer can request to swap one of their shifts with
+--   a colleague's. The colleague accepts/declines; accepting swaps the
+--   two shifts automatically via a SECURITY DEFINER function (so a
+--   regular employee, not just admin/avdelingsleder, can accept without
+--   needing general shift-editing rights).
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_shift_swap_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  from_employee text NOT NULL,
+  to_employee text NOT NULL,
+  from_department text NOT NULL,
+  to_department text NOT NULL,
+  week_start date NOT NULL,
+  day_index int NOT NULL,
+  from_shift_value text,
+  to_shift_value text,
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
+  decline_reason text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  responded_at timestamptz
+);
+
+ALTER TABLE public.kbfb_shift_swap_requests ENABLE ROW LEVEL SECURITY;
+
+-- Helper: current logged-in person's role text (needed to exclude vikarer)
+CREATE OR REPLACE FUNCTION public.kbfb_current_employee_role()
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT role FROM public.kbfb_employees WHERE user_id = auth.uid();
+$$;
+
+DROP POLICY IF EXISTS "kbfb_swap_select_authenticated" ON public.kbfb_shift_swap_requests;
+CREATE POLICY "kbfb_swap_select_authenticated" ON public.kbfb_shift_swap_requests
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "kbfb_swap_insert_own_not_vikar" ON public.kbfb_shift_swap_requests;
+CREATE POLICY "kbfb_swap_insert_own_not_vikar" ON public.kbfb_shift_swap_requests
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    from_employee = public.kbfb_current_employee_name()
+    AND COALESCE(public.kbfb_current_employee_role(), '') <> 'Vikar'
+  );
+
+DROP POLICY IF EXISTS "kbfb_swap_update_recipient_or_admin" ON public.kbfb_shift_swap_requests;
+CREATE POLICY "kbfb_swap_update_recipient_or_admin" ON public.kbfb_shift_swap_requests
+  FOR UPDATE TO authenticated
+  USING (to_employee = public.kbfb_current_employee_name() OR public.kbfb_is_admin())
+  WITH CHECK (to_employee = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
+
+-- Performs the actual swap. Runs as the function owner (bypassing RLS
+-- internally) but checks the caller is the request's recipient or admin
+-- first, so this can't be abused to swap arbitrary shifts.
+CREATE OR REPLACE FUNCTION public.kbfb_accept_shift_swap(request_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  req RECORD;
+  caller_name text;
+  is_caller_admin boolean;
+  from_value text;
+  to_value text;
+BEGIN
+  SELECT * INTO req FROM public.kbfb_shift_swap_requests WHERE id = request_id AND status = 'pending';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Forespørselen finnes ikke eller er allerede behandlet.';
+  END IF;
+
+  caller_name := public.kbfb_current_employee_name();
+  is_caller_admin := public.kbfb_is_admin();
+
+  IF caller_name IS DISTINCT FROM req.to_employee AND NOT is_caller_admin THEN
+    RAISE EXCEPTION 'Bare mottakeren kan godta denne forespørselen.';
+  END IF;
+
+  SELECT shift_value INTO from_value FROM public.kbfb_shifts
+    WHERE week_start = req.week_start AND department = req.from_department
+      AND employee = req.from_employee AND day_index = req.day_index;
+
+  SELECT shift_value INTO to_value FROM public.kbfb_shifts
+    WHERE week_start = req.week_start AND department = req.to_department
+      AND employee = req.to_employee AND day_index = req.day_index;
+
+  -- Update or insert each side with the other's current shift value
+  IF EXISTS (SELECT 1 FROM public.kbfb_shifts WHERE week_start = req.week_start AND department = req.from_department AND employee = req.from_employee AND day_index = req.day_index) THEN
+    UPDATE public.kbfb_shifts SET shift_value = COALESCE(to_value, '')
+      WHERE week_start = req.week_start AND department = req.from_department AND employee = req.from_employee AND day_index = req.day_index;
+  ELSE
+    INSERT INTO public.kbfb_shifts (week_start, department, employee, day_index, shift_value)
+      VALUES (req.week_start, req.from_department, req.from_employee, req.day_index, COALESCE(to_value, ''));
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM public.kbfb_shifts WHERE week_start = req.week_start AND department = req.to_department AND employee = req.to_employee AND day_index = req.day_index) THEN
+    UPDATE public.kbfb_shifts SET shift_value = COALESCE(from_value, '')
+      WHERE week_start = req.week_start AND department = req.to_department AND employee = req.to_employee AND day_index = req.day_index;
+  ELSE
+    INSERT INTO public.kbfb_shifts (week_start, department, employee, day_index, shift_value)
+      VALUES (req.week_start, req.to_department, req.to_employee, req.day_index, COALESCE(from_value, ''));
+  END IF;
+
+  UPDATE public.kbfb_shift_swap_requests
+    SET status = 'accepted', responded_at = now()
+    WHERE id = request_id;
+END;
+$$;
+
+-- Declines a request, with an optional reason. Same authorization check
+-- as accept, but only flips status - no shift data changes.
+CREATE OR REPLACE FUNCTION public.kbfb_decline_shift_swap(request_id uuid, reason text DEFAULT NULL)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  req RECORD;
+  caller_name text;
+  is_caller_admin boolean;
+BEGIN
+  SELECT * INTO req FROM public.kbfb_shift_swap_requests WHERE id = request_id AND status = 'pending';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Forespørselen finnes ikke eller er allerede behandlet.';
+  END IF;
+
+  caller_name := public.kbfb_current_employee_name();
+  is_caller_admin := public.kbfb_is_admin();
+
+  IF caller_name IS DISTINCT FROM req.to_employee AND NOT is_caller_admin THEN
+    RAISE EXCEPTION 'Bare mottakeren kan avslå denne forespørselen.';
+  END IF;
+
+  UPDATE public.kbfb_shift_swap_requests
+    SET status = 'declined', decline_reason = reason, responded_at = now()
+    WHERE id = request_id;
+END;
+$$;
+
+-- Avdelingsledere can now edit the vaktplan too, not just admin - the
+-- database needs to match the client-side permission added this session.
+DROP POLICY IF EXISTS "kbfb_shifts_admin_write" ON public.kbfb_shifts;
+CREATE POLICY "kbfb_shifts_admin_write" ON public.kbfb_shifts
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin() OR public.kbfb_current_employee_role() = 'Avdelingsleder')
+  WITH CHECK (public.kbfb_is_admin() OR public.kbfb_current_employee_role() = 'Avdelingsleder');
+
+-- =========================================================
 -- Done. After running this, nobody who isn't logged in can read or
 -- write anything anymore - including your own app, until login.html
 -- and auth.js are wired up. That's expected and is the next step.

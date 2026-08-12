@@ -835,6 +835,8 @@ async function updateWeekView() {
   buildShiftDropdowns();
   updateShiftHeadcounts();
   renderWeekEvents();
+  populateSwapWithSelect();
+  loadSwapInbox();
 }
 
 const absenceShiftCodes = ["F", "AVS", "TJ", "PERM"];
@@ -877,6 +879,232 @@ function updateShiftHeadcounts() {
       countCell.textContent = `(${count})`;
       countCell.classList.toggle("thin", count <= 1);
     }
+  });
+}
+
+/* ---------- VAKTBYTTE ---------- */
+
+const swapRequestForm = document.getElementById("swapRequestForm");
+const swapDate = document.getElementById("swapDate");
+const swapWithEmployee = document.getElementById("swapWithEmployee");
+const swapPreview = document.getElementById("swapPreview");
+const swapRequestStatus = document.getElementById("swapRequestStatus");
+const swapInboxList = document.getElementById("swapInboxList");
+
+function findShiftValue(weekStartValue, department, employee, dayIndex) {
+  const match = shiftsCache.find(item =>
+    item.week_start === weekStartValue &&
+    item.department === department &&
+    item.employee === employee &&
+    item.day_index === dayIndex
+  );
+  return match?.shift_value || "";
+}
+
+function populateSwapWithSelect() {
+  if (!swapWithEmployee) return;
+
+  const rows = Array.from(document.querySelectorAll(".department-table tbody tr[data-employee]"))
+    .filter(row => !row.classList.contains("support-row"));
+
+  const seen = new Set();
+  swapWithEmployee.innerHTML = `<option value="">Velg ansatt</option>`;
+
+  rows.forEach(row => {
+    const name = row.dataset.employee;
+    const department = row.dataset.department;
+    if (!name || seen.has(name)) return;
+    if (typeof currentEmployee !== "undefined" && currentEmployee?.name === name) return;
+    seen.add(name);
+
+    const option = document.createElement("option");
+    option.value = name;
+    option.dataset.department = department;
+    option.textContent = `${name} (${department})`;
+    swapWithEmployee.appendChild(option);
+  });
+}
+
+function swapDayIndexFromDate(dateString) {
+  const date = new Date(dateString + "T12:00:00");
+  const dayOfWeek = date.getDay();
+  if (dayOfWeek === 0 || dayOfWeek === 6) return null;
+  return { date, dayIndex: dayOfWeek - 1 };
+}
+
+function updateSwapPreview() {
+  if (!swapPreview) return;
+
+  if (!swapDate?.value || !swapWithEmployee?.value) {
+    swapPreview.innerHTML = "";
+    return;
+  }
+
+  if (typeof currentEmployee === "undefined" || !currentEmployee?.department) {
+    swapPreview.innerHTML = `<p class="muted">Fant ikke din avdeling.</p>`;
+    return;
+  }
+
+  const parsed = swapDayIndexFromDate(swapDate.value);
+  if (!parsed) {
+    swapPreview.innerHTML = `<p class="muted">Velg en hverdag (mandag-fredag).</p>`;
+    return;
+  }
+
+  const weekStartValue = toDateKey(getMonday(parsed.date));
+  const targetOption = swapWithEmployee.options[swapWithEmployee.selectedIndex];
+  const targetDepartment = targetOption?.dataset.department;
+
+  const myShift = findShiftValue(weekStartValue, currentEmployee.department, currentEmployee.name, parsed.dayIndex);
+  const theirShift = findShiftValue(weekStartValue, targetDepartment, swapWithEmployee.value, parsed.dayIndex);
+
+  swapPreview.innerHTML = `
+    <div class="summary-item">
+      <strong>Du har: ${myShift || "—"}</strong>
+      <span>${swapWithEmployee.value} har: ${theirShift || "—"}</span>
+    </div>
+  `;
+}
+
+if (swapDate) swapDate.addEventListener("change", updateSwapPreview);
+if (swapWithEmployee) swapWithEmployee.addEventListener("change", updateSwapPreview);
+
+if (swapRequestForm) {
+  swapRequestForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (!swapRequestStatus) return;
+
+    if (typeof currentEmployee === "undefined" || !currentEmployee) {
+      swapRequestStatus.textContent = "Fant ikke innlogget bruker.";
+      return;
+    }
+
+    const parsed = swapDayIndexFromDate(swapDate.value);
+    if (!parsed) {
+      swapRequestStatus.textContent = "Velg en hverdag (mandag-fredag).";
+      return;
+    }
+
+    const targetName = swapWithEmployee.value;
+    if (!targetName) {
+      swapRequestStatus.textContent = "Velg hvem du vil bytte med.";
+      return;
+    }
+
+    const targetOption = swapWithEmployee.options[swapWithEmployee.selectedIndex];
+    const targetDepartment = targetOption?.dataset.department;
+    const weekStartValue = toDateKey(getMonday(parsed.date));
+
+    const myShift = findShiftValue(weekStartValue, currentEmployee.department, currentEmployee.name, parsed.dayIndex);
+    const theirShift = findShiftValue(weekStartValue, targetDepartment, targetName, parsed.dayIndex);
+
+    const { error } = await supabaseClient
+      .from("kbfb_shift_swap_requests")
+      .insert([{
+        from_employee: currentEmployee.name,
+        to_employee: targetName,
+        from_department: currentEmployee.department,
+        to_department: targetDepartment,
+        week_start: weekStartValue,
+        day_index: parsed.dayIndex,
+        from_shift_value: myShift,
+        to_shift_value: theirShift
+      }]);
+
+    if (error) {
+      console.error("Kunne ikke sende byttforespørsel:", error);
+      swapRequestStatus.textContent = "Kunne ikke sende forespørsel. Prøv igjen.";
+      return;
+    }
+
+    swapRequestStatus.textContent = "Forespørsel sendt!";
+    swapRequestForm.reset();
+    if (swapPreview) swapPreview.innerHTML = "";
+  });
+}
+
+async function loadSwapInbox() {
+  if (!swapInboxList || typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_shift_swap_requests")
+    .select("*")
+    .eq("to_employee", currentEmployee.name)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Kunne ikke hente byttforespørsler:", error);
+    return;
+  }
+
+  if (!data.length) {
+    swapInboxList.innerHTML = `<p class="muted">Ingen ventende forespørsler.</p>`;
+    return;
+  }
+
+  swapInboxList.innerHTML = data.map(req => {
+    const actualDate = toDateKey(addDays(new Date(req.week_start + "T12:00:00"), req.day_index));
+
+    return `
+      <div class="summary-item">
+        <strong>${req.from_employee} vil bytte vakt med deg ${formatNorwegianDate(actualDate)}</strong>
+        <span>${req.from_employee} har: ${req.from_shift_value || "—"} · Du har: ${req.to_shift_value || "—"}</span>
+        <div style="display: flex; gap: 8px; margin-top: 6px;">
+          <button class="secondary-btn" type="button" data-accept-swap="${req.id}">Godta</button>
+          <button class="secondary-btn" type="button" data-decline-swap="${req.id}">Avslå</button>
+        </div>
+        <div data-decline-box="${req.id}" style="display: none; margin-top: 8px; display: grid; gap: 6px;">
+          <input type="text" placeholder="Valgfri grunn..." data-decline-reason-input="${req.id}" />
+          <button class="secondary-btn" type="button" data-confirm-decline="${req.id}" style="width: fit-content;">Bekreft avslag</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  document.querySelectorAll("[data-accept-swap]").forEach(button => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      const { error } = await supabaseClient.rpc("kbfb_accept_shift_swap", { request_id: button.dataset.acceptSwap });
+
+      if (error) {
+        alert("Kunne ikke godta byttet: " + error.message);
+        button.disabled = false;
+        return;
+      }
+
+      await loadShiftsFromSupabase();
+      buildShiftDropdowns();
+      updateShiftHeadcounts();
+      await loadSwapInbox();
+    });
+  });
+
+  document.querySelectorAll("[data-decline-swap]").forEach(button => {
+    button.addEventListener("click", () => {
+      const box = document.querySelector(`[data-decline-box="${button.dataset.declineSwap}"]`);
+      if (box) box.style.display = "grid";
+    });
+  });
+
+  document.querySelectorAll("[data-confirm-decline]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.confirmDecline;
+      const reasonInput = document.querySelector(`[data-decline-reason-input="${id}"]`);
+      const reason = reasonInput?.value.trim() || null;
+
+      button.disabled = true;
+      const { error } = await supabaseClient.rpc("kbfb_decline_shift_swap", { request_id: id, reason });
+
+      if (error) {
+        alert("Kunne ikke avslå: " + error.message);
+        button.disabled = false;
+        return;
+      }
+
+      await loadSwapInbox();
+    });
   });
 }
 

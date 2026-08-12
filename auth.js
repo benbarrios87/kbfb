@@ -71,6 +71,14 @@ async function requireAuth() {
     renderSubs();
   }
 
+  if (typeof populateSwapWithSelect === "function") {
+    populateSwapWithSelect();
+  }
+
+  if (typeof loadSwapInbox === "function") {
+    loadSwapInbox();
+  }
+
   if (typeof applySubFormVisibility === "function") {
     applySubFormVisibility();
   }

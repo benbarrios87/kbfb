@@ -336,6 +336,32 @@
         </section>
       </section>
 
+      <section class="card" id="swapInboxSection" data-hide-from-vikar>
+        <h2>🔄 Vaktbytte-forespørsler til deg</h2>
+        <div id="swapInboxList" class="summary-list">
+          <p class="muted">Ingen ventende forespørsler.</p>
+        </div>
+      </section>
+
+      <section class="card" id="swapRequestSection" data-hide-from-vikar>
+        <h2>🔄 Be om vaktbytte</h2>
+        <form id="swapRequestForm" class="form-grid">
+          <label>
+            Dato
+            <input type="date" id="swapDate" required />
+          </label>
+          <label>
+            Bytt med
+            <select id="swapWithEmployee" required>
+              <option value="">Velg ansatt</option>
+            </select>
+          </label>
+          <div class="wide-field" id="swapPreview"></div>
+          <button class="primary-btn form-button" type="submit">Send forespørsel</button>
+        </form>
+        <p id="swapRequestStatus" class="muted" style="margin-top: 10px;"></p>
+      </section>
+
       <section id="monthViewSection" class="card" style="display:none;">
         <div class="section-heading">
           <div>
