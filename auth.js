@@ -79,6 +79,10 @@ async function requireAuth() {
     loadSwapInbox();
   }
 
+  if (typeof loadSentSwapRequests === "function") {
+    loadSentSwapRequests();
+  }
+
   if (typeof loadSwapNavBadge === "function") {
     loadSwapNavBadge();
   }
@@ -86,6 +90,14 @@ async function requireAuth() {
   if (typeof applySubFormVisibility === "function") {
     applySubFormVisibility();
   }
+
+  // Keep swap-related UI (nav badge, inbox, sent requests) fresh without
+  // needing to reload the page - there's no live push yet, so poll instead.
+  setInterval(() => {
+    if (typeof loadSwapNavBadge === "function") loadSwapNavBadge();
+    if (typeof loadSwapInbox === "function") loadSwapInbox();
+    if (typeof loadSentSwapRequests === "function") loadSentSwapRequests();
+  }, 45000);
 
   return currentEmployee;
 }

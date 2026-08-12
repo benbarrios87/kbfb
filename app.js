@@ -1064,6 +1064,7 @@ if (swapRequestForm) {
     swapRequestStatus.textContent = "Forespørsel sendt!";
     swapRequestForm.reset();
     if (swapPreview) swapPreview.innerHTML = "";
+    if (typeof loadSentSwapRequests === "function") loadSentSwapRequests();
   });
 }
 
@@ -1165,6 +1166,51 @@ async function loadSwapInbox() {
       await loadSwapInbox();
     });
   });
+}
+
+const swapSentList = document.getElementById("swapSentList");
+const swapStatusLabel = {
+  pending: "⏳ Venter på svar",
+  accepted: "✅ Godtatt",
+  declined: "❌ Avslått"
+};
+
+// Shows the sender their own recent swap requests and what happened to
+// them - otherwise a decline is invisible to the person who asked.
+async function loadSentSwapRequests() {
+  if (!swapSentList || typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_shift_swap_requests")
+    .select("*")
+    .eq("from_employee", currentEmployee.name)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (error) {
+    console.error("Kunne ikke hente sendte forespørsler:", error);
+    return;
+  }
+
+  if (!data.length) {
+    swapSentList.innerHTML = `<p class="muted">Ingen sendte forespørsler ennå.</p>`;
+    return;
+  }
+
+  swapSentList.innerHTML = data.map(req => {
+    const actualDate = toDateKey(addDays(new Date(req.week_start + "T12:00:00"), req.day_index));
+    const reasonLine = req.status === "declined" && req.decline_reason
+      ? `<span class="muted">Grunn: ${req.decline_reason}</span>`
+      : "";
+
+    return `
+      <div class="summary-item">
+        <strong>Bytte med ${req.to_employee} ${formatNorwegianDate(actualDate)}</strong>
+        <span>${swapStatusLabel[req.status] || req.status}</span>
+        ${reasonLine}
+      </div>
+    `;
+  }).join("");
 }
 
 // Runs on every page (not just vakter.html) so the "Vakter" nav link
