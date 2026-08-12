@@ -1454,6 +1454,16 @@ if (kitchenCurrentWeek) {
   });
 }
 
+const kitchenDateSearch = document.getElementById("kitchenDateSearch");
+
+if (kitchenDateSearch) {
+  kitchenDateSearch.addEventListener("change", () => {
+    if (!kitchenDateSearch.value) return;
+    kitchenViewedWeekStart = getMonday(new Date(kitchenDateSearch.value + "T12:00:00"));
+    renderQuickNotes();
+  });
+}
+
 if (quickNoteDate) {
   quickNoteDate.value = toDateKey(new Date());
 }
