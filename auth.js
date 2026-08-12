@@ -37,6 +37,10 @@ async function requireAuth() {
   applyRoleVisibility();
   renderUserBadge();
 
+  if (typeof enforceAdminPageAccess === "function") {
+    enforceAdminPageAccess();
+  }
+
   // Some pages may have already rendered before we knew who's logged in
   // (or whether they're admin) - re-render now that we know for sure.
   if (typeof buildShiftDropdowns === "function") {

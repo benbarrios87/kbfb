@@ -2,6 +2,19 @@
 
 /* ---------- HJELPEFUNKSJONER ---------- */
 
+// Anything an employee typed (notes, item names, reasons, etc.) must go
+// through this before landing in innerHTML - otherwise someone could type
+// HTML/script into a text field and have it run in a colleague's browser.
+function escapeHtml(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function toDateKey(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -151,8 +164,8 @@ function populateEmployeeSelect(selectId, options = {}) {
 
   employeesCache.forEach(employee => {
     select.innerHTML += `
-      <option value="${employee.name}">
-        ${employee.name}
+      <option value="${escapeHtml(employee.name)}">
+        ${escapeHtml(employee.name)}
       </option>
     `;
   });
@@ -283,7 +296,7 @@ function renderDashboardEvents() {
     ? events.map(event => `
       <div class="compact-item">
         <strong>${categoryEmoji(event.category)} ${formatKitchenDate(event.date)}</strong>
-        <span>${event.title}${event.note ? ` · ${event.note}` : ""}</span>
+        <span>${escapeHtml(event.title)}${event.note ? ` · ${escapeHtml(event.note)}` : ""}</span>
       </div>
     `).join("")
     : `<p class="muted">Ingen datoer denne uka.</p>`;
@@ -299,29 +312,12 @@ function renderDashboardKitchenNotes() {
   dashboardKitchenNotes.innerHTML = notes.length
     ? notes.map(note => `
       <div class="compact-item">
-        <strong>${formatKitchenDate(note.date)} · ${note.author}</strong>
-        <span>${note.text}</span>
+        <strong>${formatKitchenDate(note.date)} · ${escapeHtml(note.author)}</strong>
+        <span>${escapeHtml(note.text)}</span>
       </div>
     `).join("")
     : `<p class="muted">Ingen beskjeder denne uka.</p>`;
 }
-function showToast(message) {
-  let toast = document.getElementById("toast");
-
-  if (!toast) {
-    toast = document.createElement("div");
-    toast.id = "toast";
-    document.body.appendChild(toast);
-  }
-
-  toast.textContent = "✅ " + message;
-  toast.className = "show";
-
-  setTimeout(() => {
-    toast.className = "";
-  }, 2500);
-}
-
 function renderDashboardSubs() {
   if (!dashboardSubs) return;
 
@@ -349,7 +345,7 @@ function renderDashboardAbsences() {
   dashboardAbsences.innerHTML = absences.length
     ? absences.map(record => `
       <div class="compact-item">
-        <strong>${record.name} · ${record.type}</strong>
+        <strong>${escapeHtml(record.name)} · ${escapeHtml(record.type)}</strong>
         <span>${formatDateRange(record.startDate, record.endDate)}${record.hours ? ` · ${record.hours} timer` : ""}</span>
       </div>
     `).join("")
@@ -446,7 +442,7 @@ async function renderMonthView() {
           .map(shift => `
             <div class="compact-item">
               <strong>${formatMonthShiftDate(shift.week_start, shift.day_index)}</strong>
-              <span>${shift.shift_value || "-"}</span>
+              <span>${escapeHtml(shift.shift_value) || "-"}</span>
             </div>
           `)
           .join("")}
@@ -536,17 +532,6 @@ const shiftValues = ["", "TV", "TM", "MV", "SM", "SV", "F", "AVS", "TJ", "PERM",
 
 function getCurrentWeekKey() {
   return toDateKey(viewedWeekStart);
-}
-
-function getShiftStorageKey(cell) {
-  const row = cell.closest("tr");
-  const table = cell.closest("table");
-  const department = row?.dataset.department || "Ukjent";
-  const employee = row?.dataset.employee || "Ukjent";
-  const rowIndex = Array.from(table.querySelectorAll("tbody tr")).indexOf(row);
-  const cellIndex = Array.from(row.children).indexOf(cell);
-
-  return `kbfb-shift-${getCurrentWeekKey()}-${department}-${employee}-${rowIndex}-${cellIndex}`;
 }
 
 function getShiftSelectClass(value) {
@@ -812,7 +797,7 @@ function renderWeekEvents() {
     ? events.map(event => `
       <div class="compact-item">
         <strong>${categoryEmoji(event.category)} ${formatKitchenDate(event.date)}</strong>
-        <span>${event.title}${event.note ? ` · ${event.note}` : ""}</span>
+        <span>${escapeHtml(event.title)}${event.note ? ` · ${escapeHtml(event.note)}` : ""}</span>
       </div>
     `).join("")
     : `<p class="muted">Ingen datoer denne uka.</p>`;
@@ -1112,8 +1097,8 @@ async function loadSwapInbox() {
 
     return `
       <div class="summary-item">
-        <strong>${req.from_employee} vil bytte vakt med deg ${formatNorwegianDate(actualDate)}</strong>
-        <span>${req.from_employee} har: ${req.from_shift_value || "—"} · Du har: ${req.to_shift_value || "—"}</span>
+        <strong>${escapeHtml(req.from_employee)} vil bytte vakt med deg ${formatNorwegianDate(actualDate)}</strong>
+        <span>${escapeHtml(req.from_employee)} har: ${escapeHtml(req.from_shift_value) || "—"} · Du har: ${escapeHtml(req.to_shift_value) || "—"}</span>
         <div style="display: flex; gap: 8px; margin-top: 6px;">
           <button class="secondary-btn" type="button" data-accept-swap="${req.id}">Godta</button>
           <button class="secondary-btn" type="button" data-decline-swap="${req.id}">Avslå</button>
@@ -1207,12 +1192,12 @@ async function loadSentSwapRequests() {
   swapSentList.innerHTML = data.map(req => {
     const actualDate = toDateKey(addDays(new Date(req.week_start + "T12:00:00"), req.day_index));
     const reasonLine = req.status === "declined" && req.decline_reason
-      ? `<span class="muted">Grunn: ${req.decline_reason}</span>`
+      ? `<span class="muted">Grunn: ${escapeHtml(req.decline_reason)}</span>`
       : "";
 
     return `
       <div class="summary-item">
-        <strong>Bytte med ${req.to_employee} ${formatNorwegianDate(actualDate)}</strong>
+        <strong>Bytte med ${escapeHtml(req.to_employee)} ${formatNorwegianDate(actualDate)}</strong>
         <span>${swapStatusLabel[req.status] || req.status}</span>
         ${reasonLine}
       </div>
@@ -1345,20 +1330,20 @@ async function loadNotesFromSupabase() {
 }
 
 
-  async function saveNoteToSupabase(note) {
-  console.log("LAGRER NOTE", note);
-
-  const { data, error } = await supabaseClient
+async function saveNoteToSupabase(note) {
+  const { error } = await supabaseClient
     .from("kbfb_notes")
     .insert([{
       author: note.author,
       date: note.date,
       text: note.text
-    }])
-    .select();
+    }]);
 
-  console.log("NOTE DATA", data);
-  console.log("NOTE ERROR", error);
+  if (error) {
+    console.error("Kunne ikke lagre beskjed:", error);
+  }
+
+  return !error;
 }
 
 async function deleteNoteFromSupabase(id) {
@@ -1409,10 +1394,10 @@ function renderQuickNotes() {
         ${dayNotes.length ? dayNotes.map(note => `
           <article class="kitchen-entry">
             <div class="kitchen-entry-top">
-              <strong>${note.author}</strong>
+              <strong>${escapeHtml(note.author)}</strong>
               ${canDeleteNote(note) ? `<button class="kitchen-delete" data-quick-note-id="${note.id}">Slett</button>` : ""}
             </div>
-            <p>${note.text}</p>
+            <p>${escapeHtml(note.text)}</p>
           </article>
         `).join("") : `<p class="muted">Ingen beskjeder.</p>`}
       </div>
@@ -1491,7 +1476,12 @@ if (quickNoteForm) {
       text: quickNoteText.value.trim()
     };
 
-    await saveNoteToSupabase(note);
+    const saved = await saveNoteToSupabase(note);
+    if (!saved) {
+      alert("Kunne ikke lagre beskjeden. Prøv igjen.");
+      return;
+    }
+
     await loadNotesFromSupabase();
 
     quickNoteText.value = "";
@@ -1581,8 +1571,8 @@ function renderEvents() {
           <article class="date-item date-${event.category} ${isPast ? "date-past" : ""}">
             <div class="date-item-top">
               <div>
-                <strong>${shortDate(event.date)} · ${event.title}</strong>
-                <span>${categoryEmoji(event.category)} ${categoryLabel(event.category)}${event.note ? ` · ${event.note}` : ""}</span>
+                <strong>${shortDate(event.date)} · ${escapeHtml(event.title)}</strong>
+                <span>${categoryEmoji(event.category)} ${categoryLabel(event.category)}${event.note ? ` · ${escapeHtml(event.note)}` : ""}</span>
               </div>
 
               ${typeof currentEmployee !== "undefined" && currentEmployee?.is_admin ? `
@@ -1680,42 +1670,6 @@ if (dateCategoryFilter) {
   dateCategoryFilter.addEventListener("change", renderEvents);
 }
 
-function seedDefaultEventsIfEmpty() {
-  const existing = getEvents();
-  if (existing.length) return;
-
-  const defaultEvents = [
-    { date: "2026-08-14", title: "Planleggingsdag", category: "plandager", note: "Barnehagen stengt" },
-    { date: "2026-08-20", title: "Foreldremøte", category: "foreldre", note: "" },
-    { date: "2026-09-02", title: "Dugnad", category: "foreldre", note: "" },
-    { date: "2026-09-09", title: "Personalmøte", category: "personal", note: "" },
-    { date: "2026-09-17", title: "SU-møte", category: "su", note: "" },
-    { date: "2026-09-22", title: "Styremøte", category: "styre", note: "" },
-    { date: "2026-10-08", title: "Personalmøte", category: "personal", note: "" },
-    { date: "2026-10-29", title: "Dugnad", category: "foreldre", note: "" },
-    { date: "2026-11-03", title: "Planleggingsdag", category: "plandager", note: "" },
-    { date: "2026-11-17", title: "Styremøte", category: "styre", note: "" },
-    { date: "2026-12-11", title: "Lucia og julegløgg", category: "foreldre", note: "Med foreldre" },
-    { date: "2026-12-18", title: "Julebord", category: "personal", note: "" },
-    { date: "2027-01-04", title: "Planleggingsdag", category: "plandager", note: "Barnehagen stengt" },
-    { date: "2027-01-14", title: "Personalmøte", category: "personal", note: "" },
-    { date: "2027-02-04", title: "Styremøte", category: "styre", note: "" },
-    { date: "2027-02-23", title: "Karneval", category: "general", note: "" },
-    { date: "2027-03-04", title: "Maxi skiovernatting", category: "overnatting", note: "" },
-    { date: "2027-03-11", title: "Personalmøte", category: "personal", note: "" },
-    { date: "2027-03-23", title: "Styremøte", category: "styre", note: "" },
-    { date: "2027-04-15", title: "Personalmøte", category: "personal", note: "" },
-    { date: "2027-05-05", title: "Dugnad", category: "foreldre", note: "" },
-    { date: "2027-05-13", title: "17. mai markering", category: "foreldre", note: "" },
-    { date: "2027-05-19", title: "Visittur for nye barn", category: "foreldre", note: "" },
-    { date: "2027-05-27", title: "SU-møte", category: "su", note: "" }
-  ].map(event => ({
-    id: crypto.randomUUID(),
-    ...event
-  }));
-  
-}
-
 async function initializeEvents() {
   await loadEventsFromSupabase();
 
@@ -1725,9 +1679,6 @@ async function initializeEvents() {
 }
 
 initializeEvents();
-renderEvents();
-renderDashboardEvents();
-renderWeekEvents();
 /* ---------- VIKARER - SUPABASE ---------- */
 
 const subForm = document.getElementById("subForm");
@@ -1765,13 +1716,15 @@ async function loadSubPeopleFromSupabase() {
 }
 
 async function saveSubPersonToSupabase(name, color) {
-  const { data, error } = await supabaseClient
+  const { error } = await supabaseClient
     .from("kbfb_subs")
-    .insert([{ name, color }])
-    .select();
+    .insert([{ name, color }]);
 
-  console.log("NY VIKAR DATA", data);
-  console.log("NY VIKAR ERROR", error);
+  if (error) {
+    console.error("Kunne ikke legge til vikar:", error);
+  }
+
+  return !error;
 }
 
 function renderSubPeople() {
@@ -1792,7 +1745,7 @@ function renderSubPeople() {
           <div class="compact-item">
             <strong>
   <span class="vikar-badge" style="background:${person.color || '#f3f4f6'}">
-    ${person.name}
+    ${escapeHtml(person.name)}
   </span>
 </strong>
 <span>Aktiv vikar</span>
@@ -1819,7 +1772,12 @@ if (subPersonForm) {
       return;
     }
 
-    await saveSubPersonToSupabase(name, subPersonColor.value);
+    const saved = await saveSubPersonToSupabase(name, subPersonColor.value);
+    if (!saved) {
+      alert("Kunne ikke legge til vikar. Prøv igjen.");
+      return;
+    }
+
     await loadSubPeopleFromSupabase();
 
     subPersonName.value = "";
@@ -1855,7 +1813,7 @@ async function loadSubsFromSupabase() {
 }
 
 async function saveSubToSupabase(sub) {
-  const { data, error } = await supabaseClient
+  const { error } = await supabaseClient
     .from("kbfb_sub_hours")
     .insert([{
       name: sub.name,
@@ -1865,11 +1823,13 @@ async function saveSubToSupabase(sub) {
       end_time: sub.end_time,
       hours: sub.hours,
       note: sub.note
-    }])
-    .select();
+    }]);
 
-  console.log("VIKAR DATA", data);
-  console.log("VIKAR ERROR", error);
+  if (error) {
+    console.error("Kunne ikke lagre vikarvakt:", error);
+  }
+
+  return !error;
 }
 
 async function deleteSubFromSupabase(id) {
@@ -1899,10 +1859,10 @@ function renderSubs() {
     row.innerHTML = `
       <td>${formatNorwegianDate(sub.date)}</td>
       <td>${renderVikarBadge(sub.name)}</td>
-      <td>${sub.department || ""}</td>
+      <td>${escapeHtml(sub.department)}</td>
       <td>${sub.start_time || ""}–${sub.end_time || ""}</td>
       <td>${sub.hours || 0}</td>
-      <td>${sub.note || ""}</td>
+      <td>${escapeHtml(sub.note)}</td>
       <td>${typeof currentEmployee !== "undefined" && currentEmployee?.is_admin ? `<button class="kitchen-delete" data-sub-id="${sub.id}">Slett</button>` : ""}</td>
     `;
 
@@ -1927,7 +1887,7 @@ function getSubPersonColor(name) {
 }
 
 function renderVikarBadge(name) {
-  return `<span class="vikar-badge" style="background:${getSubPersonColor(name)}">${name}</span>`;
+  return `<span class="vikar-badge" style="background:${getSubPersonColor(name)}">${escapeHtml(name)}</span>`;
 }
 
 function renderSubSummary() {
@@ -2050,6 +2010,7 @@ if (subForm) {
     const startDate = subDate.value;
     const endDate = subEndDate.value || subDate.value;
     const dates = getWeekdaysBetween(startDate, endDate);
+    let anyFailed = false;
 
     for (const date of dates) {
       const sub = {
@@ -2070,8 +2031,13 @@ if (subForm) {
       );
 
       if (!duplicate) {
-        await saveSubToSupabase(sub);
+        const saved = await saveSubToSupabase(sub);
+        if (!saved) anyFailed = true;
       }
+    }
+
+    if (anyFailed) {
+      alert("Noen vikarvakter kunne ikke lagres. Prøv igjen.");
     }
 
     await loadSubsFromSupabase();
@@ -2195,10 +2161,10 @@ function renderVacationQuotaEditor() {
 
   container.innerHTML = employeesCache.map(employee => `
     <div class="summary-item">
-      <strong>${employee.name}</strong>
+      <strong>${escapeHtml(employee.name)}</strong>
       <span>
         Feriedager:
-        <input type="number" min="0" step="1" class="vacation-days-input" data-employee="${employee.name}" value="${getVacationDaysFor(employee.name)}" style="width:60px;" />
+        <input type="number" min="0" step="1" class="vacation-days-input" data-employee="${escapeHtml(employee.name)}" value="${getVacationDaysFor(employee.name)}" style="width:60px;" />
       </span>
     </div>
   `).join("");
@@ -2229,13 +2195,15 @@ async function loadAbsencesFromSupabase() {
 }
 
 async function saveAbsenceToSupabase(record) {
-  const { data, error } = await supabaseClient
+  const { error } = await supabaseClient
     .from("kbfb_absences")
-    .insert([record])
-    .select();
+    .insert([record]);
 
-  console.log("FRAVÆR DATA", data);
-  console.log("FRAVÆR ERROR", error);
+  if (error) {
+    console.error("Kunne ikke lagre fravær:", error);
+  }
+
+  return !error;
 }
 
 async function deleteAbsenceFromSupabase(id) {
@@ -2361,9 +2329,9 @@ function renderOvertimeSummary() {
 
   overtimeSummary.innerHTML = Object.entries(grouped).map(([name, info]) => `
     <div class="summary-item">
-      <strong>${name} · ${info.hours} t</strong>
+      <strong>${escapeHtml(name)} · ${info.hours} t</strong>
       <span>${info.entries
-        .map(entry => `${formatDateRange(entry.start_date, entry.end_date)}${entry.note ? ` · ${entry.note}` : ""}`)
+        .map(entry => `${formatDateRange(entry.start_date, entry.end_date)}${entry.note ? ` · ${escapeHtml(entry.note)}` : ""}`)
         .join(" · ")}</span>
     </div>
   `).join("");
@@ -2386,13 +2354,13 @@ function renderAbsences() {
 
   absenceTableBody.innerHTML = records.map(record => `
     <tr>
-      <td>${record.name}</td>
-      <td>${record.type}</td>
+      <td>${escapeHtml(record.name)}</td>
+      <td>${escapeHtml(record.type)}</td>
       <td>${formatDateRange(record.start_date, record.end_date)}</td>
       <td>${countWeekdays(record.start_date, record.end_date)}</td>
       <td>${record.hours || ""}</td>
-      <td>${record.status || "Registrert"}</td>
-      <td>${record.note || ""}</td>
+      <td>${escapeHtml(record.status) || "Registrert"}</td>
+      <td>${escapeHtml(record.note)}</td>
       <td>
         ${isAdmin && record.status === "Ønsket" ? `
           <button class="secondary-btn" data-approve-id="${record.id}">Godkjenn</button>
@@ -2571,7 +2539,11 @@ if (absenceForm) {
       note: absenceNote.value.trim()
     };
 
-    await saveAbsenceToSupabase(record);
+    const saved = await saveAbsenceToSupabase(record);
+    if (!saved) {
+      alert("Kunne ikke lagre fravær. Prøv igjen.");
+      return;
+    }
 
     if (record.type === "Overtid" && record.hours) {
       await saveAbsenceToSupabase({
@@ -2611,7 +2583,7 @@ function lockAbsenceFilterToSelf() {
   if (!absenceFilter || typeof currentEmployee === "undefined" || !currentEmployee) return;
 
   if (!currentEmployee.is_admin) {
-    absenceFilter.innerHTML = `<option value="${currentEmployee.name}">${currentEmployee.name}</option>`;
+    absenceFilter.innerHTML = `<option value="${escapeHtml(currentEmployee.name)}">${escapeHtml(currentEmployee.name)}</option>`;
     absenceFilter.value = currentEmployee.name;
     absenceFilter.disabled = true;
   } else {
@@ -2729,12 +2701,12 @@ function renderAdminEmployeeTable() {
 
   adminEmployeeTableBody.innerHTML = adminEmployeesCache.map(employee => `
     <tr>
-      <td><strong>${employee.name}</strong></td>
+      <td><strong>${escapeHtml(employee.name)}</strong></td>
       <td>
-        <input type="text" class="admin-field" data-id="${employee.id}" data-field="role" value="${employee.role || ""}" style="width: 140px;" />
+        <input type="text" class="admin-field" data-id="${employee.id}" data-field="role" value="${escapeHtml(employee.role)}" style="width: 140px;" />
       </td>
       <td>
-        <input type="text" class="admin-field" data-id="${employee.id}" data-field="department" value="${employee.department || ""}" style="width: 130px;" />
+        <input type="text" class="admin-field" data-id="${employee.id}" data-field="department" value="${escapeHtml(employee.department)}" style="width: 130px;" />
       </td>
       <td style="text-align: center;">
         <input type="checkbox" class="admin-field" data-id="${employee.id}" data-field="is_admin" ${employee.is_admin ? "checked" : ""} />
@@ -2743,7 +2715,7 @@ function renderAdminEmployeeTable() {
         <input type="checkbox" class="admin-field" data-id="${employee.id}" data-field="active" ${employee.active ? "checked" : ""} />
       </td>
       <td>
-        <input type="text" class="admin-field" data-id="${employee.id}" data-field="user_id" value="${employee.user_id || ""}" placeholder="Ikke koblet ennå" style="width: 260px; font-family: monospace; font-size: 0.85rem;" />
+        <input type="text" class="admin-field" data-id="${employee.id}" data-field="user_id" value="${escapeHtml(employee.user_id)}" placeholder="Ikke koblet ennå" style="width: 260px; font-family: monospace; font-size: 0.85rem;" />
       </td>
       <td>
         ${employee.user_id ? `
@@ -2863,10 +2835,22 @@ async function loadPendingApprovalsSummary() {
 
   container.innerHTML = data.map(record => `
     <div class="summary-item">
-      <strong>${record.name} · ${record.type}</strong>
-      <span>${formatDateRange(record.start_date, record.end_date)}${record.note ? ` · ${record.note}` : ""}</span>
+      <strong>${escapeHtml(record.name)} · ${escapeHtml(record.type)}</strong>
+      <span>${formatDateRange(record.start_date, record.end_date)}${record.note ? ` · ${escapeHtml(record.note)}` : ""}</span>
     </div>
   `).join("");
+}
+
+// The nav link to admin.html is already hidden from non-admins, but
+// nothing stops someone typing the URL directly - this is the actual
+// gate. Runs on every page (cheap early-return everywhere but admin.html).
+function enforceAdminPageAccess() {
+  if (!window.location.pathname.endsWith("admin.html")) return;
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  if (!currentEmployee.is_admin) {
+    window.location.href = "dashboard.html";
+  }
 }
 
 async function initializeAdmin() {
@@ -2932,8 +2916,8 @@ async function loadFeedbackForAdmin() {
 
   container.innerHTML = data.map(item => `
     <div class="summary-item">
-      <strong>${item.name} · ${formatNorwegianDate(item.created_at.slice(0, 10))}</strong>
-      <span>${item.text}</span>
+      <strong>${escapeHtml(item.name)} · ${formatNorwegianDate(item.created_at.slice(0, 10))}</strong>
+      <span>${escapeHtml(item.text)}</span>
       <button class="secondary-btn" type="button" data-feedback-id="${item.id}" style="margin-top: 6px; width: fit-content;">Fjern</button>
     </div>
   `).join("");
@@ -3112,8 +3096,8 @@ function renderSupplies() {
   supplyOpenList.innerHTML = open.length
     ? open.map(s => `
       <div class="summary-item">
-        <strong>${s.item}</strong>
-        <span>${supplyPriorityLabel[s.priority] || ""} · Meldt av ${s.requested_by}</span>
+        <strong>${escapeHtml(s.item)}</strong>
+        <span>${supplyPriorityLabel[s.priority] || ""} · Meldt av ${escapeHtml(s.requested_by)}</span>
         ${isAdmin ? `
           <div style="display: flex; gap: 8px; margin-top: 6px;">
             <button class="secondary-btn" type="button" data-mark-ordered="${s.id}">Bestilt ✓</button>
@@ -3140,8 +3124,8 @@ function renderSupplies() {
   if (supplyOrderedList) {
     supplyOrderedList.innerHTML = ordered.map(s => `
       <div class="summary-item">
-        <strong>${s.item}</strong>
-        <span>Meldt av ${s.requested_by} · Bestilt ✓${s.admin_note ? ` · ${s.admin_note}` : ""}</span>
+        <strong>${escapeHtml(s.item)}</strong>
+        <span>Meldt av ${escapeHtml(s.requested_by)} · Bestilt ✓${s.admin_note ? ` · ${escapeHtml(s.admin_note)}` : ""}</span>
         ${isAdmin ? `<button class="secondary-btn" type="button" data-delete-supply="${s.id}" style="margin-top: 6px; width: fit-content;">Fjern</button>` : ""}
       </div>
     `).join("");
@@ -3154,8 +3138,8 @@ function renderSupplies() {
   if (supplyDeclinedList) {
     supplyDeclinedList.innerHTML = declined.map(s => `
       <div class="summary-item">
-        <strong>${s.item}</strong>
-        <span>Meldt av ${s.requested_by} · Avslått${s.admin_note ? ` · ${s.admin_note}` : ""}</span>
+        <strong>${escapeHtml(s.item)}</strong>
+        <span>Meldt av ${escapeHtml(s.requested_by)} · Avslått${s.admin_note ? ` · ${escapeHtml(s.admin_note)}` : ""}</span>
         ${isAdmin ? `<button class="secondary-btn" type="button" data-delete-supply="${s.id}" style="margin-top: 6px; width: fit-content;">Fjern</button>` : ""}
       </div>
     `).join("");

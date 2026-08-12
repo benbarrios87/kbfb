@@ -520,3 +520,59 @@ ALTER TABLE public.kbfb_supplies
 
 ALTER TABLE public.kbfb_supplies
   ADD COLUMN IF NOT EXISTS admin_note text;
+
+-- =========================================================
+-- STEP 14: Codebase audit fixes
+--   kbfb_swap_select_authenticated let ANY logged-in employee read the
+--   entire kbfb_shift_swap_requests table directly (not just their own
+--   requests) - the app only ever queried it pre-filtered, but nothing
+--   in the database actually enforced that. Narrowed to: your own sent
+--   or received requests, or admin.
+-- =========================================================
+
+DROP POLICY IF EXISTS "kbfb_swap_select_authenticated" ON public.kbfb_shift_swap_requests;
+DROP POLICY IF EXISTS "kbfb_swap_select_own" ON public.kbfb_shift_swap_requests;
+CREATE POLICY "kbfb_swap_select_own" ON public.kbfb_shift_swap_requests
+  FOR SELECT TO authenticated
+  USING (
+    from_employee = public.kbfb_current_employee_name()
+    OR to_employee = public.kbfb_current_employee_name()
+    OR public.kbfb_is_admin()
+  );
+
+-- kbfb_update_own_avatar() and the "avatars" storage bucket are used by
+-- app.js (profile picture upload) but were set up directly in Supabase
+-- Studio earlier and never logged here - re-running this is safe/idempotent
+-- either way, so it's included now for the audit trail.
+
+ALTER TABLE public.kbfb_employees ADD COLUMN IF NOT EXISTS avatar_url text;
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('avatars', 'avatars', true)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "avatars_authenticated_upload" ON storage.objects;
+CREATE POLICY "avatars_authenticated_upload" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'avatars');
+
+DROP POLICY IF EXISTS "avatars_authenticated_update" ON storage.objects;
+CREATE POLICY "avatars_authenticated_update" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (bucket_id = 'avatars');
+
+DROP POLICY IF EXISTS "avatars_public_read" ON storage.objects;
+CREATE POLICY "avatars_public_read" ON storage.objects
+  FOR SELECT TO public
+  USING (bucket_id = 'avatars');
+
+CREATE OR REPLACE FUNCTION public.kbfb_update_own_avatar(new_avatar_url text)
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  UPDATE public.kbfb_employees
+  SET avatar_url = new_avatar_url
+  WHERE user_id = auth.uid();
+$$;
