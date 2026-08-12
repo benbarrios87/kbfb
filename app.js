@@ -2,6 +2,19 @@
 
 /* ---------- HJELPEFUNKSJONER ---------- */
 
+function toDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function toMonthKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
 function getMonday(date) {
   const d = new Date(date);
   const day = d.getDay();
@@ -444,7 +457,7 @@ function formatMonthShiftDate(weekStart, dayIndex) {
   });
 }
 async function loadMonthShiftsFromSupabase() {
-  const monthKey = viewedWeekStart.toISOString().slice(0, 7);
+  const monthKey = toMonthKey(viewedWeekStart);
 
   const { data, error } = await supabaseClient
     .from("kbfb_shifts")
@@ -515,7 +528,7 @@ const realCurrentWeekStart = getMonday(new Date());
 const shiftValues = ["", "TV", "TM", "MV", "SM", "SV", "F", "AVS", "TJ", "PERM", "MØTE", "ANNET"];
 
 function getCurrentWeekKey() {
-  return viewedWeekStart.toISOString().slice(0, 10);
+  return toDateKey(viewedWeekStart);
 }
 
 function getShiftStorageKey(cell) {
@@ -1047,7 +1060,7 @@ function renderQuickNotes() {
 }
 
 if (quickNoteDate) {
-  quickNoteDate.value = new Date().toISOString().slice(0, 10);
+  quickNoteDate.value = toDateKey(new Date());
 }
 
 document.querySelectorAll(".quick-template").forEach(button => {
@@ -1222,7 +1235,7 @@ if (eventCategory && eventTitle) {
 
 if (dateForm) {
   if (eventDate && !eventDate.value) {
-    eventDate.value = new Date().toISOString().slice(0, 10);
+    eventDate.value = toDateKey(new Date());
   }
 
   if (eventCategory && eventTitle && !eventTitle.value) {
@@ -1250,7 +1263,7 @@ await loadEventsFromSupabase();
 
     dateForm.reset();
     dateId.value = "";
-    eventDate.value = new Date().toISOString().slice(0, 10);
+    eventDate.value = toDateKey(new Date());
     eventTitle.value = defaultEventTitle(eventCategory.value);
     eventCategory.dataset.previousCategory = eventCategory.value;
 
@@ -1579,7 +1592,7 @@ function formatMonth(monthKey) {
   });
 }
 function getCurrentMonthKey() {
-  return new Date().toISOString().slice(0, 7);
+  return toMonthKey(new Date());
 }
 
 function populateSubMonthFilter() {
@@ -1615,7 +1628,7 @@ function getWeekdaysBetween(startDate, endDate) {
     const day = current.getDay();
 
     if (day !== 0 && day !== 6) {
-      dates.push(current.toISOString().slice(0, 10));
+      dates.push(toDateKey(current));
     }
 
     current.setDate(current.getDate() + 1);
@@ -1625,7 +1638,7 @@ function getWeekdaysBetween(startDate, endDate) {
 }
 
 if (subDate) {
-  subDate.value = new Date().toISOString().slice(0, 10);
+  subDate.value = toDateKey(new Date());
 }
 
 if (subForm) {
@@ -1664,7 +1677,7 @@ if (subForm) {
     await loadSubsFromSupabase();
 
     subForm.reset();
-    subDate.value = new Date().toISOString().slice(0, 10);
+    subDate.value = toDateKey(new Date());
     subEndDate.value = "";
     subStart.value = "08:30";
     subEnd.value = "16:00";
@@ -1896,7 +1909,7 @@ async function applyApprovedAbsenceToShifts(record) {
 
   for (const dateStr of weekdays) {
     const date = new Date(dateStr + "T12:00:00");
-    const weekStart = getMonday(date).toISOString().slice(0, 10);
+    const weekStart = toDateKey(getMonday(date));
     const dayIndex = date.getDay() - 1;
 
     await upsertShiftForApproval(weekStart, employee.department, record.name, dayIndex, shiftValue);
