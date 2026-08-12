@@ -904,14 +904,15 @@ async function fetchShiftValue(weekStartValue, department, employee, dayIndex) {
     .eq("department", department)
     .eq("employee", employee)
     .eq("day_index", dayIndex)
-    .maybeSingle();
+    .order("created_at", { ascending: false })
+    .limit(1);
 
   if (error) {
     console.error("Kunne ikke hente vakt for bytte:", error);
     return "";
   }
 
-  return data?.shift_value || "";
+  return data?.[0]?.shift_value || "";
 }
 
 // currentEmployee.department (from kbfb_employees) doesn't reliably match
