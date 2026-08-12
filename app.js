@@ -208,7 +208,7 @@ function getEvents() {
 function categoryLabel(category) {
   const labels = {
     general: "Generelt",
-    personal: "Personalmøte / sosialt",
+    personal: "Personalmøte",
     plandager: "Plandag",
     overnatting: "Overnatting / tur",
     foreldre: "Foreldre",
