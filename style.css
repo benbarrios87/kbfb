@@ -2116,3 +2116,22 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   text-decoration: none;
   white-space: nowrap;
 }
+
+.avatar {
+  background-size: cover;
+  background-position: center;
+}
+
+.avatar-large {
+  width: 76px;
+  height: 76px;
+  font-size: 1.6rem;
+  margin-right: 0;
+}
+
+.account-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}

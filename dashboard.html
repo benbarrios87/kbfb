@@ -149,6 +149,32 @@
           </div>
         </article>
 
+        <article class="card dash-card" id="myAccountCard">
+          <h2>👤 Min konto</h2>
+
+          <div class="account-avatar-row">
+            <span class="avatar avatar-large" id="myAvatarPreview"></span>
+            <label class="secondary-btn" for="avatarUploadInput" style="cursor: pointer;">
+              Last opp bilde
+              <input type="file" id="avatarUploadInput" accept="image/*" style="display: none;" />
+            </label>
+          </div>
+          <p id="avatarUploadStatus" class="muted"></p>
+
+          <form id="changePasswordForm" class="form-grid">
+            <label>
+              Nytt passord
+              <input type="password" id="newPassword" minlength="6" required />
+            </label>
+            <label>
+              Bekreft nytt passord
+              <input type="password" id="confirmPassword" minlength="6" required />
+            </label>
+            <button class="primary-btn form-button" type="submit">Bytt passord</button>
+          </form>
+          <p id="changePasswordStatus" class="muted"></p>
+        </article>
+
         <article class="card dash-card">
           <h2>⚡ Hurtigknapper</h2>
           <div class="dash-shortcuts">

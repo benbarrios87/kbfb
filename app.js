@@ -2905,3 +2905,124 @@ async function loadFeedbackForAdmin() {
     });
   });
 }
+
+/* ---------- MIN KONTO (passord + profilbilde) ---------- */
+
+const changePasswordForm = document.getElementById("changePasswordForm");
+const changePasswordStatus = document.getElementById("changePasswordStatus");
+
+if (changePasswordForm) {
+  changePasswordForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!changePasswordStatus) return;
+
+    const newPassword = document.getElementById("newPassword").value;
+    const confirmPassword = document.getElementById("confirmPassword").value;
+
+    if (newPassword !== confirmPassword) {
+      changePasswordStatus.textContent = "Passordene er ikke like.";
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      changePasswordStatus.textContent = "Passordet må være minst 6 tegn.";
+      return;
+    }
+
+    const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+
+    if (error) {
+      console.error("Kunne ikke bytte passord:", error);
+      changePasswordStatus.textContent = "Kunne ikke bytte passord. Prøv igjen.";
+      return;
+    }
+
+    changePasswordStatus.textContent = "Passord byttet ✓";
+    changePasswordForm.reset();
+  });
+}
+
+function renderMyAvatarPreview() {
+  const preview = document.getElementById("myAvatarPreview");
+  if (!preview || typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  if (currentEmployee.avatar_url) {
+    preview.style.backgroundImage = `url(${currentEmployee.avatar_url})`;
+    preview.textContent = "";
+  } else {
+    preview.style.backgroundImage = "";
+    preview.textContent = currentEmployee.name?.[0] || "?";
+  }
+}
+
+const avatarUploadInput = document.getElementById("avatarUploadInput");
+const avatarUploadStatus = document.getElementById("avatarUploadStatus");
+
+// Swaps the initial-letter placeholder avatars on the schedule grid for
+// real photos, for anyone who has uploaded one.
+async function applyEmployeeAvatarsToGrid() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_employees")
+    .select("name, avatar_url")
+    .not("avatar_url", "is", null);
+
+  if (error) {
+    console.error("Kunne ikke hente profilbilder:", error);
+    return;
+  }
+
+  const avatarByName = {};
+  data.forEach(emp => { avatarByName[emp.name] = emp.avatar_url; });
+
+  document.querySelectorAll(".department-table tbody tr[data-employee]").forEach(row => {
+    const url = avatarByName[row.dataset.employee];
+    const avatarSpan = row.querySelector(".person .avatar");
+    if (!avatarSpan || !url) return;
+
+    avatarSpan.style.backgroundImage = `url(${url})`;
+    avatarSpan.textContent = "";
+  });
+}
+
+if (avatarUploadInput) {
+  avatarUploadInput.addEventListener("change", async () => {
+    if (!avatarUploadStatus || typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+    const file = avatarUploadInput.files?.[0];
+    if (!file) return;
+
+    avatarUploadStatus.textContent = "Laster opp...";
+
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${currentEmployee.id}.${fileExt}`;
+
+    const { error: uploadError } = await supabaseClient.storage
+      .from("avatars")
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) {
+      console.error("Kunne ikke laste opp bilde:", uploadError);
+      avatarUploadStatus.textContent = "Kunne ikke laste opp bilde.";
+      return;
+    }
+
+    const { data: publicUrlData } = supabaseClient.storage
+      .from("avatars")
+      .getPublicUrl(filePath);
+
+    const publicUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+
+    const { error: rpcError } = await supabaseClient.rpc("kbfb_update_own_avatar", { new_avatar_url: publicUrl });
+
+    if (rpcError) {
+      console.error("Kunne ikke lagre bilde:", rpcError);
+      avatarUploadStatus.textContent = "Kunne ikke lagre bilde.";
+      return;
+    }
+
+    currentEmployee.avatar_url = publicUrl;
+    renderMyAvatarPreview();
+    applyEmployeeAvatarsToGrid();
+    avatarUploadStatus.textContent = "Bilde lagret ✓";
+  });
+}
