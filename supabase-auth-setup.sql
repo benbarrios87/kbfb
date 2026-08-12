@@ -499,3 +499,24 @@ INSERT INTO public.kbfb_supplies (item, requested_by) VALUES
   ('Plastlommer', 'Benjamin'),
   ('Tørkepapir', 'Benjamin'),
   ('Engangshansker', 'Benjamin');
+
+-- =========================================================
+-- STEP 13: kbfb_supplies - priority + admin response
+--   Requester picks "haster" vs "hadde vært fint å ha" when reporting.
+--   Admin can now decline a request too (not just mark it ordered), and
+--   either action can carry a short optional note back to the requester -
+--   same idea as the shift-swap decline reason.
+-- =========================================================
+
+ALTER TABLE public.kbfb_supplies
+  ADD COLUMN IF NOT EXISTS priority text NOT NULL DEFAULT 'nice_to_have'
+    CHECK (priority IN ('haster', 'nice_to_have'));
+
+ALTER TABLE public.kbfb_supplies
+  ADD COLUMN IF NOT EXISTS declined boolean NOT NULL DEFAULT false;
+
+ALTER TABLE public.kbfb_supplies
+  ADD COLUMN IF NOT EXISTS declined_at timestamptz;
+
+ALTER TABLE public.kbfb_supplies
+  ADD COLUMN IF NOT EXISTS admin_note text;

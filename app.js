@@ -3071,11 +3071,19 @@ if (avatarUploadInput) {
 
 const supplyForm = document.getElementById("supplyForm");
 const supplyItem = document.getElementById("supplyItem");
+const supplyPriority = document.getElementById("supplyPriority");
 const supplyOpenList = document.getElementById("supplyOpenList");
 const supplyOrderedList = document.getElementById("supplyOrderedList");
 const supplyOrderedSection = document.getElementById("supplyOrderedSection");
+const supplyDeclinedList = document.getElementById("supplyDeclinedList");
+const supplyDeclinedSection = document.getElementById("supplyDeclinedSection");
 
 let suppliesCache = [];
+
+const supplyPriorityLabel = {
+  haster: "🔥 Haster",
+  nice_to_have: "🙂 Hadde vært fint å ha"
+};
 
 async function loadSuppliesFromSupabase() {
   const { data, error } = await supabaseClient
@@ -3096,18 +3104,29 @@ function renderSupplies() {
   if (!supplyOpenList) return;
 
   const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
-  const open = suppliesCache.filter(s => !s.ordered);
+  const open = [...suppliesCache.filter(s => !s.ordered && !s.declined)]
+    .sort((a, b) => (a.priority === "haster" ? 0 : 1) - (b.priority === "haster" ? 0 : 1));
   const ordered = suppliesCache.filter(s => s.ordered);
+  const declined = suppliesCache.filter(s => s.declined);
 
   supplyOpenList.innerHTML = open.length
     ? open.map(s => `
       <div class="summary-item">
         <strong>${s.item}</strong>
-        <span>Meldt av ${s.requested_by}</span>
+        <span>${supplyPriorityLabel[s.priority] || ""} · Meldt av ${s.requested_by}</span>
         ${isAdmin ? `
           <div style="display: flex; gap: 8px; margin-top: 6px;">
             <button class="secondary-btn" type="button" data-mark-ordered="${s.id}">Bestilt ✓</button>
+            <button class="secondary-btn" type="button" data-decline-supply="${s.id}">Avslå</button>
             <button class="secondary-btn" type="button" data-delete-supply="${s.id}">Fjern</button>
+          </div>
+          <div data-order-box="${s.id}" style="display: none; margin-top: 8px; display: grid; gap: 6px;">
+            <input type="text" placeholder="Kommentar (valgfritt)..." data-order-note-input="${s.id}" />
+            <button class="secondary-btn" type="button" data-confirm-order="${s.id}" style="width: fit-content;">Bekreft bestilling</button>
+          </div>
+          <div data-decline-box="${s.id}" style="display: none; margin-top: 8px; display: grid; gap: 6px;">
+            <input type="text" placeholder="Grunn (valgfritt)..." data-decline-note-input="${s.id}" />
+            <button class="secondary-btn" type="button" data-confirm-decline="${s.id}" style="width: fit-content;">Bekreft avslag</button>
           </div>
         ` : ""}
       </div>
@@ -3122,22 +3141,77 @@ function renderSupplies() {
     supplyOrderedList.innerHTML = ordered.map(s => `
       <div class="summary-item">
         <strong>${s.item}</strong>
-        <span>Meldt av ${s.requested_by} · Bestilt ✓</span>
+        <span>Meldt av ${s.requested_by} · Bestilt ✓${s.admin_note ? ` · ${s.admin_note}` : ""}</span>
+        ${isAdmin ? `<button class="secondary-btn" type="button" data-delete-supply="${s.id}" style="margin-top: 6px; width: fit-content;">Fjern</button>` : ""}
+      </div>
+    `).join("");
+  }
+
+  if (supplyDeclinedSection) {
+    supplyDeclinedSection.style.display = declined.length ? "" : "none";
+  }
+
+  if (supplyDeclinedList) {
+    supplyDeclinedList.innerHTML = declined.map(s => `
+      <div class="summary-item">
+        <strong>${s.item}</strong>
+        <span>Meldt av ${s.requested_by} · Avslått${s.admin_note ? ` · ${s.admin_note}` : ""}</span>
         ${isAdmin ? `<button class="secondary-btn" type="button" data-delete-supply="${s.id}" style="margin-top: 6px; width: fit-content;">Fjern</button>` : ""}
       </div>
     `).join("");
   }
 
   document.querySelectorAll("[data-mark-ordered]").forEach(button => {
+    button.addEventListener("click", () => {
+      const box = document.querySelector(`[data-order-box="${button.dataset.markOrdered}"]`);
+      if (box) box.style.display = "grid";
+    });
+  });
+
+  document.querySelectorAll("[data-confirm-order]").forEach(button => {
     button.addEventListener("click", async () => {
+      const id = button.dataset.confirmOrder;
+      const noteInput = document.querySelector(`[data-order-note-input="${id}"]`);
+      const note = noteInput?.value.trim() || null;
+
       button.disabled = true;
       const { error } = await supabaseClient
         .from("kbfb_supplies")
-        .update({ ordered: true, ordered_at: new Date().toISOString() })
-        .eq("id", button.dataset.markOrdered);
+        .update({ ordered: true, ordered_at: new Date().toISOString(), admin_note: note })
+        .eq("id", id);
 
       if (error) {
         alert("Kunne ikke merke som bestilt: " + error.message);
+        button.disabled = false;
+        return;
+      }
+
+      await loadSuppliesFromSupabase();
+      renderSupplies();
+    });
+  });
+
+  document.querySelectorAll("[data-decline-supply]").forEach(button => {
+    button.addEventListener("click", () => {
+      const box = document.querySelector(`[data-decline-box="${button.dataset.declineSupply}"]`);
+      if (box) box.style.display = "grid";
+    });
+  });
+
+  document.querySelectorAll("[data-confirm-decline]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.confirmDecline;
+      const noteInput = document.querySelector(`[data-decline-note-input="${id}"]`);
+      const note = noteInput?.value.trim() || null;
+
+      button.disabled = true;
+      const { error } = await supabaseClient
+        .from("kbfb_supplies")
+        .update({ declined: true, declined_at: new Date().toISOString(), admin_note: note })
+        .eq("id", id);
+
+      if (error) {
+        alert("Kunne ikke avslå: " + error.message);
         button.disabled = false;
         return;
       }
@@ -3178,7 +3252,11 @@ if (supplyForm) {
 
     const { error } = await supabaseClient
       .from("kbfb_supplies")
-      .insert([{ item: supplyItem.value.trim(), requested_by: currentEmployee.name }]);
+      .insert([{
+        item: supplyItem.value.trim(),
+        requested_by: currentEmployee.name,
+        priority: supplyPriority?.value || "nice_to_have"
+      }]);
 
     if (error) {
       console.error("Kunne ikke legge til bestilling:", error);

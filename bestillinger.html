@@ -64,6 +64,13 @@
             Hva trengs?
             <input type="text" id="supplyItem" placeholder="F.eks. dopapir" required />
           </label>
+          <label>
+            Prioritet
+            <select id="supplyPriority" required>
+              <option value="nice_to_have">🙂 Hadde vært fint å ha</option>
+              <option value="haster">🔥 Haster</option>
+            </select>
+          </label>
           <button class="primary-btn form-button" type="submit">Legg til</button>
         </form>
       </section>
@@ -88,6 +95,16 @@
           </div>
         </div>
         <div id="supplyOrderedList" class="summary-list"></div>
+      </section>
+
+      <section class="card" id="supplyDeclinedSection" style="display: none;">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Ikke aktuelt</p>
+            <h2>Avslått</h2>
+          </div>
+        </div>
+        <div id="supplyDeclinedList" class="summary-list"></div>
       </section>
     </main>
   </div>
