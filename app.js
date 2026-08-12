@@ -562,7 +562,11 @@ function colorShiftSelect(select) {
 }
 
 function buildShiftDropdowns() {
-  const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
+  const isAdmin = typeof currentEmployee !== "undefined" &&
+    !!(currentEmployee?.is_admin || currentEmployee?.role === "Avdelingsleder");
+
+  const shiftEditHelp = document.getElementById("shiftEditHelp");
+  if (shiftEditHelp) shiftEditHelp.style.display = isAdmin ? "" : "none";
 
   document.querySelectorAll(".shift-cell").forEach(cell => {
     const row = cell.closest("tr");
