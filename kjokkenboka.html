@@ -91,14 +91,18 @@
       <section class="card">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Oversikt</p>
-            <h2>Beskjeder</h2>
+            <p class="eyebrow" id="kitchenWeekLabel">Ukesoversikt</p>
+            <h2>Beskjeder denne uka</h2>
           </div>
-          <button id="clearQuickNotes" class="secondary-btn">Tøm testdata</button>
+          <div class="week-controls">
+            <button id="kitchenPrevWeek" type="button">← Forrige uke</button>
+            <button id="kitchenCurrentWeek" type="button">Denne uka</button>
+            <button id="kitchenNextWeek" type="button">Neste uke →</button>
+          </div>
         </div>
 
-        <div id="quickNoteFeed" class="kitchen-feed">
-          <p class="muted">Ingen beskjeder ennå.</p>
+        <div id="quickNoteFeed" class="kitchen-week-grid">
+          <p class="muted">Laster...</p>
         </div>
       </section>
     </main>

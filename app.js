@@ -1325,7 +1325,8 @@ const quickNoteAuthorDisplay = document.getElementById("quickNoteAuthorDisplay")
 const quickNoteDate = document.getElementById("quickNoteDate");
 const quickNoteText = document.getElementById("quickNoteText");
 const quickNoteFeed = document.getElementById("quickNoteFeed");
-const clearQuickNotes = document.getElementById("clearQuickNotes");
+
+let kitchenViewedWeekStart = getMonday(new Date());
 
 async function loadNotesFromSupabase() {
   const { data, error } = await supabaseClient
@@ -1383,38 +1384,40 @@ function renderQuickNoteAuthor() {
   }
 }
 
+const dayNamesLong = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag"];
+
 function renderQuickNotes() {
   if (!quickNoteFeed) return;
 
-  const notes = notesCache;
-
-  if (!notes.length) {
-    quickNoteFeed.innerHTML = `<p class="muted">Ingen beskjeder ennå.</p>`;
-    return;
+  const kitchenWeekLabel = document.getElementById("kitchenWeekLabel");
+  if (kitchenWeekLabel) {
+    const weekNumber = getWeekNumber(kitchenViewedWeekStart);
+    const friday = addDays(kitchenViewedWeekStart, 4);
+    kitchenWeekLabel.textContent =
+      `Uke ${weekNumber} · ${formatShortDate(kitchenViewedWeekStart)}–${formatShortDate(friday)}`;
   }
 
-  const grouped = {};
+  quickNoteFeed.innerHTML = dayNamesLong.map((dayName, dayIndex) => {
+    const date = addDays(kitchenViewedWeekStart, dayIndex);
+    const dateKey = toDateKey(date);
+    const dayNotes = notesCache.filter(note => note.date === dateKey);
 
-  notes.forEach(note => {
-    if (!grouped[note.date]) grouped[note.date] = [];
-    grouped[note.date].push(note);
-  });
+    return `
+      <div class="kitchen-day">
+        <h3>${dayName}<span class="kitchen-day-date">${formatShortDate(date)}</span></h3>
 
-  quickNoteFeed.innerHTML = Object.entries(grouped).map(([date, dayNotes]) => `
-    <div class="kitchen-day">
-      <h3>${formatKitchenDate(date)}</h3>
-
-      ${dayNotes.map(note => `
-        <article class="kitchen-entry">
-          <div class="kitchen-entry-top">
-            <strong>${note.author}</strong>
-            ${canDeleteNote(note) ? `<button class="kitchen-delete" data-quick-note-id="${note.id}">Slett</button>` : ""}
-          </div>
-          <p>${note.text}</p>
-        </article>
-      `).join("")}
-    </div>
-  `).join("");
+        ${dayNotes.length ? dayNotes.map(note => `
+          <article class="kitchen-entry">
+            <div class="kitchen-entry-top">
+              <strong>${note.author}</strong>
+              ${canDeleteNote(note) ? `<button class="kitchen-delete" data-quick-note-id="${note.id}">Slett</button>` : ""}
+            </div>
+            <p>${note.text}</p>
+          </article>
+        `).join("") : `<p class="muted">Ingen beskjeder.</p>`}
+      </div>
+    `;
+  }).join("");
 
   document.querySelectorAll("[data-quick-note-id]").forEach(button => {
     button.addEventListener("click", async () => {
@@ -1423,6 +1426,31 @@ function renderQuickNotes() {
       renderQuickNotes();
       renderDashboardKitchenNotes();
     });
+  });
+}
+
+const kitchenPrevWeek = document.getElementById("kitchenPrevWeek");
+const kitchenNextWeek = document.getElementById("kitchenNextWeek");
+const kitchenCurrentWeek = document.getElementById("kitchenCurrentWeek");
+
+if (kitchenPrevWeek) {
+  kitchenPrevWeek.addEventListener("click", () => {
+    kitchenViewedWeekStart = addWeeks(kitchenViewedWeekStart, -1);
+    renderQuickNotes();
+  });
+}
+
+if (kitchenNextWeek) {
+  kitchenNextWeek.addEventListener("click", () => {
+    kitchenViewedWeekStart = addWeeks(kitchenViewedWeekStart, 1);
+    renderQuickNotes();
+  });
+}
+
+if (kitchenCurrentWeek) {
+  kitchenCurrentWeek.addEventListener("click", () => {
+    kitchenViewedWeekStart = getMonday(new Date());
+    renderQuickNotes();
   });
 }
 
@@ -1458,14 +1486,12 @@ if (quickNoteForm) {
 
     quickNoteText.value = "";
 
+    // Jump the week view to wherever the note landed, so it's visible
+    // right away even if it's for a different week than the one showing.
+    kitchenViewedWeekStart = getMonday(new Date(note.date + "T12:00:00"));
+
     renderQuickNotes();
     renderDashboardKitchenNotes();
-  });
-}
-
-if (clearQuickNotes) {
-  clearQuickNotes.addEventListener("click", () => {
-    alert("Tøm testdata er skrudd av nå som kjøkkenboka bruker Supabase.");
   });
 }
 
