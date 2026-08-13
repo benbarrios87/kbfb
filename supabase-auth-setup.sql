@@ -576,3 +576,15 @@ AS $$
   SET avatar_url = new_avatar_url
   WHERE user_id = auth.uid();
 $$;
+
+-- =========================================================
+-- STEP 15: kbfb_employee_settings.tjenestefri_days
+--   Same idea as vacation_days (25 default) but for "tjenestefri" - a
+--   10-day-per-year quota, admin-adjustable per employee. Shown as
+--   "used/quota" on the yearly summary card, same as feriedager already
+--   was. (vacation_days itself isn't in this file - it was added directly
+--   in Supabase Studio earlier and never logged here.)
+-- =========================================================
+
+ALTER TABLE public.kbfb_employee_settings
+  ADD COLUMN IF NOT EXISTS tjenestefri_days int NOT NULL DEFAULT 10;

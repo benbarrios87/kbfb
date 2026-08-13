@@ -1850,6 +1850,23 @@ async function deleteSubFromSupabase(id) {
   }
 }
 
+async function updateSubToSupabase(id, fields) {
+  const { error } = await supabaseClient
+    .from("kbfb_sub_hours")
+    .update(fields)
+    .eq("id", id);
+
+  if (error) {
+    console.error("Kunne ikke oppdatere vikarvakt:", error);
+    return false;
+  }
+
+  return true;
+}
+
+const subDepartmentOptions = ["Sommerfuglen", "Regnbuen", "Begge", "Annet"];
+let editingSubId = null;
+
 function renderSubs() {
   if (!subTableBody || !subSummary) return;
 
@@ -1860,18 +1877,54 @@ function renderSubs() {
     return;
   }
 
+  const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
+
   subsCache.forEach(sub => {
     const row = document.createElement("tr");
 
-    row.innerHTML = `
-      <td>${formatNorwegianDate(sub.date)}</td>
-      <td>${renderVikarBadge(sub.name)}</td>
-      <td>${escapeHtml(sub.department)}</td>
-      <td>${sub.start_time || ""}–${sub.end_time || ""}</td>
-      <td>${sub.hours || 0}</td>
-      <td>${escapeHtml(sub.note)}</td>
-      <td>${typeof currentEmployee !== "undefined" && currentEmployee?.is_admin ? `<button class="kitchen-delete" data-sub-id="${sub.id}">Slett</button>` : ""}</td>
-    `;
+    if (isAdmin && sub.id === editingSubId) {
+      row.innerHTML = `
+        <td><input type="date" class="sub-edit-date" value="${sub.date || ""}" /></td>
+        <td>
+          <select class="sub-edit-name">
+            ${subPeopleCache.map(p => `<option value="${escapeHtml(p.name)}" ${p.name === sub.name ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("")}
+          </select>
+        </td>
+        <td>
+          <select class="sub-edit-department">
+            ${subDepartmentOptions.map(d => `<option value="${d}" ${d === sub.department ? "selected" : ""}>${d}</option>`).join("")}
+          </select>
+        </td>
+        <td>
+          <input type="time" class="sub-edit-start" value="${sub.start_time || ""}" style="width: 90px;" />
+          –
+          <input type="time" class="sub-edit-end" value="${sub.end_time || ""}" style="width: 90px;" />
+        </td>
+        <td>${sub.hours || 0}</td>
+        <td><input type="text" class="sub-edit-note" value="${escapeHtml(sub.note)}" /></td>
+        <td>
+          <div style="display: flex; gap: 6px;">
+            <button class="secondary-btn" data-sub-save-id="${sub.id}">Lagre</button>
+            <button class="secondary-btn" data-sub-cancel-id="${sub.id}">Avbryt</button>
+          </div>
+        </td>
+      `;
+    } else {
+      row.innerHTML = `
+        <td>${formatNorwegianDate(sub.date)}</td>
+        <td>${renderVikarBadge(sub.name)}</td>
+        <td>${escapeHtml(sub.department)}</td>
+        <td>${sub.start_time || ""}–${sub.end_time || ""}</td>
+        <td>${sub.hours || 0}</td>
+        <td>${escapeHtml(sub.note)}</td>
+        <td>${isAdmin ? `
+          <div style="display: flex; gap: 6px;">
+            <button class="secondary-btn" data-sub-edit-id="${sub.id}">Endre</button>
+            <button class="kitchen-delete" data-sub-id="${sub.id}">Slett</button>
+          </div>
+        ` : ""}</td>
+      `;
+    }
 
     subTableBody.appendChild(row);
   });
@@ -1881,6 +1934,50 @@ function renderSubs() {
   document.querySelectorAll("[data-sub-id]").forEach(button => {
     button.addEventListener("click", async () => {
       await deleteSubFromSupabase(button.dataset.subId);
+      await loadSubsFromSupabase();
+      renderSubs();
+      renderDashboardSubs();
+    });
+  });
+
+  document.querySelectorAll("[data-sub-edit-id]").forEach(button => {
+    button.addEventListener("click", () => {
+      editingSubId = button.dataset.subEditId;
+      renderSubs();
+    });
+  });
+
+  document.querySelectorAll("[data-sub-cancel-id]").forEach(button => {
+    button.addEventListener("click", () => {
+      editingSubId = null;
+      renderSubs();
+    });
+  });
+
+  document.querySelectorAll("[data-sub-save-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const row = button.closest("tr");
+      const hours = calculateHours(
+        row.querySelector(".sub-edit-start").value,
+        row.querySelector(".sub-edit-end").value
+      );
+
+      const saved = await updateSubToSupabase(button.dataset.subSaveId, {
+        date: row.querySelector(".sub-edit-date").value,
+        name: row.querySelector(".sub-edit-name").value,
+        department: row.querySelector(".sub-edit-department").value,
+        start_time: row.querySelector(".sub-edit-start").value,
+        end_time: row.querySelector(".sub-edit-end").value,
+        hours,
+        note: row.querySelector(".sub-edit-note").value.trim()
+      });
+
+      if (!saved) {
+        alert("Kunne ikke lagre endringen. Prøv igjen.");
+        return;
+      }
+
+      editingSubId = null;
       await loadSubsFromSupabase();
       renderSubs();
       renderDashboardSubs();
@@ -2162,6 +2259,34 @@ async function saveVacationDaysToSupabase(name, days) {
   }
 }
 
+function getTjenestefriDaysFor(name) {
+  const setting = employeeSettingsCache.find(s => s.employee === name);
+  return setting && setting.tjenestefri_days != null ? setting.tjenestefri_days : 10;
+}
+
+async function saveTjenestefriDaysToSupabase(name, days) {
+  const { data, error } = await supabaseClient
+    .from("kbfb_employee_settings")
+    .update({ tjenestefri_days: days })
+    .eq("employee", name)
+    .select();
+
+  if (error) {
+    console.error("Kunne ikke oppdatere tjenestefri-dager:", error);
+    return;
+  }
+
+  if (!data || !data.length) {
+    const { error: insertError } = await supabaseClient
+      .from("kbfb_employee_settings")
+      .insert([{ employee: name, tjenestefri_days: days }]);
+
+    if (insertError) {
+      console.error("Kunne ikke opprette tjenestefri-rad:", insertError);
+    }
+  }
+}
+
 function renderVacationQuotaEditor() {
   const container = document.getElementById("vacationQuotaList");
   if (!container) return;
@@ -2172,6 +2297,8 @@ function renderVacationQuotaEditor() {
       <span>
         Feriedager:
         <input type="number" min="0" step="1" class="vacation-days-input" data-employee="${escapeHtml(employee.name)}" value="${getVacationDaysFor(employee.name)}" style="width:60px;" />
+        &nbsp;&nbsp;Tjenestefri-dager:
+        <input type="number" min="0" step="1" class="tjenestefri-days-input" data-employee="${escapeHtml(employee.name)}" value="${getTjenestefriDaysFor(employee.name)}" style="width:60px;" />
       </span>
     </div>
   `).join("");
@@ -2180,6 +2307,15 @@ function renderVacationQuotaEditor() {
     input.addEventListener("change", async () => {
       const days = Number(input.value) || 0;
       await saveVacationDaysToSupabase(input.dataset.employee, days);
+      await loadEmployeeSettingsFromSupabase();
+      renderAbsences();
+    });
+  });
+
+  container.querySelectorAll(".tjenestefri-days-input").forEach(input => {
+    input.addEventListener("change", async () => {
+      const days = Number(input.value) || 0;
+      await saveTjenestefriDaysToSupabase(input.dataset.employee, days);
       await loadEmployeeSettingsFromSupabase();
       renderAbsences();
     });
@@ -2485,7 +2621,7 @@ function renderAbsenceSummary(records) {
 
         <div>🌴 Ferie: <strong>${t.ferie}/${getVacationDaysFor(name)}</strong> dager</div>
 
-        <div>🏡 Tjenestefri: <strong>${t.tjenestefri}</strong> dager</div>
+        <div>🏡 Tjenestefri: <strong>${t.tjenestefri}/${getTjenestefriDaysFor(name)}</strong> dager</div>
 
         <div>💰 Overtid: <strong>${t.overtid.toFixed(1)}</strong> t</div>
 
