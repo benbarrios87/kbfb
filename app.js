@@ -156,7 +156,8 @@ function populateEmployeeSelect(selectId, options = {}) {
   const {
     includeBlank = true,
     blankText = "Velg ansatt",
-    includeAll = false
+    includeAll = false,
+    departmentFilter = null
   } = options;
 
   select.innerHTML = "";
@@ -169,7 +170,11 @@ function populateEmployeeSelect(selectId, options = {}) {
     select.innerHTML += `<option value="">${blankText}</option>`;
   }
 
-  employeesCache.forEach(employee => {
+  const list = departmentFilter
+    ? employeesCache.filter(employee => employee.department === departmentFilter)
+    : employeesCache;
+
+  list.forEach(employee => {
     select.innerHTML += `
       <option value="${escapeHtml(employee.name)}">
         ${escapeHtml(employee.name)}
@@ -2728,12 +2733,21 @@ function lockAbsenceNameToSelf() {
 function lockAbsenceFilterToSelf() {
   if (!absenceFilter || typeof currentEmployee === "undefined" || !currentEmployee) return;
 
-  if (!currentEmployee.is_admin) {
+  if (currentEmployee.is_admin) {
+    absenceFilter.disabled = false;
+  } else if (currentEmployee.role === "Avdelingsleder") {
+    // Sees their own department's overview, not locked to just themselves -
+    // matches what the database actually allows them to read.
+    populateEmployeeSelect("absenceFilter", {
+      includeBlank: false,
+      includeAll: true,
+      departmentFilter: currentEmployee.department
+    });
+    absenceFilter.disabled = false;
+  } else {
     absenceFilter.innerHTML = `<option value="${escapeHtml(currentEmployee.name)}">${escapeHtml(currentEmployee.name)}</option>`;
     absenceFilter.value = currentEmployee.name;
     absenceFilter.disabled = true;
-  } else {
-    absenceFilter.disabled = false;
   }
 
   renderAbsences();

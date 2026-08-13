@@ -588,3 +588,36 @@ $$;
 
 ALTER TABLE public.kbfb_employee_settings
   ADD COLUMN IF NOT EXISTS tjenestefri_days int NOT NULL DEFAULT 10;
+
+-- =========================================================
+-- STEP 16: Avdelingsleder can see their own department's absence
+--   overview (Mari sees Regnbuen, Imelda sees Sommerfuglen), not just
+--   their own records. Still read-only - approving/declining requests
+--   and editing quotas both stay admin-only.
+-- =========================================================
+
+CREATE OR REPLACE FUNCTION public.kbfb_current_employee_department()
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT department FROM public.kbfb_employees WHERE user_id = auth.uid();
+$$;
+
+DROP POLICY IF EXISTS "kbfb_absences_select_own_or_admin" ON public.kbfb_absences;
+DROP POLICY IF EXISTS "kbfb_absences_select_own_admin_or_department" ON public.kbfb_absences;
+CREATE POLICY "kbfb_absences_select_own_admin_or_department" ON public.kbfb_absences
+  FOR SELECT TO authenticated
+  USING (
+    name = public.kbfb_current_employee_name()
+    OR public.kbfb_is_admin()
+    OR (
+      public.kbfb_current_employee_role() = 'Avdelingsleder'
+      AND name IN (
+        SELECT e.name FROM public.kbfb_employees e
+        WHERE e.department = public.kbfb_current_employee_department()
+      )
+    )
+  );
