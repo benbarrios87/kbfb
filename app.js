@@ -2710,6 +2710,8 @@ const noApprovalNeededTypes = [
   "Egenmelding", "Sykemelding", "Omsorgsdager"
 ];
 
+const avspaseringTypes = ["Avspasering opptjent", "Avspasering brukt"];
+
 function updateAbsenceStatusVisibility() {
   if (!absenceType || !absenceStatusField || !absenceStatus) return;
 
@@ -2722,6 +2724,18 @@ function updateAbsenceStatusVisibility() {
       absenceStatus.value = "Ønsket";
     }
   }
+
+  // Avspasering is an hours ledger, not a day-range - skip the dates and
+  // require a note explaining what it's for instead (e.g. "kveldsmøte").
+  const isAvspasering = avspaseringTypes.includes(absenceType.value);
+  const startField = document.getElementById("absenceStartDateField");
+  const endField = document.getElementById("absenceEndDateField");
+
+  if (startField) startField.style.display = isAvspasering ? "none" : "";
+  if (endField) endField.style.display = isAvspasering ? "none" : "";
+  if (absenceStartDate) absenceStartDate.required = !isAvspasering;
+  if (absenceEndDate) absenceEndDate.required = !isAvspasering;
+  if (absenceNote) absenceNote.required = isAvspasering;
 }
 
 if (absenceType) {
@@ -2733,11 +2747,14 @@ if (absenceForm) {
   absenceForm.addEventListener("submit", async event => {
     event.preventDefault();
 
+    const todayKey = toDateKey(new Date());
+    const isAvspaseringEntry = avspaseringTypes.includes(absenceType.value);
+
     const record = {
       name: absenceName.value,
       type: absenceType.value,
-      start_date: absenceStartDate.value,
-      end_date: absenceEndDate.value,
+      start_date: isAvspaseringEntry ? todayKey : absenceStartDate.value,
+      end_date: isAvspaseringEntry ? todayKey : absenceEndDate.value,
       hours: absenceHours.value ? Number(absenceHours.value) : null,
       status: absenceStatus.value,
       note: absenceNote.value.trim()
