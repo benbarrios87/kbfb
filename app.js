@@ -2208,6 +2208,9 @@ const absenceStatus = document.getElementById("absenceStatus");
 const absenceStatusField = document.getElementById("absenceStatusField");
 const absenceNote = document.getElementById("absenceNote");
 const absenceFilter = document.getElementById("absenceFilter");
+if (absenceFilter) {
+  absenceFilter.addEventListener("change", renderAbsences);
+}
 const absenceSummary = document.getElementById("absenceSummary");
 const absenceTableBody = document.getElementById("absenceTableBody");
 const clearAbsences = document.getElementById("clearAbsences");
