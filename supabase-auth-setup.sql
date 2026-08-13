@@ -625,3 +625,33 @@ CREATE POLICY "kbfb_absences_select_own_admin_or_department" ON public.kbfb_abse
       )
     )
   );
+
+-- =========================================================
+-- STEP 17: kbfb_kind_messages ("Hyggelig beskjed" dashboard widget)
+--   A small shared board for friendly notes to colleagues. Anyone can
+--   post, everyone can read, and you can remove your own (or admin can
+--   remove any).
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_kind_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  author text NOT NULL,
+  text text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_kind_messages ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_kind_messages_select_all" ON public.kbfb_kind_messages;
+CREATE POLICY "kbfb_kind_messages_select_all" ON public.kbfb_kind_messages
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "kbfb_kind_messages_insert_own" ON public.kbfb_kind_messages;
+CREATE POLICY "kbfb_kind_messages_insert_own" ON public.kbfb_kind_messages
+  FOR INSERT TO authenticated
+  WITH CHECK (author = public.kbfb_current_employee_name());
+
+DROP POLICY IF EXISTS "kbfb_kind_messages_delete_own_or_admin" ON public.kbfb_kind_messages;
+CREATE POLICY "kbfb_kind_messages_delete_own_or_admin" ON public.kbfb_kind_messages
+  FOR DELETE TO authenticated
+  USING (author = public.kbfb_current_employee_name() OR public.kbfb_is_admin());

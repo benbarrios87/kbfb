@@ -70,6 +70,19 @@
         <article class="card dash-card large">
           <div class="section-heading">
             <div>
+              <p class="eyebrow">I dag</p>
+              <h2>👥 Hvem jobber</h2>
+            </div>
+            <a class="mini-link" href="vakter.html">Åpne</a>
+          </div>
+          <div id="dashboardTodayShifts" class="compact-feed">
+            <p class="muted">Laster...</p>
+          </div>
+        </article>
+
+        <article class="card dash-card large">
+          <div class="section-heading">
+            <div>
               <p class="eyebrow">Denne uka</p>
               <h2>📖 Kjøkkenboka</h2>
             </div>
@@ -83,78 +96,25 @@
         <article class="card dash-card">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Denne uka</p>
-              <h2>🕒 Vikarer</h2>
+              <p class="eyebrow">Kommende</p>
+              <h2>📆 Datoer</h2>
             </div>
-            <a class="mini-link" href="vikarer.html">Åpne</a>
+            <a class="mini-link" href="datoer.html">Åpne</a>
           </div>
-          <div id="dashboardSubs" class="compact-feed">
-            <p class="muted">Ingen vikarvakter denne uka.</p>
+          <div id="dashboardEvents" class="compact-feed">
+            <p class="muted">Ingen kommende datoer.</p>
           </div>
         </article>
 
-        <article class="card dash-card">
+        <article class="card dash-card" id="weatherCard">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Denne uka</p>
-              <h2>🌴 Fravær/overtid</h2>
-            </div>
-            <a class="mini-link" href="ferieogavspasering.html">Åpne</a>
-          </div>
-          <div id="dashboardAbsences" class="compact-feed">
-            <p class="muted">Ingen fravær registrert denne uka.</p>
-          </div>
-        </article>
-
-        <article class="card dash-card large">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Oversikt</p>
-              <h2>📅 Vaktplan</h2>
-            </div>
-            <a class="mini-link" href="vakter.html">Åpne</a>
-          </div>
-
-          <div class="department-snapshot">
-            <div>
-              <h3>🦋 Sommerfuglen</h3>
-              <p>Imelda · Nika · Irina · Lola · Benjamin</p>
-            </div>
-            <div>
-              <h3>🌈 Regnbuen</h3>
-              <p>Mari · Marianne R · Valantis · Marianne L</p>
+              <p class="eyebrow">Vøyenenga</p>
+              <h2>🌤 Vær</h2>
             </div>
           </div>
-        </article>
-
-        <article class="card dash-card">
-  <div class="section-heading">
-    <div>
-      <p class="eyebrow">Denne uka</p>
-      <h2>📆 Datoer</h2>
-    </div>
-    <a class="mini-link" href="datoer.html">Åpne</a>
-  </div>
-  <div id="dashboardEvents" class="compact-feed">
-    <p class="muted">Ingen datoer denne uka.</p>
-  </div>
-</article>
-        
-        <article class="card dash-card">
-          <h2>🏕️ Aktiviteter</h2>
-          <div class="compact-feed">
-            <div class="compact-item">
-              <strong>Tirsdag</strong>
-              <span>Ekornovernatting</span>
-            </div>
-            <div class="compact-item">
-              <strong>Onsdag</strong>
-              <span>Kontordag Benjamin</span>
-            </div>
-            <div class="compact-item">
-              <strong>Torsdag</strong>
-              <span>Klubbdag</span>
-            </div>
+          <div id="dashboardWeather" class="compact-feed">
+            <p class="muted">Henter værmelding...</p>
           </div>
         </article>
 
@@ -208,6 +168,18 @@
             <a data-hide-from-vikar href="filarkiv.html">📁 Filarkiv</a>
             <a data-hide-from-vikar href="turbank.html">🏕️ Turbank</a>
           </div>
+        </article>
+
+        <article class="card dash-card large" id="kindMessageCard">
+          <h2>💛 Hyggelig beskjed</h2>
+          <p class="muted">Send noe hyggelig til en kollega.</p>
+
+          <form id="kindMessageForm" class="quick-note-form">
+            <textarea id="kindMessageText" rows="2" placeholder="Skriv noe hyggelig..." required></textarea>
+            <button class="primary-btn form-button" type="submit">Send</button>
+          </form>
+
+          <div id="kindMessageFeed" class="compact-feed" style="margin-top: 14px;"></div>
         </article>
       </section>
     </main>

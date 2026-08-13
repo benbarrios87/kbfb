@@ -99,10 +99,10 @@ function shortDate(dateString) {
 
 let notesCache = [];
 
-// Declared this early (not down by the rest of the vikarer.html code) because
-// dashboard.html's updateDashboardWeek() -> renderDashboardSubs() reads it
-// synchronously at page-load time, before the script has reached that part
-// of the file - same reason notesCache lives up here too.
+// Declared this early (not down by the rest of the vikarer.html code) to
+// avoid the same category of temporal-dead-zone bug notesCache had - a
+// synchronous top-level call reaching this before the script got to the
+// vikarer.html section further down.
 let subsCache = [];
 let subPeopleCache = [];
 
@@ -274,8 +274,6 @@ const dashboardPrevWeek = document.getElementById("dashboardPrevWeek");
 const dashboardNextWeek = document.getElementById("dashboardNextWeek");
 const dashboardCurrentWeek = document.getElementById("dashboardCurrentWeek");
 const dashboardKitchenNotes = document.getElementById("dashboardKitchenNotes");
-const dashboardSubs = document.getElementById("dashboardSubs");
-const dashboardAbsences = document.getElementById("dashboardAbsences");
 const dashboardEvents = document.getElementById("dashboardEvents");
 
 let dashboardViewedWeekStart = getMonday(new Date());
@@ -286,32 +284,23 @@ function dateIsInDashboardWeek(dateString) {
   return eventIsInWeek(dateString, dashboardViewedWeekStart);
 }
 
-function dateRangeTouchesDashboardWeek(startDate, endDate) {
-  if (!startDate || !endDate) return false;
-
-  const start = new Date(startDate + "T12:00:00");
-  const end = new Date(endDate + "T12:00:00");
-  const weekStart = new Date(dashboardViewedWeekStart);
-  const weekEnd = addDays(weekStart, 4);
-
-  return start <= weekEnd && end >= weekStart;
-}
-
 function renderDashboardEvents() {
   if (!dashboardEvents) return;
 
-  const events = getEvents()
-    .filter(event => eventIsInWeek(event.date, dashboardViewedWeekStart))
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
+  const todayKey = toDateKey(new Date());
+  const upcoming = getEvents()
+    .filter(event => event.date >= todayKey)
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .slice(0, 5);
 
-  dashboardEvents.innerHTML = events.length
-    ? events.map(event => `
+  dashboardEvents.innerHTML = upcoming.length
+    ? upcoming.map(event => `
       <div class="compact-item">
         <strong>${categoryEmoji(event.category)} ${formatKitchenDate(event.date)}</strong>
         <span>${escapeHtml(event.title)}${event.note ? ` · ${escapeHtml(event.note)}` : ""}</span>
       </div>
     `).join("")
-    : `<p class="muted">Ingen datoer denne uka.</p>`;
+    : `<p class="muted">Ingen kommende datoer.</p>`;
 }
 
 function renderDashboardKitchenNotes() {
@@ -330,39 +319,199 @@ function renderDashboardKitchenNotes() {
     `).join("")
     : `<p class="muted">Ingen beskjeder denne uka.</p>`;
 }
-function renderDashboardSubs() {
-  if (!dashboardSubs) return;
 
-  const subs = subsCache
-    .filter(sub => dateIsInDashboardWeek(sub.date))
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
+const departmentEmoji = { Sommerfuglen: "🦋", Regnbuen: "🌈" };
 
-  dashboardSubs.innerHTML = subs.length
-    ? subs.map(sub => `
-      <div class="compact-item">
-       <strong>${formatKitchenDate(sub.date)} · ${renderVikarBadge(sub.name)}</strong>
-       <span>${sub.department} · ${sub.start_time}–${sub.end_time} · ${sub.hours} timer</span>
+// "Hvem jobber i dag" - today's on-duty staff per department, independent
+// of whatever week the dashboard's own week-nav is browsing.
+async function loadTodayShiftsForDashboard() {
+  const container = document.getElementById("dashboardTodayShifts");
+  if (!container) return;
+
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    container.innerHTML = `<p class="muted">Helg - ingen vakter i dag.</p>`;
+    return;
+  }
+
+  const dayIndex = dayOfWeek - 1;
+  const weekStartValue = toDateKey(getMonday(today));
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_shifts")
+    .select("*")
+    .eq("week_start", weekStartValue)
+    .eq("day_index", dayIndex);
+
+  if (error) {
+    console.error("Kunne ikke hente dagens vakter:", error);
+    container.innerHTML = `<p class="muted">Kunne ikke hente dagens vakter.</p>`;
+    return;
+  }
+
+  const supportRows = ["Vikar", "Foreldreinnsats", "Ekstra"];
+  const byDepartment = {};
+
+  (data || []).forEach(shift => {
+    const value = (shift.shift_value || "").trim();
+    if (!value || absenceShiftCodes.includes(value)) return;
+
+    if (!byDepartment[shift.department]) byDepartment[shift.department] = [];
+    byDepartment[shift.department].push(shift);
+  });
+
+  const departments = Object.keys(byDepartment).sort();
+
+  if (!departments.length) {
+    container.innerHTML = `<p class="muted">Ingen vakter registrert for i dag ennå.</p>`;
+    return;
+  }
+
+  container.innerHTML = departments.map(dept => `
+    <div class="today-shift-department">
+      <h3>${departmentEmoji[dept] || "🏢"} ${escapeHtml(dept)}</h3>
+      <div class="today-shift-list">
+        ${byDepartment[dept].map(shift => supportRows.includes(shift.employee)
+          ? `<span class="today-shift-person">🕒 ${escapeHtml(shift.shift_value)}</span>`
+          : `<span class="today-shift-person">${avatarSpanFor(shift.employee, "avatar-tiny")}${escapeHtml(shift.employee)} <span class="badge ${getShiftSelectClass(shift.shift_value)}">${escapeHtml(shift.shift_value)}</span></span>`
+        ).join("")}
       </div>
-    `).join("")
-    : `<p class="muted">Ingen vikarvakter denne uka.</p>`;
+    </div>
+  `).join("");
 }
 
-function renderDashboardAbsences() {
-  if (!dashboardAbsences) return;
+const weatherIconByCode = {
+  0: "☀️", 1: "🌤", 2: "⛅", 3: "☁️",
+  45: "🌫", 48: "🌫",
+  51: "🌦", 53: "🌦", 55: "🌧",
+  56: "🌧", 57: "🌧",
+  61: "🌦", 63: "🌧", 65: "🌧",
+  66: "🌧", 67: "🌧",
+  71: "🌨", 73: "🌨", 75: "❄️", 77: "❄️",
+  80: "🌦", 81: "🌧", 82: "⛈",
+  85: "🌨", 86: "❄️",
+  95: "⛈", 96: "⛈", 99: "⛈"
+};
 
-  const absences = JSON.parse(localStorage.getItem("kbfb-absence-records") || "[]")
-    .filter(record => dateRangeTouchesDashboardWeek(record.startDate, record.endDate))
-    .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-
-  dashboardAbsences.innerHTML = absences.length
-    ? absences.map(record => `
-      <div class="compact-item">
-        <strong>${escapeHtml(record.name)} · ${escapeHtml(record.type)}</strong>
-        <span>${formatDateRange(record.startDate, record.endDate)}${record.hours ? ` · ${record.hours} timer` : ""}</span>
-      </div>
-    `).join("")
-    : `<p class="muted">Ingen fravær registrert denne uka.</p>`;
+function weatherIconFor(code) {
+  return weatherIconByCode[code] || "🌡";
 }
+
+// Vøyenenga, Bærum - fixed coordinates for the barnehage. Open-Meteo:
+// free, no API key, CORS-enabled for direct browser calls (unlike
+// MET Norway's API, which needs a server-side User-Agent).
+async function loadDashboardWeather() {
+  const container = document.getElementById("dashboardWeather");
+  if (!container) return;
+
+  try {
+    const response = await fetch(
+      "https://api.open-meteo.com/v1/forecast?latitude=59.9085&longitude=10.4748&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Europe%2FOslo&forecast_days=4"
+    );
+
+    if (!response.ok) throw new Error("Vær-API svarte med feil");
+
+    const data = await response.json();
+    const current = data.current;
+    const daily = data.daily;
+    const dayNames = ["Søn", "Man", "Tir", "Ons", "Tor", "Fre", "Lør"];
+
+    const upcomingDays = daily.time.slice(1, 4).map((dateStr, i) => {
+      const date = new Date(dateStr + "T12:00:00");
+      return `
+        <div class="weather-day">
+          <span>${dayNames[date.getDay()]}</span>
+          <span>${weatherIconFor(daily.weather_code[i + 1])}</span>
+          <span>${Math.round(daily.temperature_2m_max[i + 1])}° / ${Math.round(daily.temperature_2m_min[i + 1])}°</span>
+        </div>
+      `;
+    }).join("");
+
+    container.innerHTML = `
+      <div class="weather-current">
+        <span class="weather-current-icon">${weatherIconFor(current.weather_code)}</span>
+        <span class="weather-current-temp">${Math.round(current.temperature_2m)}°</span>
+      </div>
+      <div class="weather-upcoming">${upcomingDays}</div>
+    `;
+  } catch (error) {
+    console.error("Kunne ikke hente værmelding:", error);
+    container.innerHTML = `<p class="muted">Kunne ikke hente værmelding akkurat nå.</p>`;
+  }
+}
+
+/* ---------- HYGGELIG BESKJED ---------- */
+
+const kindMessageForm = document.getElementById("kindMessageForm");
+const kindMessageText = document.getElementById("kindMessageText");
+const kindMessageFeed = document.getElementById("kindMessageFeed");
+
+async function loadKindMessages() {
+  if (!kindMessageFeed) return;
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_kind_messages")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(15);
+
+  if (error) {
+    console.error("Kunne ikke hente hyggelige beskjeder:", error);
+    return;
+  }
+
+  if (!data.length) {
+    kindMessageFeed.innerHTML = `<p class="muted">Ingen hyggelige beskjeder ennå. Vær den første!</p>`;
+    return;
+  }
+
+  const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
+
+  kindMessageFeed.innerHTML = data.map(msg => `
+    <div class="compact-item">
+      <strong>${avatarSpanFor(msg.author, "avatar-tiny")}${escapeHtml(msg.author)}</strong>
+      <span>${escapeHtml(msg.text)}</span>
+      ${(isAdmin || (typeof currentEmployee !== "undefined" && currentEmployee?.name === msg.author)) ? `<button class="kitchen-delete" data-kind-message-id="${msg.id}" style="margin-top: 4px;">Slett</button>` : ""}
+    </div>
+  `).join("");
+
+  document.querySelectorAll("[data-kind-message-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      await supabaseClient.from("kbfb_kind_messages").delete().eq("id", button.dataset.kindMessageId);
+      await loadKindMessages();
+    });
+  });
+}
+
+if (kindMessageForm) {
+  kindMessageForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (typeof currentEmployee === "undefined" || !currentEmployee) {
+      alert("Fant ikke innlogget bruker. Prøv å laste siden på nytt.");
+      return;
+    }
+
+    const { error } = await supabaseClient
+      .from("kbfb_kind_messages")
+      .insert([{ author: currentEmployee.name, text: kindMessageText.value.trim() }]);
+
+    if (error) {
+      console.error("Kunne ikke sende hyggelig beskjed:", error);
+      alert("Kunne ikke sende. Prøv igjen.");
+      return;
+    }
+
+    kindMessageForm.reset();
+    await loadKindMessages();
+  });
+}
+
+loadTodayShiftsForDashboard();
+loadDashboardWeather();
+loadKindMessages();
 
 function updateDashboardWeek() {
   if (!dashboardWeekTitle || !dashboardWeekDates) return;
@@ -375,8 +524,6 @@ function updateDashboardWeek() {
 
   renderDashboardEvents();
   renderDashboardKitchenNotes();
-  renderDashboardSubs();
-  renderDashboardAbsences();
 }
 
 if (dashboardPrevWeek) {
@@ -1941,7 +2088,6 @@ function renderSubs() {
       await deleteSubFromSupabase(button.dataset.subId);
       await loadSubsFromSupabase();
       renderSubs();
-      renderDashboardSubs();
     });
   });
 
@@ -1985,7 +2131,6 @@ function renderSubs() {
       editingSubId = null;
       await loadSubsFromSupabase();
       renderSubs();
-      renderDashboardSubs();
     });
   });
 }
@@ -2158,7 +2303,6 @@ if (subForm) {
     subEnd.value = "16:00";
 
     renderSubs();
-    renderDashboardSubs();
   });
 }
 
@@ -2193,7 +2337,6 @@ async function initializeSubs() {
 
   renderSubPeople();
   renderSubs();
-  renderDashboardSubs();
   applySubFormVisibility();
 }
 if (subMonthFilter) {
@@ -2558,7 +2701,6 @@ function renderAbsences() {
       await deleteAbsenceFromSupabase(button.dataset.absenceId);
       await loadAbsencesFromSupabase();
       renderAbsences();
-      renderDashboardAbsences();
     });
   });
 
@@ -2575,7 +2717,6 @@ function renderAbsences() {
 
       await loadAbsencesFromSupabase();
       renderAbsences();
-      renderDashboardAbsences();
     });
   });
 
@@ -2584,7 +2725,6 @@ function renderAbsences() {
       await updateAbsenceStatusInSupabase(button.dataset.rejectId, "Avslått");
       await loadAbsencesFromSupabase();
       renderAbsences();
-      renderDashboardAbsences();
     });
   });
 }
@@ -2785,7 +2925,6 @@ if (absenceForm) {
     updateAbsenceStatusVisibility();
 
     renderAbsences();
-    renderDashboardAbsences();
   });
 }
 
@@ -2840,7 +2979,6 @@ async function initializeAbsences() {
   populateAbsenceYearFilter();
 
   renderAbsences();
-  renderDashboardAbsences();
 }
 
 initializeAbsences();

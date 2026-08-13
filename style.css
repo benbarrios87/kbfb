@@ -1848,3 +1848,71 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   display: inline-flex;
   align-items: center;
 }
+
+.today-shift-department {
+  margin-bottom: 14px;
+}
+
+.today-shift-department h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  color: var(--green-dark);
+}
+
+.today-shift-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.today-shift-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 12px 5px 5px;
+  font-weight: 750;
+  font-size: 0.9rem;
+}
+
+.weather-current {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.weather-current-icon {
+  font-size: 2.4rem;
+}
+
+.weather-current-temp {
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--green-dark);
+}
+
+.weather-upcoming {
+  display: flex;
+  gap: 14px;
+}
+
+.weather-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.weather-day span:first-child {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+.weather-day span:nth-child(2) {
+  font-size: 1.5rem;
+}
