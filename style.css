@@ -1809,3 +1809,42 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
     grid-template-columns: 1fr;
   }
 }
+
+.avatar-cropper {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  justify-items: start;
+}
+
+#avatarCropCanvas {
+  border-radius: 18px;
+  border: 2px solid var(--line);
+  cursor: grab;
+  touch-action: none;
+  background: #f3f4f6;
+}
+
+#avatarCropCanvas:active {
+  cursor: grabbing;
+}
+
+.avatar-tiny {
+  width: 22px;
+  height: 22px;
+  font-size: 0.68rem;
+  margin-right: 6px;
+}
+
+.avatar-sidebar {
+  width: 28px;
+  height: 28px;
+  font-size: 0.78rem;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.user-badge {
+  display: inline-flex;
+  align-items: center;
+}

@@ -168,6 +168,20 @@
               <input type="file" id="avatarUploadInput" accept="image/*" style="display: none;" />
             </label>
           </div>
+
+          <div id="avatarCropperSection" class="avatar-cropper" style="display: none;">
+            <canvas id="avatarCropCanvas" width="280" height="280"></canvas>
+            <label class="wide-field">
+              Zoom
+              <input type="range" id="avatarZoomSlider" min="1" max="3" step="0.05" value="1" />
+            </label>
+            <p class="muted">Dra bildet for å plassere det.</p>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="primary-btn" id="avatarCropSave">Lagre bilde</button>
+              <button type="button" class="secondary-btn" id="avatarCropCancel">Avbryt</button>
+            </div>
+          </div>
+
           <p id="avatarUploadStatus" class="muted"></p>
 
           <form id="changePasswordForm" class="form-grid">

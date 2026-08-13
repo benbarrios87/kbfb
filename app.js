@@ -106,6 +106,13 @@ let notesCache = [];
 let subsCache = [];
 let subPeopleCache = [];
 
+// Shared name -> avatar_url lookup so every place that shows an employee's
+// name (schedule grid, kitchen notes, sidebar, ...) can show their photo
+// too, without each spot running its own query. Kept up here with the
+// other early caches rather than down by the account-settings code, since
+// renderQuickNotes() (defined much earlier in the file) reads it too.
+let employeeAvatarCache = {};
+
 const eventStorageKey = "kbfb-events";
 let eventsCache = [];
 
@@ -1394,7 +1401,7 @@ function renderQuickNotes() {
         ${dayNotes.length ? dayNotes.map(note => `
           <article class="kitchen-entry">
             <div class="kitchen-entry-top">
-              <strong>${escapeHtml(note.author)}</strong>
+              <strong>${avatarSpanFor(note.author, "avatar-tiny")}${escapeHtml(note.author)}</strong>
               ${canDeleteNote(note) ? `<button class="kitchen-delete" data-quick-note-id="${note.id}">Slett</button>` : ""}
             </div>
             <p>${escapeHtml(note.text)}</p>
@@ -2982,24 +2989,47 @@ function renderMyAvatarPreview() {
 const avatarUploadInput = document.getElementById("avatarUploadInput");
 const avatarUploadStatus = document.getElementById("avatarUploadStatus");
 
-// Swaps the initial-letter placeholder avatars on the schedule grid for
-// real photos, for anyone who has uploaded one.
-async function applyEmployeeAvatarsToGrid() {
+async function loadEmployeeAvatars() {
   const { data, error } = await supabaseClient
     .from("kbfb_employees")
-    .select("name, avatar_url")
-    .not("avatar_url", "is", null);
+    .select("name, avatar_url");
 
   if (error) {
     console.error("Kunne ikke hente profilbilder:", error);
     return;
   }
 
-  const avatarByName = {};
-  data.forEach(emp => { avatarByName[emp.name] = emp.avatar_url; });
+  employeeAvatarCache = {};
+  (data || []).forEach(emp => {
+    if (emp.avatar_url) employeeAvatarCache[emp.name] = emp.avatar_url;
+  });
 
+  // This fetch is async and may resolve after other renders already ran
+  // with an empty cache (showing initials) - re-run them now that photos
+  // are actually known.
+  if (typeof applyEmployeeAvatarsToGrid === "function") applyEmployeeAvatarsToGrid();
+  if (typeof renderQuickNotes === "function") renderQuickNotes();
+  if (typeof renderUserBadge === "function") renderUserBadge();
+}
+
+// Builds the HTML for a small round avatar next to someone's name -
+// their photo if they have one, otherwise their initial.
+function avatarSpanFor(name, sizeClass) {
+  const url = employeeAvatarCache[name];
+  const cls = `avatar${sizeClass ? " " + sizeClass : ""}`;
+
+  if (url) {
+    return `<span class="${cls}" style="background-image:url('${url}')"></span>`;
+  }
+
+  return `<span class="${cls}">${escapeHtml((name || "?")[0] || "?")}</span>`;
+}
+
+// Swaps the initial-letter placeholder avatars on the schedule grid for
+// real photos, for anyone who has uploaded one.
+function applyEmployeeAvatarsToGrid() {
   document.querySelectorAll(".department-table tbody tr[data-employee]").forEach(row => {
-    const url = avatarByName[row.dataset.employee];
+    const url = employeeAvatarCache[row.dataset.employee];
     const avatarSpan = row.querySelector(".person .avatar");
     if (!avatarSpan || !url) return;
 
@@ -3008,46 +3038,186 @@ async function applyEmployeeAvatarsToGrid() {
   });
 }
 
+async function uploadAvatarBlob(blob) {
+  if (!avatarUploadStatus || typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  avatarUploadStatus.textContent = "Laster opp...";
+
+  const filePath = `${currentEmployee.id}.png`;
+
+  const { error: uploadError } = await supabaseClient.storage
+    .from("avatars")
+    .upload(filePath, blob, { upsert: true, contentType: "image/png" });
+
+  if (uploadError) {
+    console.error("Kunne ikke laste opp bilde:", uploadError);
+    avatarUploadStatus.textContent = "Kunne ikke laste opp bilde.";
+    return;
+  }
+
+  const { data: publicUrlData } = supabaseClient.storage
+    .from("avatars")
+    .getPublicUrl(filePath);
+
+  const publicUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+
+  const { error: rpcError } = await supabaseClient.rpc("kbfb_update_own_avatar", { new_avatar_url: publicUrl });
+
+  if (rpcError) {
+    console.error("Kunne ikke lagre bilde:", rpcError);
+    avatarUploadStatus.textContent = "Kunne ikke lagre bilde.";
+    return;
+  }
+
+  currentEmployee.avatar_url = publicUrl;
+  employeeAvatarCache[currentEmployee.name] = publicUrl;
+
+  renderMyAvatarPreview();
+  applyEmployeeAvatarsToGrid();
+  if (typeof renderQuickNotes === "function") renderQuickNotes();
+  if (typeof renderUserBadge === "function") renderUserBadge();
+
+  avatarUploadStatus.textContent = "Bilde lagret ✓";
+}
+
+/* ---- Avatar cropper: pick a photo, drag to reposition, zoom, save ---- */
+
+let avatarCropperState = null;
+const avatarCropCanvas = document.getElementById("avatarCropCanvas");
+const avatarCropperSection = document.getElementById("avatarCropperSection");
+const avatarZoomSlider = document.getElementById("avatarZoomSlider");
+const avatarCropSave = document.getElementById("avatarCropSave");
+const avatarCropCancel = document.getElementById("avatarCropCancel");
+
+function clampAvatarCropOffset(state) {
+  const size = state.canvas.width;
+  const drawW = state.img.width * state.baseScale * state.scale;
+  const drawH = state.img.height * state.baseScale * state.scale;
+  const maxX = Math.max(0, (drawW - size) / 2);
+  const maxY = Math.max(0, (drawH - size) / 2);
+  state.offsetX = Math.min(maxX, Math.max(-maxX, state.offsetX));
+  state.offsetY = Math.min(maxY, Math.max(-maxY, state.offsetY));
+}
+
+function drawAvatarCropper() {
+  if (!avatarCropperState) return;
+  const { ctx, canvas, img, baseScale, scale, offsetX, offsetY } = avatarCropperState;
+  const drawW = img.width * baseScale * scale;
+  const drawH = img.height * baseScale * scale;
+  const x = canvas.width / 2 - drawW / 2 + offsetX;
+  const y = canvas.height / 2 - drawH / 2 + offsetY;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, x, y, drawW, drawH);
+}
+
+function openAvatarCropper(file) {
+  if (!avatarCropCanvas) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const ctx = avatarCropCanvas.getContext("2d");
+      const baseScale = Math.max(
+        avatarCropCanvas.width / img.width,
+        avatarCropCanvas.height / img.height
+      );
+
+      avatarCropperState = {
+        img, ctx, canvas: avatarCropCanvas,
+        baseScale, scale: 1, offsetX: 0, offsetY: 0,
+        dragging: false, lastX: 0, lastY: 0
+      };
+
+      if (avatarZoomSlider) avatarZoomSlider.value = 1;
+      drawAvatarCropper();
+      if (avatarCropperSection) avatarCropperSection.style.display = "grid";
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function closeAvatarCropper() {
+  avatarCropperState = null;
+  if (avatarCropperSection) avatarCropperSection.style.display = "none";
+  if (avatarUploadInput) avatarUploadInput.value = "";
+}
+
+function avatarPointerPos(event) {
+  const point = event.touches ? event.touches[0] : event;
+  return { x: point.clientX, y: point.clientY };
+}
+
+if (avatarCropCanvas) {
+  avatarCropCanvas.addEventListener("mousedown", event => {
+    if (!avatarCropperState) return;
+    avatarCropperState.dragging = true;
+    const pos = avatarPointerPos(event);
+    avatarCropperState.lastX = pos.x;
+    avatarCropperState.lastY = pos.y;
+  });
+
+  avatarCropCanvas.addEventListener("touchstart", event => {
+    if (!avatarCropperState) return;
+    avatarCropperState.dragging = true;
+    const pos = avatarPointerPos(event);
+    avatarCropperState.lastX = pos.x;
+    avatarCropperState.lastY = pos.y;
+  });
+
+  const moveHandler = event => {
+    if (!avatarCropperState || !avatarCropperState.dragging) return;
+    event.preventDefault();
+    const pos = avatarPointerPos(event);
+    avatarCropperState.offsetX += pos.x - avatarCropperState.lastX;
+    avatarCropperState.offsetY += pos.y - avatarCropperState.lastY;
+    avatarCropperState.lastX = pos.x;
+    avatarCropperState.lastY = pos.y;
+    clampAvatarCropOffset(avatarCropperState);
+    drawAvatarCropper();
+  };
+
+  window.addEventListener("mousemove", moveHandler);
+  window.addEventListener("touchmove", moveHandler, { passive: false });
+
+  const endHandler = () => {
+    if (avatarCropperState) avatarCropperState.dragging = false;
+  };
+
+  window.addEventListener("mouseup", endHandler);
+  window.addEventListener("touchend", endHandler);
+}
+
+if (avatarZoomSlider) {
+  avatarZoomSlider.addEventListener("input", () => {
+    if (!avatarCropperState) return;
+    avatarCropperState.scale = Number(avatarZoomSlider.value);
+    clampAvatarCropOffset(avatarCropperState);
+    drawAvatarCropper();
+  });
+}
+
+if (avatarCropCancel) {
+  avatarCropCancel.addEventListener("click", closeAvatarCropper);
+}
+
+if (avatarCropSave) {
+  avatarCropSave.addEventListener("click", () => {
+    if (!avatarCropperState) return;
+
+    avatarCropperState.canvas.toBlob(blob => {
+      if (blob) uploadAvatarBlob(blob);
+      closeAvatarCropper();
+    }, "image/png");
+  });
+}
+
 if (avatarUploadInput) {
-  avatarUploadInput.addEventListener("change", async () => {
-    if (!avatarUploadStatus || typeof currentEmployee === "undefined" || !currentEmployee) return;
-
+  avatarUploadInput.addEventListener("change", () => {
     const file = avatarUploadInput.files?.[0];
-    if (!file) return;
-
-    avatarUploadStatus.textContent = "Laster opp...";
-
-    const fileExt = file.name.split(".").pop();
-    const filePath = `${currentEmployee.id}.${fileExt}`;
-
-    const { error: uploadError } = await supabaseClient.storage
-      .from("avatars")
-      .upload(filePath, file, { upsert: true });
-
-    if (uploadError) {
-      console.error("Kunne ikke laste opp bilde:", uploadError);
-      avatarUploadStatus.textContent = "Kunne ikke laste opp bilde.";
-      return;
-    }
-
-    const { data: publicUrlData } = supabaseClient.storage
-      .from("avatars")
-      .getPublicUrl(filePath);
-
-    const publicUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
-
-    const { error: rpcError } = await supabaseClient.rpc("kbfb_update_own_avatar", { new_avatar_url: publicUrl });
-
-    if (rpcError) {
-      console.error("Kunne ikke lagre bilde:", rpcError);
-      avatarUploadStatus.textContent = "Kunne ikke lagre bilde.";
-      return;
-    }
-
-    currentEmployee.avatar_url = publicUrl;
-    renderMyAvatarPreview();
-    applyEmployeeAvatarsToGrid();
-    avatarUploadStatus.textContent = "Bilde lagret ✓";
+    if (file) openAvatarCropper(file);
   });
 }
 

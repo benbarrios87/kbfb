@@ -41,6 +41,10 @@ async function requireAuth() {
     enforceAdminPageAccess();
   }
 
+  if (typeof loadEmployeeAvatars === "function") {
+    loadEmployeeAvatars();
+  }
+
   // Some pages may have already rendered before we knew who's logged in
   // (or whether they're admin) - re-render now that we know for sure.
   if (typeof buildShiftDropdowns === "function") {
@@ -136,7 +140,11 @@ function applyRoleVisibility() {
 
 function renderUserBadge() {
   const badge = document.getElementById("userBadge");
-  if (badge && currentEmployee) {
+  if (!badge || !currentEmployee) return;
+
+  if (typeof avatarSpanFor === "function" && typeof escapeHtml === "function") {
+    badge.innerHTML = `${avatarSpanFor(currentEmployee.name, "avatar-sidebar")}${escapeHtml(currentEmployee.name)}`;
+  } else {
     badge.textContent = currentEmployee.name;
   }
 }
