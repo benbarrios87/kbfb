@@ -615,6 +615,10 @@ CREATE POLICY "kbfb_absences_select_own_admin_or_department" ON public.kbfb_abse
     OR public.kbfb_is_admin()
     OR (
       public.kbfb_current_employee_role() = 'Avdelingsleder'
+      -- Egenmelding/sykemelding/omsorgsdager are health-adjacent and stay
+      -- between admin and the employee themselves, even for their own
+      -- avdelingsleder - everything else in the department is fine to share.
+      AND type NOT IN ('Egenmelding', 'Sykemelding', 'Omsorgsdager')
       AND name IN (
         SELECT e.name FROM public.kbfb_employees e
         WHERE e.department = public.kbfb_current_employee_department()

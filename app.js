@@ -2573,7 +2573,10 @@ function renderAbsenceSummary(records) {
         overtid: 0,
         permisjonMed: 0,
         permisjonUten: 0,
-        velferd: 0
+        velferd: 0,
+        egenmelding: 0,
+        sykemelding: 0,
+        omsorgsdager: 0
       };
     }
 
@@ -2613,6 +2616,18 @@ function renderAbsenceSummary(records) {
       case "Velferdspermisjon":
         grouped[record.name].velferd += days;
         break;
+
+      case "Egenmelding":
+        grouped[record.name].egenmelding += days;
+        break;
+
+      case "Sykemelding":
+        grouped[record.name].sykemelding += days;
+        break;
+
+      case "Omsorgsdager":
+        grouped[record.name].omsorgsdager += days;
+        break;
     }
   });
 
@@ -2639,6 +2654,12 @@ function renderAbsenceSummary(records) {
 
         <div>❤️ Velferd: <strong>${t.velferd}</strong> dager</div>
 
+        <div>🤒 Egenmelding: <strong>${t.egenmelding}</strong> dager</div>
+
+        <div>🏥 Sykemelding: <strong>${t.sykemelding}</strong> dager</div>
+
+        <div>👶 Omsorgsdager: <strong>${t.omsorgsdager}</strong> dager</div>
+
         <hr>
 
         <div>➕ Opptjent avsp.: ${t.avsOpptjent.toFixed(1)} t</div>
@@ -2655,7 +2676,10 @@ function renderAbsenceSummary(records) {
     .join("");
 }
 
-const noApprovalNeededTypes = ["Overtid", "Avspasering brukt", "Avspasering opptjent"];
+const noApprovalNeededTypes = [
+  "Overtid", "Avspasering brukt", "Avspasering opptjent",
+  "Egenmelding", "Sykemelding", "Omsorgsdager"
+];
 
 function updateAbsenceStatusVisibility() {
   if (!absenceType || !absenceStatusField || !absenceStatus) return;
