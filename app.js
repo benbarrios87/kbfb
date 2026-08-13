@@ -2216,6 +2216,10 @@ const absenceFilter = document.getElementById("absenceFilter");
 if (absenceFilter) {
   absenceFilter.addEventListener("change", renderAbsences);
 }
+const absenceYearFilter = document.getElementById("absenceYearFilter");
+if (absenceYearFilter) {
+  absenceYearFilter.addEventListener("change", renderAbsences);
+}
 const absenceSummary = document.getElementById("absenceSummary");
 const absenceTableBody = document.getElementById("absenceTableBody");
 const clearAbsences = document.getElementById("clearAbsences");
@@ -2440,12 +2444,37 @@ function countWeekdays(startDate, endDate) {
   return dates.length;
 }
 
+function populateAbsenceYearFilter() {
+  if (!absenceYearFilter) return;
+
+  const currentYear = new Date().getFullYear();
+  const years = new Set([currentYear]);
+
+  absencesCache.forEach(record => {
+    if (record.start_date) years.add(Number(record.start_date.slice(0, 4)));
+  });
+
+  const previousValue = absenceYearFilter.value;
+  const sortedYears = Array.from(years).sort((a, b) => b - a);
+
+  absenceYearFilter.innerHTML = sortedYears
+    .map(year => `<option value="${year}">${year}</option>`)
+    .join("");
+
+  absenceYearFilter.value = sortedYears.includes(Number(previousValue))
+    ? previousValue
+    : String(currentYear);
+}
+
 function getFilteredAbsences() {
   const selected = absenceFilter?.value || "all";
+  const selectedYear = absenceYearFilter?.value ? Number(absenceYearFilter.value) : new Date().getFullYear();
 
-  return absencesCache.filter(record =>
-    selected === "all" || record.name === selected
-  );
+  return absencesCache.filter(record => {
+    const matchesEmployee = selected === "all" || record.name === selected;
+    const matchesYear = !record.start_date || Number(record.start_date.slice(0, 4)) === selectedYear;
+    return matchesEmployee && matchesYear;
+  });
 }
 
 function renderOvertimeSummary() {
@@ -2791,6 +2820,7 @@ async function initializeAbsences() {
   renderVacationQuotaEditor();
 
   await loadAbsencesFromSupabase();
+  populateAbsenceYearFilter();
 
   renderAbsences();
   renderDashboardAbsences();
