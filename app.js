@@ -132,6 +132,17 @@ async function loadEventsFromSupabase() {
 }
 let employeesCache = [];
 
+// Same palette as the vikar color picker (vikarer.html) - one color per
+// person, shown on their vaktplan row.
+const employeeColorPalette = [
+  { value: "#fef3c7", label: "Gul" },
+  { value: "#dbeafe", label: "Blå" },
+  { value: "#dcfce7", label: "Grønn" },
+  { value: "#f3e8ff", label: "Lilla" },
+  { value: "#ffe4e6", label: "Rosa" },
+  { value: "#e0f2fe", label: "Lys blå" }
+];
+
 async function loadEmployeesFromSupabase() {
   const { data, error } = await supabaseClient
     .from("kbfb_employees")
@@ -146,6 +157,11 @@ async function loadEmployeesFromSupabase() {
   }
 
   employeesCache = data || [];
+
+  // buildShiftDropdowns() may already have run (with an empty cache) before
+  // this resolves - re-apply row colors now that we actually know them.
+  if (typeof applyEmployeeRowColors === "function") applyEmployeeRowColors();
+
   return employeesCache;
 }
 function populateEmployeeSelect(selectId, options = {}) {
@@ -923,10 +939,25 @@ function getShiftSelectClass(value) {
   return "";
 }
 
+// On the vaktplan grid, rows carry the employee's own color (see
+// applyEmployeeRowColors) instead of the shift type - so here we just
+// reset to a neutral, legible style rather than coloring by shift value.
 function colorShiftSelect(select) {
-  select.className = "shift-select";
-  const color = getShiftSelectClass(select.value);
-  if (color) select.classList.add(color);
+  select.className = "shift-select neutral";
+}
+
+// Whole rows on the vaktplan department tables show the employee's own
+// color instead of shift-type coloring - easier to scan a person's week
+// across the row. Support rows (Vikar/Foreldreinnsats/Ekstra) aren't tied
+// to one person, so they're left uncolored.
+function applyEmployeeRowColors() {
+  document.querySelectorAll(".department-table tr[data-employee]").forEach(row => {
+    const name = row.dataset.employee;
+    if (name === "Vikar" || name === "Foreldreinnsats" || name === "Ekstra") return;
+
+    const employee = employeesCache.find(item => item.name === name);
+    row.style.background = employee?.color || "";
+  });
 }
 
 function buildShiftDropdowns() {
@@ -935,6 +966,8 @@ function buildShiftDropdowns() {
 
   const shiftEditHelp = document.getElementById("shiftEditHelp");
   if (shiftEditHelp) shiftEditHelp.style.display = isAdmin ? "" : "none";
+
+  applyEmployeeRowColors();
 
   document.querySelectorAll(".shift-cell").forEach(cell => {
     const row = cell.closest("tr");
@@ -957,7 +990,7 @@ function buildShiftDropdowns() {
     if (!isAdmin) {
       cell.innerHTML = "";
       const badge = document.createElement("span");
-      badge.className = `badge ${getShiftSelectClass(defaultValue)}`;
+      badge.className = "badge neutral";
       badge.textContent = defaultValue || "—";
       cell.appendChild(badge);
       return;
@@ -3618,6 +3651,14 @@ function renderAdminEmployeeTable() {
         <input type="text" class="admin-field" data-id="${employee.id}" data-field="department" value="${escapeHtml(employee.department)}" style="width: 130px;" />
       </td>
       <td>
+        <select class="admin-field" data-id="${employee.id}" data-field="color" style="width: 110px; background: ${employee.color || "white"};">
+          <option value="">Ingen</option>
+          ${employeeColorPalette.map(c => `
+            <option value="${c.value}" ${employee.color === c.value ? "selected" : ""}>${c.label}</option>
+          `).join("")}
+        </select>
+      </td>
+      <td>
         <input type="date" class="admin-field" data-id="${employee.id}" data-field="birthday" value="${employee.birthday || ""}" style="width: 150px;" />
       </td>
       <td style="text-align: center;">
@@ -4300,11 +4341,17 @@ async function loadEmployeeAvatars() {
   });
 
   // This fetch is async and may resolve after other renders already ran
-  // with an empty cache (showing initials) - re-run them now that photos
-  // are actually known.
+  // with an empty cache (showing initials) - re-run every consumer of
+  // avatarSpanFor() now that photos are actually known. Keep this list in
+  // sync with wherever avatarSpanFor() gets called from.
   if (typeof applyEmployeeAvatarsToGrid === "function") applyEmployeeAvatarsToGrid();
   if (typeof renderQuickNotes === "function") renderQuickNotes();
   if (typeof renderUserBadge === "function") renderUserBadge();
+  if (typeof renderDashboardGreeting === "function") renderDashboardGreeting();
+  if (typeof loadTodayShiftsForDashboard === "function") loadTodayShiftsForDashboard();
+  if (typeof loadKindMessages === "function") loadKindMessages();
+  if (typeof renderSupplies === "function") renderSupplies();
+  if (typeof renderDashboardKitchenNotes === "function") renderDashboardKitchenNotes();
   if (typeof renderDashboardGreeting === "function") renderDashboardGreeting();
 }
 

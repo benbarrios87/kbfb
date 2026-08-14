@@ -575,6 +575,10 @@ select {
   background: #d7f3e5;
 }
 
+.badge.neutral {
+  background: rgba(255, 255, 255, 0.6);
+}
+
 .department-table {
   background: rgba(255, 255, 255, 0.86);
   border-radius: 20px;
@@ -1385,6 +1389,7 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .shift-select.free { background: #ff8a8a; color: #5c0000; }
 .shift-select.office { background: #d7f3e5; }
 .shift-select.custom { background: #f8f5ef; }
+.shift-select.neutral { background: rgba(255, 255, 255, 0.6); }
 
               .shift-select {
   width: 100%;
@@ -1495,6 +1500,7 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .shift-select.free { background: #ff8a8a; color: #5c0000; }
 .shift-select.office { background: #d7f3e5; }
 .shift-select.custom { background: #f8f5ef; }
+.shift-select.neutral { background: rgba(255, 255, 255, 0.6); }
 
                                                                    /* ===== DATOER ===== */
 

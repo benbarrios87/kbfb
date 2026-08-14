@@ -684,3 +684,12 @@ CREATE POLICY "kbfb_absences_admin_update_delete" ON public.kbfb_absences
   FOR UPDATE TO authenticated
   USING (public.kbfb_is_admin() AND name <> public.kbfb_current_employee_name())
   WITH CHECK (public.kbfb_is_admin() AND name <> public.kbfb_current_employee_name());
+
+-- =========================================================
+-- STEP 21: kbfb_employees.color (personal row color on vaktplan)
+--   Same idea as the existing vikar color picker (kbfb_subs.color) -
+--   admin sets one per employee, and the whole row on the schedule grid
+--   uses it instead of the shift type driving the color.
+-- =========================================================
+
+ALTER TABLE public.kbfb_employees ADD COLUMN IF NOT EXISTS color text;
