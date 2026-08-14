@@ -238,7 +238,8 @@ function categoryLabel(category) {
     overnatting: "Overnatting / tur",
     foreldre: "Foreldre",
     styre: "Styremøte",
-    su: "SU-møte"
+    su: "SU-møte",
+    bursdag: "Bursdag"
   };
 
   return labels[category] || "Generelt";
@@ -252,10 +253,96 @@ function categoryEmoji(category) {
     overnatting: "🟦",
     foreldre: "🟨",
     styre: "🟩",
-    su: "🟪"
+    su: "🟪",
+    bursdag: "🎂"
   };
 
   return emojis[category] || "⚪";
+}
+
+/* ---------- BURSDAGER ----------
+   Birthdays live on kbfb_employees.birthday (a date column - only the
+   month/day is ever used, the year is ignored). They're turned into
+   virtual "events" on the fly so they can slot into the same upcoming-
+   dates feeds as real kbfb_events rows, without needing to be
+   re-entered every year. */
+
+function employeeBirthdayMonthDay(employee) {
+  if (!employee?.birthday) return null;
+  const parsed = new Date(employee.birthday + "T12:00:00");
+  if (Number.isNaN(parsed.getTime())) return null;
+  return { month: parsed.getMonth(), day: parsed.getDate() };
+}
+
+// Next occurrence of an employee's birthday from today (this year if it
+// hasn't passed yet, otherwise next year).
+function nextBirthdayDateKey(employee, fromDate = new Date()) {
+  const monthDay = employeeBirthdayMonthDay(employee);
+  if (!monthDay) return null;
+
+  const today = new Date(fromDate);
+  today.setHours(0, 0, 0, 0);
+
+  let candidate = new Date(today.getFullYear(), monthDay.month, monthDay.day);
+  if (candidate < today) {
+    candidate = new Date(today.getFullYear() + 1, monthDay.month, monthDay.day);
+  }
+
+  return toDateKey(candidate);
+}
+
+function getEmployeesWithBirthdayToday(fromDate = new Date()) {
+  const todayMonthDay = { month: fromDate.getMonth(), day: fromDate.getDate() };
+
+  return employeesCache.filter(employee => {
+    const monthDay = employeeBirthdayMonthDay(employee);
+    return monthDay && monthDay.month === todayMonthDay.month && monthDay.day === todayMonthDay.day;
+  });
+}
+
+// Virtual "events" (never written to kbfb_events) so birthdays show up
+// alongside real dates in the upcoming-dates feeds.
+function getUpcomingBirthdayEvents() {
+  return employeesCache
+    .filter(employee => employeeBirthdayMonthDay(employee))
+    .map(employee => ({
+      date: nextBirthdayDateKey(employee),
+      title: `${employee.name} har bursdag`,
+      category: "bursdag",
+      note: "",
+      isBirthday: true
+    }))
+    .filter(event => event.date);
+}
+
+function getUpcomingEventsWithBirthdays(limit = 5) {
+  const todayKey = toDateKey(new Date());
+
+  return [...getEvents(), ...getUpcomingBirthdayEvents()]
+    .filter(event => event.date >= todayKey)
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .slice(0, limit);
+}
+
+function renderDashboardBirthdayBanner() {
+  const banner = document.getElementById("dashboardBirthdayBanner");
+  const text = document.getElementById("dashboardBirthdayText");
+  if (!banner || !text) return;
+
+  const birthdayEmployees = getEmployeesWithBirthdayToday();
+
+  if (!birthdayEmployees.length) {
+    banner.style.display = "none";
+    return;
+  }
+
+  const names = birthdayEmployees.map(employee => escapeHtml(employee.name));
+  const namesText = names.length === 1
+    ? names[0]
+    : `${names.slice(0, -1).join(", ")} og ${names[names.length - 1]}`;
+
+  text.innerHTML = `🎉🎂 Gratulerer med dagen, ${namesText}!`;
+  banner.style.display = "flex";
 }
 
 function eventIsInWeek(eventDate, weekStart) {
@@ -287,11 +374,7 @@ function dateIsInDashboardWeek(dateString) {
 function renderDashboardEvents() {
   if (!dashboardEvents) return;
 
-  const todayKey = toDateKey(new Date());
-  const upcoming = getEvents()
-    .filter(event => event.date >= todayKey)
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
-    .slice(0, 5);
+  const upcoming = getUpcomingEventsWithBirthdays(5);
 
   dashboardEvents.innerHTML = upcoming.length
     ? upcoming.map(event => `
@@ -301,6 +384,8 @@ function renderDashboardEvents() {
       </div>
     `).join("")
     : `<p class="muted">Ingen kommende datoer.</p>`;
+
+  renderDashboardBirthdayBanner();
 }
 
 function renderDashboardKitchenNotes() {
@@ -1522,6 +1607,88 @@ function canDeleteNote(note) {
   return isAdmin || isAuthor;
 }
 
+/* ---------- KJØKKENBOKA - EMOJI-REAKSJONER ---------- */
+
+const REACTION_EMOJIS = ["👍", "❤️", "😂"];
+let noteReactionsCache = [];
+
+async function loadNoteReactionsFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_note_reactions")
+    .select("*");
+
+  if (error) {
+    console.error("Kunne ikke hente reaksjoner:", error);
+    return [];
+  }
+
+  noteReactionsCache = data || [];
+  return noteReactionsCache;
+}
+
+// Summarizes reactions for one note into what the reaction bar needs:
+// each emoji's count, and whether the current user has already reacted
+// with it (so the button can show as "on").
+function reactionsForNote(noteId) {
+  const myName = typeof currentEmployee !== "undefined" ? currentEmployee?.name : null;
+
+  return REACTION_EMOJIS.map(emoji => {
+    const matches = noteReactionsCache.filter(
+      reaction => reaction.note_id === noteId && reaction.emoji === emoji
+    );
+
+    return {
+      emoji,
+      count: matches.length,
+      reactedByMe: matches.some(reaction => reaction.author === myName)
+    };
+  });
+}
+
+async function toggleNoteReaction(noteId, emoji) {
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  const existing = noteReactionsCache.find(
+    reaction => reaction.note_id === noteId && reaction.emoji === emoji && reaction.author === currentEmployee.name
+  );
+
+  if (existing) {
+    const { error } = await supabaseClient
+      .from("kbfb_note_reactions")
+      .delete()
+      .eq("id", existing.id);
+
+    if (error) console.error("Kunne ikke fjerne reaksjon:", error);
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("kbfb_note_reactions")
+    .insert([{ note_id: noteId, author: currentEmployee.name, emoji }]);
+
+  if (error) console.error("Kunne ikke lagre reaksjon:", error);
+}
+
+function renderReactionBar(noteId) {
+  const reactions = reactionsForNote(noteId);
+
+  return `
+    <div class="reaction-bar" data-note-id="${noteId}">
+      ${reactions.map(reaction => `
+        <button
+          type="button"
+          class="reaction-btn${reaction.reactedByMe ? " reacted" : ""}"
+          data-react-note-id="${noteId}"
+          data-react-emoji="${reaction.emoji}"
+        >
+          <span>${reaction.emoji}</span>
+          ${reaction.count ? `<span class="reaction-count">${reaction.count}</span>` : ""}
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
 function renderQuickNoteAuthor() {
   if (quickNoteAuthorDisplay && typeof currentEmployee !== "undefined" && currentEmployee) {
     quickNoteAuthorDisplay.value = currentEmployee.name;
@@ -1557,6 +1724,7 @@ function renderQuickNotes() {
               ${canDeleteNote(note) ? `<button class="kitchen-delete" data-quick-note-id="${note.id}">Slett</button>` : ""}
             </div>
             <p>${escapeHtml(note.text)}</p>
+            ${renderReactionBar(note.id)}
           </article>
         `).join("") : `<p class="muted">Ingen beskjeder.</p>`}
       </div>
@@ -1569,6 +1737,15 @@ function renderQuickNotes() {
       await loadNotesFromSupabase();
       renderQuickNotes();
       renderDashboardKitchenNotes();
+    });
+  });
+
+  document.querySelectorAll("[data-react-note-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      await toggleNoteReaction(button.dataset.reactNoteId, button.dataset.reactEmoji);
+      await loadNoteReactionsFromSupabase();
+      renderQuickNotes();
     });
   });
 }
@@ -1655,7 +1832,10 @@ if (quickNoteForm) {
 }
 
 async function initializeNotes() {
-  await loadNotesFromSupabase();
+  await Promise.all([
+    loadNotesFromSupabase(),
+    loadNoteReactionsFromSupabase()
+  ]);
   renderQuickNotes();
   renderDashboardKitchenNotes();
 }
@@ -1830,7 +2010,13 @@ if (dateCategoryFilter) {
 }
 
 async function initializeEvents() {
-  await loadEventsFromSupabase();
+  // Also load employees here (if some other init on the page hasn't
+  // already) so birthdays are available for the dashboard banner and
+  // the merged upcoming-dates feed, on every page that runs this.
+  await Promise.all([
+    loadEventsFromSupabase(),
+    employeesCache.length ? Promise.resolve() : loadEmployeesFromSupabase()
+  ]);
 
   renderEvents();
   renderDashboardEvents();
@@ -3076,6 +3262,9 @@ function renderAdminEmployeeTable() {
       </td>
       <td>
         <input type="text" class="admin-field" data-id="${employee.id}" data-field="department" value="${escapeHtml(employee.department)}" style="width: 130px;" />
+      </td>
+      <td>
+        <input type="date" class="admin-field" data-id="${employee.id}" data-field="birthday" value="${employee.birthday || ""}" style="width: 150px;" />
       </td>
       <td style="text-align: center;">
         <input type="checkbox" class="admin-field" data-id="${employee.id}" data-field="is_admin" ${employee.is_admin ? "checked" : ""} />

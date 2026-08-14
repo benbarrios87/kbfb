@@ -9,7 +9,7 @@
   --sand: #f6efe3;
   --paper: #ffffff;
   --text: #243528;
-  --muted: #647366;
+  --muted: #57685a;
   --line: #dfe8df;
   --shadow: 0 18px 50px rgba(36, 53, 40, 0.12);
 }
@@ -1103,6 +1103,106 @@ textarea {
   grid-column: span 2;
 }
 
+/* "Må sjekke i dag" row - Hvem jobber + Kjøkkenboka. Visually heavier
+   than the rest of the dashboard so it reads as the priority, not just
+   another card in the grid. */
+.dashboard-priority {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  margin-bottom: 26px;
+}
+
+.dash-card.priority {
+  border-left: 8px solid var(--green);
+  box-shadow: 0 22px 55px rgba(36, 53, 40, 0.18);
+}
+
+.priority-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--green-dark);
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+/* Everything else - lighter, quieter, clearly secondary. */
+.dashboard-secondary .dash-card {
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 10px 26px rgba(36, 53, 40, 0.07);
+  padding: 20px;
+}
+
+.dashboard-secondary .dash-card h2 {
+  font-size: 1.1rem;
+}
+
+@media (max-width: 850px) {
+  .dashboard-priority {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== BURSDAG-BANNER ===== */
+
+.birthday-banner {
+  background: linear-gradient(120deg, #fff3d6, #ffe3a3);
+  border: 1px solid #eecb7a;
+  color: var(--green-dark);
+  border-radius: 22px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+/* ===== KJØKKENBOKA - REAKSJONER ===== */
+
+.reaction-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.reaction-btn {
+  border: 1px solid var(--line);
+  background: #f8f5ef;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
+}
+
+.reaction-btn:hover {
+  background: var(--green-soft);
+}
+
+.reaction-btn.reacted {
+  background: var(--green-soft);
+  border-color: var(--green);
+  color: var(--green-dark);
+}
+
+.reaction-btn .reaction-count {
+  font-weight: 800;
+}
+
 .mini-link {
   background: var(--green-soft);
   color: var(--green-dark);
@@ -1733,7 +1833,9 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: #e85c5c;
+  /* Was #e85c5c - only ~3.4:1 against white text (fails AA for small
+     text, needs 4.5:1). This darker red gives ~4.9:1. */
+  background: #c93f3f;
   color: white;
   font-size: 0.7rem;
   font-weight: 900;
@@ -1742,7 +1844,11 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 }
 
 .swap-alert-banner {
-  background: linear-gradient(120deg, #e85c5c, #f2897f);
+  /* Was linear-gradient(120deg, #e85c5c, #f2897f) - the lighter end
+     (#f2897f) gave only ~2.4:1 contrast against white text, a real
+     readability problem for an urgent alert on a busy kitchen screen.
+     This darker pair keeps the same feel at ~4.4-5.2:1. */
+  background: linear-gradient(120deg, #c23f3f, #cc4a4a);
   color: white;
   border-radius: 22px;
   padding: 14px 20px;

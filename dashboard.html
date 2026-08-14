@@ -52,6 +52,10 @@
     </aside>
 
     <main class="main">
+      <div class="birthday-banner" id="dashboardBirthdayBanner" style="display: none;">
+        <span id="dashboardBirthdayText"></span>
+      </div>
+
       <section class="forest-hero compact team-photo">
         <div>
           <p class="eyebrow">Ukeoversikt</p>
@@ -66,11 +70,11 @@
         </div>
       </section>
 
-      <section class="dashboard-grid">
-        <article class="card dash-card large">
+      <section class="dashboard-priority">
+        <article class="card dash-card priority">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">I dag</p>
+              <span class="priority-tag">📌 Sjekk i dag</span>
               <h2>👥 Hvem jobber</h2>
             </div>
             <a class="mini-link" href="vakter.html">Åpne</a>
@@ -80,10 +84,10 @@
           </div>
         </article>
 
-        <article class="card dash-card large">
+        <article class="card dash-card priority">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Denne uka</p>
+              <span class="priority-tag">📌 Sjekk i dag</span>
               <h2>📖 Kjøkkenboka</h2>
             </div>
             <a class="mini-link" href="kjokkenboka.html">Åpne</a>
@@ -92,7 +96,9 @@
             <p class="muted">Ingen beskjeder denne uka.</p>
           </div>
         </article>
+      </section>
 
+      <section class="dashboard-grid dashboard-secondary">
         <article class="card dash-card">
           <div class="section-heading">
             <div>
