@@ -1953,7 +1953,8 @@ function defaultEventTitle(category) {
     overnatting: "Overnatting / tur",
     foreldre: "Foreldremøte",
     styre: "Styremøte",
-    su: "SU-møte"
+    su: "SU-møte",
+    bursdag: "Bursdag"
   };
 
   return titles[category] || "Viktig dato";
