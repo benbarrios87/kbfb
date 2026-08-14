@@ -3841,7 +3841,7 @@ async function loadPendingApprovalsSummary() {
 // nothing stops someone typing the URL directly - this is the actual
 // gate. Runs on every page (cheap early-return everywhere but admin.html).
 function enforceAdminPageAccess() {
-  const protectedPages = ["admin.html", "nokkeltall.html"];
+  const protectedPages = ["admin.html", "nokkeltall.html", "avvik.html"];
   if (!protectedPages.some(page => window.location.pathname.endsWith(page))) return;
   if (typeof currentEmployee === "undefined" || !currentEmployee) return;
 
@@ -4283,6 +4283,163 @@ async function loadFeedbackForAdmin() {
     });
   });
 }
+
+/* ---------- AVVIK (avvikshåndtering - internt, admin-only for nå) ---------- */
+
+let avvikCache = [];
+
+const avvikForm = document.getElementById("avvikForm");
+const avvikFormStatus = document.getElementById("avvikFormStatus");
+const avvikDateField = document.getElementById("avvikDate");
+const avvikListEl = document.getElementById("avvikList");
+const avvikStatusFilter = document.getElementById("avvikStatusFilter");
+
+if (avvikDateField) {
+  avvikDateField.value = toDateKey(new Date());
+}
+
+if (avvikForm) {
+  avvikForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+    const { error } = await supabaseClient.from("kbfb_avvik").insert([{
+      reported_by: currentEmployee.name,
+      category: document.getElementById("avvikCategory").value,
+      severity: document.getElementById("avvikSeverity").value,
+      department: document.getElementById("avvikDepartment").value || null,
+      date_occurred: avvikDateField.value,
+      description: document.getElementById("avvikDescription").value.trim(),
+      status: "Meldt"
+    }]);
+
+    if (error) {
+      console.error("Kunne ikke registrere avvik:", error);
+      if (avvikFormStatus) avvikFormStatus.textContent = "Kunne ikke lagre. Prøv igjen.";
+      return;
+    }
+
+    avvikForm.reset();
+    avvikDateField.value = toDateKey(new Date());
+    if (avvikFormStatus) avvikFormStatus.textContent = "Avvik registrert.";
+    await loadAvvikFromSupabase();
+  });
+}
+
+async function loadAvvikFromSupabase() {
+  if (!avvikListEl) return;
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_avvik")
+    .select("*")
+    .order("date_occurred", { ascending: false });
+
+  if (error) {
+    console.error("Kunne ikke hente avvik:", error);
+    avvikListEl.innerHTML = `<p class="muted">Kunne ikke hente avvik.</p>`;
+    return;
+  }
+
+  avvikCache = data || [];
+  renderAvvikList();
+}
+
+function avvikStatusClass(status) {
+  if (status === "Under behandling") return "under-behandling";
+  if (status === "Lukket") return "lukket";
+  return "meldt";
+}
+
+function avvikSeverityClass(severity) {
+  if (severity === "Høy") return "hoy";
+  if (severity === "Middels") return "middels";
+  return "lav";
+}
+
+function renderAvvikList() {
+  if (!avvikListEl) return;
+
+  const filter = avvikStatusFilter?.value || "open";
+  const visible = avvikCache.filter(item => {
+    if (filter === "all") return true;
+    if (filter === "Lukket") return item.status === "Lukket";
+    return item.status !== "Lukket";
+  });
+
+  if (!visible.length) {
+    avvikListEl.innerHTML = `<p class="muted">Ingen avvik i denne visningen.</p>`;
+    return;
+  }
+
+  avvikListEl.innerHTML = visible.map(item => `
+    <div class="summary-item avvik-item">
+      <div class="avvik-item-top">
+        <strong>${escapeHtml(item.category)}${item.department ? ` · ${escapeHtml(item.department)}` : ""}</strong>
+        <span class="avvik-tag ${avvikSeverityClass(item.severity)}">${escapeHtml(item.severity)}</span>
+        <span class="avvik-tag ${avvikStatusClass(item.status)}">${escapeHtml(item.status)}</span>
+      </div>
+      <span>${formatNorwegianDate(item.date_occurred)} · Meldt av ${escapeHtml(item.reported_by)}</span>
+      <p>${escapeHtml(item.description)}</p>
+
+      <label class="wide-field">
+        Tiltak / oppfølging
+        <textarea rows="2" class="avvik-field" data-id="${item.id}" data-field="tiltak" placeholder="Hva gjøres for å følge opp?">${escapeHtml(item.tiltak || "")}</textarea>
+      </label>
+
+      <div class="avvik-item-controls">
+        <label>
+          Ansvarlig
+          <input type="text" class="avvik-field" data-id="${item.id}" data-field="responsible" value="${escapeHtml(item.responsible || "")}" placeholder="Hvem følger opp?" />
+        </label>
+        <label>
+          Status
+          <select class="avvik-field" data-id="${item.id}" data-field="status">
+            <option value="Meldt" ${item.status === "Meldt" ? "selected" : ""}>Meldt</option>
+            <option value="Under behandling" ${item.status === "Under behandling" ? "selected" : ""}>Under behandling</option>
+            <option value="Lukket" ${item.status === "Lukket" ? "selected" : ""}>Lukket</option>
+          </select>
+        </label>
+      </div>
+      ${item.status === "Lukket" && item.closed_at ? `<span class="muted">Lukket ${formatNorwegianDate(item.closed_at.slice(0, 10))} av ${escapeHtml(item.closed_by || "")}</span>` : ""}
+    </div>
+  `).join("");
+
+  avvikListEl.querySelectorAll(".avvik-field").forEach(field => {
+    field.addEventListener("change", async () => {
+      const id = field.dataset.id;
+      const key = field.dataset.field;
+      const value = field.value.trim();
+
+      const fields = { [key]: value === "" ? null : value };
+
+      if (key === "status") {
+        if (value === "Lukket") {
+          fields.closed_at = new Date().toISOString();
+          fields.closed_by = currentEmployee?.name || null;
+        } else {
+          fields.closed_at = null;
+          fields.closed_by = null;
+        }
+      }
+
+      const { error } = await supabaseClient.from("kbfb_avvik").update(fields).eq("id", id);
+      if (error) {
+        console.error("Kunne ikke oppdatere avvik:", error);
+        alert("Kunne ikke lagre endringen.");
+        return;
+      }
+
+      await loadAvvikFromSupabase();
+    });
+  });
+}
+
+if (avvikStatusFilter) {
+  avvikStatusFilter.addEventListener("change", renderAvvikList);
+}
+
+loadAvvikFromSupabase();
 
 /* ---------- MIN KONTO (passord + profilbilde) ---------- */
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bestillinger | KBFB Personal</title>
+  <title>Avvik | KBFB Personal</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#234d31" />
@@ -28,8 +28,8 @@
         <a data-hide-from-vikar href="datoer.html">📆 Datoer</a>
         <a href="vikarer.html">🕒 Vikarer</a>
         <a data-hide-from-vikar data-hide-from-guest href="ferieogavspasering.html">🌴 Ferie/avsp/overtid</a>
-        <a class="active" href="bestillinger.html">🛒 Bestillinger</a>
-        <a data-admin-only href="avvik.html">⚠️ Avvik</a>
+        <a href="bestillinger.html">🛒 Bestillinger</a>
+        <a class="active" data-admin-only href="avvik.html">⚠️ Avvik</a>
         <a data-hide-from-vikar href="kalender.html">📍 Hvor er Benjamin?</a>
         <a data-hide-from-vikar href="filarkiv.html">📁 Filarkiv</a>
         <a data-hide-from-vikar href="aarshjul.html">🗓️ Årshjul (kommer)</a>
@@ -56,62 +56,81 @@
     <main class="main">
       <section class="forest-hero compact">
         <div>
-          <p class="eyebrow">Trenger vi noe?</p>
-          <h1>Bestillinger</h1>
-          <p class="muted">Meld fra om ting som trengs - kontorrekvisita, dopapir og lignende.</p>
+          <p class="eyebrow">Kun for admin - internt system</p>
+          <h1>Avvikshåndtering</h1>
+          <p class="muted">Meld, følg opp og lukk avvik. Egen intern erstatning for avviksdelen av PBL Mentor.</p>
         </div>
-        <div class="hero-badge">🛒 Innkjøpsliste</div>
+        <div class="hero-badge">⚠️ Avvik</div>
       </section>
 
-      <section class="card kitchen-simple" data-hide-from-guest>
-        <h2>Trengs noe?</h2>
-
-        <form id="supplyForm" class="form-grid">
-          <label class="wide-field">
-            Hva trengs?
-            <input type="text" id="supplyItem" placeholder="F.eks. dopapir" required />
-          </label>
+      <section class="card">
+        <h2>Meld nytt avvik</h2>
+        <form id="avvikForm" class="form-grid">
           <label>
-            Prioritet
-            <select id="supplyPriority" required>
-              <option value="nice_to_have">🙂 Hadde vært fint å ha</option>
-              <option value="haster">🔥 Haster</option>
+            Kategori
+            <select id="avvikCategory" required>
+              <option value="HMS/sikkerhet">HMS/sikkerhet</option>
+              <option value="Ansatte/arbeidsmiljø">Ansatte/arbeidsmiljø</option>
+              <option value="Barn/pedagogisk">Barn/pedagogisk</option>
+              <option value="Bygg/utstyr/uteområde">Bygg/utstyr/uteområde</option>
+              <option value="Rutinebrudd">Rutinebrudd</option>
+              <option value="Annet">Annet</option>
             </select>
           </label>
-          <button class="primary-btn form-button" type="submit">Legg til</button>
+
+          <label>
+            Alvorlighet
+            <select id="avvikSeverity">
+              <option value="Lav">Lav</option>
+              <option value="Middels">Middels</option>
+              <option value="Høy">Høy</option>
+            </select>
+          </label>
+
+          <label>
+            Avdeling
+            <select id="avvikDepartment">
+              <option value="">Ikke avdelingsspesifikt</option>
+              <option value="Sommerfuglen">Sommerfuglen</option>
+              <option value="Regnbuen">Regnbuen</option>
+              <option value="Begge">Begge/hele barnehagen</option>
+            </select>
+          </label>
+
+          <label>
+            Dato avviket skjedde
+            <input id="avvikDate" type="date" required />
+          </label>
+
+          <label class="wide-field">
+            Hva skjedde?
+            <textarea id="avvikDescription" rows="3" placeholder="Beskriv hva som skjedde, hvem som var involvert, og eventuelle umiddelbare tiltak." required></textarea>
+          </label>
+
+          <button class="primary-btn form-button" type="submit">Registrer avvik</button>
         </form>
+        <p id="avvikFormStatus" class="muted" style="margin-top: 10px;"></p>
       </section>
 
       <section class="card">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Oversikt</p>
-            <h2>Trenger bestilling</h2>
+            <h2>Avvik</h2>
           </div>
+          <label class="compact-filter">
+            Vis
+            <select id="avvikStatusFilter">
+              <option value="open">Åpne (Meldt + Under behandling)</option>
+              <option value="all">Alle</option>
+              <option value="Lukket">Kun lukkede</option>
+            </select>
+          </label>
         </div>
-        <div id="supplyOpenList" class="summary-list">
-          <p class="muted">Ingenting meldt inn ennå.</p>
-        </div>
-      </section>
 
-      <section class="card" id="supplyOrderedSection" style="display: none;">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Fullført</p>
-            <h2>Allerede bestilt</h2>
-          </div>
+        <div id="avvikList" class="summary-list">
+          <p class="muted">Ingen avvik registrert ennå.</p>
         </div>
-        <div id="supplyOrderedList" class="summary-list"></div>
-      </section>
-
-      <section class="card" id="supplyDeclinedSection" style="display: none;">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Ikke aktuelt</p>
-            <h2>Avslått</h2>
-          </div>
-        </div>
-        <div id="supplyDeclinedList" class="summary-list"></div>
       </section>
     </main>
   </div>

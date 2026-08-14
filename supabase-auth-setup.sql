@@ -693,3 +693,36 @@ CREATE POLICY "kbfb_absences_admin_update_delete" ON public.kbfb_absences
 -- =========================================================
 
 ALTER TABLE public.kbfb_employees ADD COLUMN IF NOT EXISTS color text;
+
+-- =========================================================
+-- STEP 22: kbfb_avvik (avvikshåndtering - deviation/incident log)
+--   In-house replacement for the paid PBL Mentor deviation module.
+--   Admin-only end to end for now (insert/select/update/delete) - not
+--   rolled out to staff yet, so RLS is locked to admin the same way the
+--   UI/nav is (data-admin-only + enforceAdminPageAccess). Loosen the
+--   INSERT policy later if/when staff should be able to report their own.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_avvik (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  reported_by text NOT NULL,
+  department text,
+  category text NOT NULL,
+  severity text NOT NULL DEFAULT 'Lav',
+  date_occurred date NOT NULL,
+  description text NOT NULL,
+  status text NOT NULL DEFAULT 'Meldt',
+  tiltak text,
+  responsible text,
+  closed_by text,
+  closed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_avvik ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_avvik_admin_all" ON public.kbfb_avvik;
+CREATE POLICY "kbfb_avvik_admin_all" ON public.kbfb_avvik
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());

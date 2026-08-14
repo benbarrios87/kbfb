@@ -854,6 +854,54 @@ select {
   font-weight: 700;
 }
 
+.avvik-item-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.avvik-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+
+.avvik-tag.lav { background: #dcfce7; color: #14532d; }
+.avvik-tag.middels { background: #fef3c7; color: #7a5b06; }
+.avvik-tag.hoy { background: #fee2e2; color: #991b1b; }
+.avvik-tag.meldt { background: #fef3c7; color: #7a5b06; }
+.avvik-tag.under-behandling { background: #dbeafe; color: #1e429f; }
+.avvik-tag.lukket { background: #dcfce7; color: #14532d; }
+
+.avvik-item label {
+  display: grid;
+  gap: 6px;
+  font-weight: 800;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.avvik-item-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.avvik-item input,
+.avvik-item select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  padding: 10px 12px;
+  font: inherit;
+  background: white;
+  color: var(--text);
+}
+
 .delete-row {
   border: 0;
   background: #ffe4e4;

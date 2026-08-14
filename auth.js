@@ -131,6 +131,10 @@ async function requireAuth() {
     loadKindMessages();
   }
 
+  if (typeof loadAvvikFromSupabase === "function") {
+    loadAvvikFromSupabase();
+  }
+
   // Keep swap-related UI (nav badge, inbox, sent requests) fresh without
   // needing to reload the page - there's no live push yet, so poll instead.
   setInterval(() => {
