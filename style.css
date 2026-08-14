@@ -2007,42 +2007,73 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   margin-right: 4px;
 }
 
+/* Weather card sits in a CSS grid row where every card stretches to
+   match the tallest sibling (e.g. "Min konto" with its form) - so on
+   desktop it ends up as a tall box with a small icon+temp floating at
+   the top and a lot of empty space below. Make the card a column flex
+   container so its content actually fills that height instead. */
+#weatherCard {
+  display: flex;
+  flex-direction: column;
+}
+
+#weatherCard #dashboardWeather {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 22px;
+}
+
 .weather-current {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-bottom: 14px;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
 }
 
 .weather-current-icon {
-  font-size: 2.4rem;
+  font-size: 3.4rem;
 }
 
 .weather-current-temp {
-  font-size: 2rem;
+  font-size: 3rem;
   font-weight: 900;
   color: var(--green-dark);
 }
 
 .weather-upcoming {
-  display: flex;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .weather-day {
+  background: var(--sand);
+  border-radius: 18px;
+  padding: 16px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 6px;
   font-weight: 700;
   color: var(--muted);
 }
 
 .weather-day span:first-child {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .weather-day span:nth-child(2) {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
+}
+
+.weather-day span:last-child {
+  color: var(--text);
+  font-weight: 800;
 }
