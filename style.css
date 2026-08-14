@@ -2267,8 +2267,8 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 }
 
 .supply-priority-badge.nice_to_have {
-  background: var(--green-soft);
-  color: var(--green-dark);
+  background: var(--sand);
+  color: var(--muted);
 }
 
 .supply-meta {

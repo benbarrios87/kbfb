@@ -4353,7 +4353,7 @@ function renderSupplies() {
         <div class="supply-meta">${avatarSpanFor(s.requested_by, "avatar-tiny")}Meldt av ${escapeHtml(s.requested_by)}</div>
         ${isAdmin ? `
           <div class="supply-actions">
-            <button class="secondary-btn" type="button" data-mark-ordered="${s.id}">Bestilt ✓</button>
+            <button class="secondary-btn" type="button" data-mark-ordered="${s.id}">Merk som bestilt</button>
             <button class="secondary-btn" type="button" data-decline-supply="${s.id}">Avslå</button>
             <button class="secondary-btn" type="button" data-delete-supply="${s.id}">Fjern</button>
           </div>
