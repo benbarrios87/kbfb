@@ -1031,6 +1031,7 @@ function buildShiftDropdowns() {
         });
 
         await loadShiftsFromSupabase();
+        updateShiftHeadcounts();
       });
 
       cell.appendChild(freeTextInput);
@@ -1108,6 +1109,7 @@ function buildShiftDropdowns() {
         });
 
         await loadShiftsFromSupabase();
+        updateShiftHeadcounts();
       }
 
       vikarPicker.addEventListener("change", async () => {
@@ -1187,6 +1189,7 @@ function buildShiftDropdowns() {
       }
 
       await loadShiftsFromSupabase();
+      updateShiftHeadcounts();
     });
 
     customInput.addEventListener("input", async () => {
@@ -1199,6 +1202,7 @@ function buildShiftDropdowns() {
       });
 
       await loadShiftsFromSupabase();
+      updateShiftHeadcounts();
     });
 
     cell.innerHTML = "";
