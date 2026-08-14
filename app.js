@@ -1741,15 +1741,16 @@ function goToCurrentWeek() {
   filterShifts();
 }
 
-// Duplicated at the bottom of the department tables too, so you don't have
-// to scroll all the way back up just to flip a week.
-[prevWeekBtn, document.getElementById("prevWeekBottom")].forEach(btn => {
+// Duplicated on each department table too (not just once at the very
+// bottom), so whichever one you're looking at has a nearby button - no
+// need to scroll all the way back up just to flip a week.
+[prevWeekBtn, document.getElementById("prevWeekSF"), document.getElementById("prevWeekRB")].forEach(btn => {
   if (btn) btn.addEventListener("click", goToPrevWeek);
 });
-[nextWeekBtn, document.getElementById("nextWeekBottom")].forEach(btn => {
+[nextWeekBtn, document.getElementById("nextWeekSF"), document.getElementById("nextWeekRB")].forEach(btn => {
   if (btn) btn.addEventListener("click", goToNextWeek);
 });
-[currentWeekBtn, document.getElementById("currentWeekBottom")].forEach(btn => {
+[currentWeekBtn, document.getElementById("currentWeekSF"), document.getElementById("currentWeekRB")].forEach(btn => {
   if (btn) btn.addEventListener("click", goToCurrentWeek);
 });
 
