@@ -2428,6 +2428,33 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   color: var(--green);
 }
 
+.week-controls-bottom {
+  margin-top: 20px;
+  justify-content: center;
+}
+
+.week-controls-bottom button {
+  border: 1px solid var(--line);
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+
+.week-controls-bottom button:hover {
+  background: var(--green);
+  color: white;
+}
+
+.responsibility-banner {
+  background: linear-gradient(120deg, #e7f2e7, #d8ecff);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 12px 20px;
+  margin-bottom: 20px;
+  font-weight: 700;
+  color: var(--green-dark);
+  text-align: center;
+}
+
 .document-page-header {
   margin-bottom: 20px;
   padding-bottom: 16px;

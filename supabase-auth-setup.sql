@@ -670,3 +670,17 @@ DROP POLICY IF EXISTS "kbfb_employees_admin_delete" ON public.kbfb_employees;
 CREATE POLICY "kbfb_employees_admin_delete" ON public.kbfb_employees
   FOR DELETE TO authenticated
   USING (public.kbfb_is_admin());
+
+-- =========================================================
+-- STEP 20: No self-approval on kbfb_absences
+--   UPDATE on this table is only ever used for Godkjenn/Avslå, so
+--   tightening it to exclude your own row closes the loophole where an
+--   admin could approve/reject their own Ferie/Tjenestefri/etc request -
+--   not just hidden client-side, enforced here too.
+-- =========================================================
+
+DROP POLICY IF EXISTS "kbfb_absences_admin_update_delete" ON public.kbfb_absences;
+CREATE POLICY "kbfb_absences_admin_update_delete" ON public.kbfb_absences
+  FOR UPDATE TO authenticated
+  USING (public.kbfb_is_admin() AND name <> public.kbfb_current_employee_name())
+  WITH CHECK (public.kbfb_is_admin() AND name <> public.kbfb_current_employee_name());

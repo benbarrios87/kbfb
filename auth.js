@@ -75,6 +75,10 @@ async function requireAuth() {
     lockAbsenceFilterToSelf();
   }
 
+  if (typeof updateAbsenceStatusVisibility === "function") {
+    updateAbsenceStatusVisibility();
+  }
+
   if (typeof renderVacationQuotaEditor === "function") {
     renderVacationQuotaEditor();
   }

@@ -1247,6 +1247,38 @@ function renderWeekEvents() {
     : `<p class="muted">Ingen datoer denne uka.</p>`;
 }
 
+// Sommerfuglen/Regnbuen alternate "inneansvar"/"uteansvar" every week.
+// Reference point: uke 34, 2026 (week starting 2026-08-17) - Sommerfuglen
+// had inne, Regnbuen had ute that week. Any other week just counts whole
+// weeks from this date to know whether it's flipped or not.
+const responsibilityReferenceWeekStart = "2026-08-17";
+const responsibilityReferenceInne = "Sommerfuglen";
+const responsibilityReferenceUte = "Regnbuen";
+
+function getWeeklyResponsibility(weekStartValue) {
+  const refDate = new Date(responsibilityReferenceWeekStart + "T12:00:00");
+  const targetDate = new Date(weekStartValue + "T12:00:00");
+  const weeksDiff = Math.round((targetDate - refDate) / (7 * 24 * 60 * 60 * 1000));
+  const flipped = (((weeksDiff % 2) + 2) % 2) === 1;
+
+  return flipped
+    ? { inne: responsibilityReferenceUte, ute: responsibilityReferenceInne }
+    : { inne: responsibilityReferenceInne, ute: responsibilityReferenceUte };
+}
+
+function renderResponsibilityBanner(weekStartValue) {
+  const container = document.getElementById("responsibilityBanner");
+  if (!container) return;
+
+  const responsibility = getWeeklyResponsibility(weekStartValue);
+  const inneEmoji = responsibility.inne === "Sommerfuglen" ? "🦋" : "🌈";
+  const uteEmoji = responsibility.ute === "Sommerfuglen" ? "🦋" : "🌈";
+
+  container.innerHTML =
+    `🏠 ${inneEmoji} <strong>${escapeHtml(responsibility.inne)}</strong> har inneansvar` +
+    ` · 🌳 ${uteEmoji} <strong>${escapeHtml(responsibility.ute)}</strong> har uteansvar denne uka`;
+}
+
 async function updateWeekView() {
   await loadShiftsFromSupabase();
 
@@ -1274,6 +1306,7 @@ async function updateWeekView() {
   renderWeekEvents();
   populateSwapWithSelect();
   loadSwapInbox();
+  renderResponsibilityBanner(toDateKey(viewedWeekStart));
 }
 
 const absenceShiftCodes = ["F", "AVS", "TJ", "PERM"];
@@ -1690,29 +1723,35 @@ function filterShifts() {
   });
 }
 
-if (prevWeekBtn) {
-  prevWeekBtn.addEventListener("click", () => {
-    viewedWeekStart = addWeeks(viewedWeekStart, -1);
-    updateWeekView();
-    filterShifts();
-  });
+function goToPrevWeek() {
+  viewedWeekStart = addWeeks(viewedWeekStart, -1);
+  updateWeekView();
+  filterShifts();
 }
 
-if (nextWeekBtn) {
-  nextWeekBtn.addEventListener("click", () => {
-    viewedWeekStart = addWeeks(viewedWeekStart, 1);
-    updateWeekView();
-    filterShifts();
-  });
+function goToNextWeek() {
+  viewedWeekStart = addWeeks(viewedWeekStart, 1);
+  updateWeekView();
+  filterShifts();
 }
 
-if (currentWeekBtn) {
-  currentWeekBtn.addEventListener("click", () => {
-    viewedWeekStart = new Date(realCurrentWeekStart);
-    updateWeekView();
-    filterShifts();
-  });
+function goToCurrentWeek() {
+  viewedWeekStart = new Date(realCurrentWeekStart);
+  updateWeekView();
+  filterShifts();
 }
+
+// Duplicated at the bottom of the department tables too, so you don't have
+// to scroll all the way back up just to flip a week.
+[prevWeekBtn, document.getElementById("prevWeekBottom")].forEach(btn => {
+  if (btn) btn.addEventListener("click", goToPrevWeek);
+});
+[nextWeekBtn, document.getElementById("nextWeekBottom")].forEach(btn => {
+  if (btn) btn.addEventListener("click", goToNextWeek);
+});
+[currentWeekBtn, document.getElementById("currentWeekBottom")].forEach(btn => {
+  if (btn) btn.addEventListener("click", goToCurrentWeek);
+});
 
 if (dateSearch) {
   dateSearch.addEventListener("change", () => {
@@ -1978,6 +2017,8 @@ function renderQuickNotes() {
       `Uke ${weekNumber} · ${formatShortDate(kitchenViewedWeekStart)}–${formatShortDate(friday)}`;
   }
 
+  renderResponsibilityBanner(toDateKey(kitchenViewedWeekStart));
+
   quickNoteFeed.innerHTML = dayNamesLong.map((dayName, dayIndex) => {
     const date = addDays(kitchenViewedWeekStart, dayIndex);
     const dateKey = toDateKey(date);
@@ -2036,26 +2077,31 @@ const kitchenPrevWeek = document.getElementById("kitchenPrevWeek");
 const kitchenNextWeek = document.getElementById("kitchenNextWeek");
 const kitchenCurrentWeek = document.getElementById("kitchenCurrentWeek");
 
-if (kitchenPrevWeek) {
-  kitchenPrevWeek.addEventListener("click", () => {
-    kitchenViewedWeekStart = addWeeks(kitchenViewedWeekStart, -1);
-    renderQuickNotes();
-  });
+function goToKitchenPrevWeek() {
+  kitchenViewedWeekStart = addWeeks(kitchenViewedWeekStart, -1);
+  renderQuickNotes();
 }
 
-if (kitchenNextWeek) {
-  kitchenNextWeek.addEventListener("click", () => {
-    kitchenViewedWeekStart = addWeeks(kitchenViewedWeekStart, 1);
-    renderQuickNotes();
-  });
+function goToKitchenNextWeek() {
+  kitchenViewedWeekStart = addWeeks(kitchenViewedWeekStart, 1);
+  renderQuickNotes();
 }
 
-if (kitchenCurrentWeek) {
-  kitchenCurrentWeek.addEventListener("click", () => {
-    kitchenViewedWeekStart = getMonday(new Date());
-    renderQuickNotes();
-  });
+function goToKitchenCurrentWeek() {
+  kitchenViewedWeekStart = getMonday(new Date());
+  renderQuickNotes();
 }
+
+// Duplicated at the bottom of the week grid too, same reasoning as vakter.html.
+[kitchenPrevWeek, document.getElementById("kitchenPrevWeekBottom")].forEach(btn => {
+  if (btn) btn.addEventListener("click", goToKitchenPrevWeek);
+});
+[kitchenNextWeek, document.getElementById("kitchenNextWeekBottom")].forEach(btn => {
+  if (btn) btn.addEventListener("click", goToKitchenNextWeek);
+});
+[kitchenCurrentWeek, document.getElementById("kitchenCurrentWeekBottom")].forEach(btn => {
+  if (btn) btn.addEventListener("click", goToKitchenCurrentWeek);
+});
 
 const kitchenDateSearch = document.getElementById("kitchenDateSearch");
 
@@ -3155,9 +3201,12 @@ function renderAbsences() {
       <td>${escapeHtml(record.status) || "Registrert"}</td>
       <td>${escapeHtml(record.note)}</td>
       <td>
-        ${isAdmin && record.status === "Ønsket" ? `
+        ${isAdmin && record.status === "Ønsket" && record.name !== currentEmployee?.name ? `
           <button class="secondary-btn" data-approve-id="${record.id}">Godkjenn</button>
           <button class="secondary-btn" data-reject-id="${record.id}">Avslå</button>
+        ` : ""}
+        ${isAdmin && record.status === "Ønsket" && record.name === currentEmployee?.name ? `
+          <span class="muted">Venter på noen andre</span>
         ` : ""}
         ${isAdmin ? `<button class="kitchen-delete" data-absence-id="${record.id}">Slett</button>` : ""}
       </td>
@@ -3347,11 +3396,30 @@ function updateAbsenceStatusVisibility() {
   // Til dato is always optional - a single day (e.g. one egenmeldingsdag) is
   // the common case, so it defaults to matching fra dato if left blank.
   if (absenceNote) absenceNote.required = isAvspasering;
+
+  // Can't self-approve/self-reject - not even admin logging their own
+  // Ferie/Tjenestefri/etc. Those options just aren't offered when the name
+  // on the form is your own.
+  const godkjentOption = document.getElementById("absenceStatusGodkjentOption");
+  const avslattOption = document.getElementById("absenceStatusAvslattOption");
+  const isOwnEntry = typeof currentEmployee !== "undefined" && currentEmployee &&
+    absenceName?.value === currentEmployee.name;
+
+  if (godkjentOption) godkjentOption.disabled = isOwnEntry;
+  if (avslattOption) avslattOption.disabled = isOwnEntry;
+
+  if (isOwnEntry && (absenceStatus.value === "Godkjent" || absenceStatus.value === "Avslått")) {
+    absenceStatus.value = "Ønsket";
+  }
 }
 
 if (absenceType) {
   absenceType.addEventListener("change", updateAbsenceStatusVisibility);
   updateAbsenceStatusVisibility();
+}
+
+if (absenceName) {
+  absenceName.addEventListener("change", updateAbsenceStatusVisibility);
 }
 
 if (absenceForm) {
