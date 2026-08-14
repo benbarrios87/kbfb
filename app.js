@@ -411,18 +411,19 @@ function renderDashboardEvents() {
 function renderDashboardKitchenNotes() {
   if (!dashboardKitchenNotes) return;
 
+  const todayKey = toDateKey(new Date());
   const notes = notesCache
-    .filter(note => dateIsInDashboardWeek(note.date))
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
+    .filter(note => note.date === todayKey)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
   dashboardKitchenNotes.innerHTML = notes.length
     ? notes.map(note => `
       <div class="compact-item">
-        <strong>${formatKitchenDate(note.date)} · ${escapeHtml(note.author)}</strong>
+        <strong>${escapeHtml(note.author)}</strong>
         <span>${escapeHtml(note.text)}</span>
       </div>
     `).join("")
-    : `<p class="muted">Ingen beskjeder denne uka.</p>`;
+    : `<p class="muted">Ingen beskjeder i dag.</p>`;
 }
 
 const departmentEmoji = { Sommerfuglen: "🦋", Regnbuen: "🌈" };
