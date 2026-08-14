@@ -136,22 +136,22 @@ let employeesCache = [];
 // person, shown on their vaktplan row. Kept wide (16) since a small
 // barnehage staff list still needs every person to be visually distinct.
 const employeeColorPalette = [
-  { value: "#fef3c7", label: "Gul" },
-  { value: "#ffedd5", label: "Oransje" },
-  { value: "#fee2e2", label: "Korall" },
-  { value: "#ffe4e6", label: "Rosa" },
-  { value: "#fae8ff", label: "Fuksia" },
-  { value: "#f3e8ff", label: "Lilla" },
-  { value: "#e0e7ff", label: "Indigo" },
-  { value: "#dbeafe", label: "Blå" },
-  { value: "#e0f2fe", label: "Lys blå" },
-  { value: "#cffafe", label: "Cyan" },
-  { value: "#ccfbf1", label: "Turkis" },
-  { value: "#d1fae5", label: "Smaragd" },
-  { value: "#dcfce7", label: "Grønn" },
-  { value: "#ecfccb", label: "Lime" },
-  { value: "#fef9c3", label: "Sand" },
-  { value: "#e2e8f0", label: "Grå" }
+  { value: "#fde68a", label: "Gul" },
+  { value: "#fed7aa", label: "Oransje" },
+  { value: "#fecaca", label: "Korall" },
+  { value: "#fecdd3", label: "Rosa" },
+  { value: "#f5d0fe", label: "Fuksia" },
+  { value: "#e9d5ff", label: "Lilla" },
+  { value: "#c7d2fe", label: "Indigo" },
+  { value: "#bfdbfe", label: "Blå" },
+  { value: "#bae6fd", label: "Lys blå" },
+  { value: "#a5f3fc", label: "Cyan" },
+  { value: "#99f6e4", label: "Turkis" },
+  { value: "#a7f3d0", label: "Smaragd" },
+  { value: "#bbf7d0", label: "Grønn" },
+  { value: "#d9f99d", label: "Lime" },
+  { value: "#fef08a", label: "Sand" },
+  { value: "#cbd5e1", label: "Grå" }
 ];
 
 async function loadEmployeesFromSupabase() {
