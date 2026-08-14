@@ -2385,3 +2385,51 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
     max-width: 90vw;
   }
 }
+
+.document-list {
+  display: grid;
+  gap: 12px;
+}
+
+.document-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #fffdf7;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 16px 20px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.document-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.document-card-icon {
+  font-size: 1.8rem;
+}
+
+.document-card-body {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+}
+
+.document-card-body strong {
+  color: var(--green-dark);
+}
+
+.document-card-arrow {
+  font-size: 1.3rem;
+  color: var(--green);
+}
+
+.document-page-header {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px dashed var(--line);
+}
