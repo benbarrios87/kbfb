@@ -1,9 +1,12 @@
 // KBFB Personal: create-employee-login
 //
-// Two admin actions that both need the powerful service-role key, so they
-// share one function (avoids deploying a second one for password resets):
+// Admin actions that all need the powerful service-role key, so they
+// share one function (avoids deploying a separate one for each):
 //   - action "create" (default): new Auth user + kbfb_employees row, in one step
 //   - action "reset_password": set a new password for an existing login
+//   - action "delete": removes the Auth login (if any) and the
+//     kbfb_employees row together, so you don't end up with an orphaned
+//     login that still exists but has no employee record
 // Runs server-side so that key never reaches the browser - only this
 // function holds it, read from environment secrets.
 //
@@ -76,6 +79,35 @@ Deno.serve(async (req) => {
 
       if (resetError) {
         return jsonResponse({ error: resetError.message }, 400);
+      }
+
+      return jsonResponse({ success: true });
+    }
+
+    if (action === "delete") {
+      const { employee_id, user_id } = body;
+
+      if (!employee_id) {
+        return jsonResponse({ error: "employee_id er påkrevd." }, 400);
+      }
+
+      // Delete the Auth login first (if this row ever had one) - if this
+      // fails we don't want to also delete the employee row and lose track
+      // of the orphaned login.
+      if (user_id) {
+        const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(user_id);
+        if (deleteAuthError) {
+          return jsonResponse({ error: "Kunne ikke slette innlogging: " + deleteAuthError.message }, 400);
+        }
+      }
+
+      const { error: deleteEmployeeError } = await adminClient
+        .from("kbfb_employees")
+        .delete()
+        .eq("id", employee_id);
+
+      if (deleteEmployeeError) {
+        return jsonResponse({ error: "Kunne ikke slette ansatt-raden: " + deleteEmployeeError.message }, 500);
       }
 
       return jsonResponse({ success: true });

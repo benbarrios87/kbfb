@@ -3568,6 +3568,9 @@ function renderAdminEmployeeTable() {
           </div>
         ` : `<span class="muted">Ikke koblet</span>`}
       </td>
+      <td>
+        <button type="button" class="kitchen-delete delete-employee-btn" data-id="${employee.id}">Slett</button>
+      </td>
     </tr>
   `).join("");
 
@@ -3612,6 +3615,35 @@ function renderAdminEmployeeTable() {
       const value = field.type === "checkbox" ? field.checked : field.value.trim();
 
       await updateEmployeeField(id, { [key]: value === "" ? null : value });
+      await loadAllEmployeesForAdmin();
+    });
+  });
+
+  document.querySelectorAll(".delete-employee-btn").forEach(button => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.id;
+      const employee = adminEmployeesCache.find(e => String(e.id) === String(id));
+      if (!employee) return;
+
+      const confirmed = confirm(
+        `Slette ${employee.name}? ${employee.user_id ? "Innloggingen deres slettes også." : ""} Dette kan ikke angres.`
+      );
+      if (!confirmed) return;
+
+      button.disabled = true;
+      button.textContent = "...";
+
+      const { data, error } = await supabaseClient.functions.invoke("create-employee-login", {
+        body: { action: "delete", employee_id: employee.id, user_id: employee.user_id || null }
+      });
+
+      if (error || data?.error) {
+        alert("Kunne ikke slette: " + (data?.error || error?.message || "Ukjent feil."));
+        button.disabled = false;
+        button.textContent = "Slett";
+        return;
+      }
+
       await loadAllEmployeesForAdmin();
     });
   });

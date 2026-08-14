@@ -655,3 +655,18 @@ DROP POLICY IF EXISTS "kbfb_kind_messages_delete_own_or_admin" ON public.kbfb_ki
 CREATE POLICY "kbfb_kind_messages_delete_own_or_admin" ON public.kbfb_kind_messages
   FOR DELETE TO authenticated
   USING (author = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
+
+-- =========================================================
+-- STEP 19: kbfb_employees DELETE policy
+--   The Edge Function already bypasses RLS via the service-role key
+--   when it deletes an employee row, so this isn't strictly required
+--   for the "Slett" button to work - added anyway for defense in depth,
+--   consistent with every other table already having a real policy for
+--   each operation instead of relying only on the missing ones denying
+--   by default.
+-- =========================================================
+
+DROP POLICY IF EXISTS "kbfb_employees_admin_delete" ON public.kbfb_employees;
+CREATE POLICY "kbfb_employees_admin_delete" ON public.kbfb_employees
+  FOR DELETE TO authenticated
+  USING (public.kbfb_is_admin());
