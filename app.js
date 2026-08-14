@@ -3494,7 +3494,8 @@ async function loadPendingApprovalsSummary() {
 // nothing stops someone typing the URL directly - this is the actual
 // gate. Runs on every page (cheap early-return everywhere but admin.html).
 function enforceAdminPageAccess() {
-  if (!window.location.pathname.endsWith("admin.html")) return;
+  const protectedPages = ["admin.html", "nokkeltall.html"];
+  if (!protectedPages.some(page => window.location.pathname.endsWith(page))) return;
   if (typeof currentEmployee === "undefined" || !currentEmployee) return;
 
   if (!currentEmployee.is_admin) {
@@ -3512,6 +3513,350 @@ async function initializeAdmin() {
 }
 
 initializeAdmin();
+
+/* ---------- ADMIN - NØKKELTALL ---------- */
+
+const sickAbsenceTypes = ["Egenmelding", "Sykemelding", "Omsorgsdager"];
+const countedAbsenceStatuses = ["Ønsket", "Godkjent"];
+
+function daysBetweenInclusive(startDate, endDate) {
+  if (!startDate || !endDate) return 1;
+  const start = new Date(startDate + "T12:00:00");
+  const end = new Date(endDate + "T12:00:00");
+  return Math.max(1, Math.round((end - start) / 86400000) + 1);
+}
+
+// Reads a clock-time range like "08:00-16:00" or "08.00–16.00" out of a
+// free-text shift value and returns the hours between them. Anything
+// without a recognizable range (a plain name, "Maxi", etc.) returns 0 -
+// it still counts as a shift, just not toward the hour total.
+function parseShiftHours(shiftValue) {
+  if (!shiftValue) return 0;
+  const match = shiftValue.match(/(\d{1,2})[:.](\d{2})\s*[-–]\s*(\d{1,2})[:.](\d{2})/);
+  if (!match) return 0;
+
+  const [, h1, m1, h2, m2] = match.slice(1).map(Number);
+  const start = h1 + m1 / 60;
+  let end = h2 + m2 / 60;
+  if (end < start) end += 24;
+
+  return Math.max(0, end - start);
+}
+
+// The "Vikar" row's shift_value is free text like "Kari 08:00-16:00" -
+// split off the leading name part (if any) from the time/note after it.
+function parseVikarName(shiftValue) {
+  const match = (shiftValue || "").trim().match(/^([A-Za-zÆØÅæøå ]+?)(?=\s+\d|$)/);
+  const name = match ? match[1].trim() : "";
+  return name || "Ikke navngitt";
+}
+
+function currentPeriodRange(period) {
+  const today = new Date();
+  const todayKey = toDateKey(today);
+
+  if (period === "month") {
+    const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    return { start: toDateKey(firstOfMonth), end: todayKey };
+  }
+
+  const firstOfYear = new Date(today.getFullYear(), 0, 1);
+  return { start: toDateKey(firstOfYear), end: todayKey };
+}
+
+function computeAbsenceStats(absences, periodStart, periodEnd) {
+  const stats = {};
+
+  absences.forEach(absence => {
+    if (!countedAbsenceStatuses.includes(absence.status)) return;
+    if (!absence.start_date || absence.start_date > periodEnd || absence.start_date < periodStart) return;
+
+    if (!stats[absence.name]) {
+      stats[absence.name] = { sickDays: 0, vacationDays: 0, avspaseringHours: 0, permisjonDays: 0 };
+    }
+
+    const entry = stats[absence.name];
+    const days = daysBetweenInclusive(absence.start_date, absence.end_date);
+
+    if (sickAbsenceTypes.includes(absence.type)) {
+      entry.sickDays += days;
+    } else if (absence.type === "Ferie") {
+      entry.vacationDays += days;
+    } else if (absence.type === "Avspasering brukt") {
+      entry.avspaseringHours += absence.hours || 0;
+    } else if ((absence.type || "").startsWith("Permisjon")) {
+      entry.permisjonDays += days;
+    }
+  });
+
+  return stats;
+}
+
+function renderAbsenceStatsTable(period) {
+  const body = document.getElementById("absenceStatsTableBody");
+  if (!body) return;
+
+  const { start, end } = currentPeriodRange(period);
+  const stats = computeAbsenceStats(absencesCache, start, end);
+  const names = Object.keys(stats).sort((a, b) => a.localeCompare(b));
+
+  body.innerHTML = names.length
+    ? names.map(name => {
+        const s = stats[name];
+        return `
+          <tr>
+            <td><strong>${escapeHtml(name)}</strong></td>
+            <td>${s.sickDays || "–"}</td>
+            <td>${s.vacationDays || "–"}</td>
+            <td>${s.avspaseringHours || "–"}</td>
+            <td>${s.permisjonDays || "–"}</td>
+          </tr>
+        `;
+      }).join("")
+    : `<tr><td colspan="5" class="muted">Ingen registrert fravær i perioden.</td></tr>`;
+
+  // Total sick days in the year-to-date view feeds the stat card up top.
+  const statSickDaysYtd = document.getElementById("statSickDaysYtd");
+  if (statSickDaysYtd && period === "year") {
+    const total = names.reduce((sum, name) => sum + stats[name].sickDays, 0);
+    statSickDaysYtd.textContent = total;
+  }
+}
+
+let nokkeltallShiftsCache = [];
+
+// Loads every kbfb_shifts row with a week_start in the given range -
+// separate from vakter.html's shiftsCache, which only ever holds the one
+// week currently being viewed there.
+async function loadShiftsForNokkeltall(weekStartFrom, weekStartTo) {
+  const { data, error } = await supabaseClient
+    .from("kbfb_shifts")
+    .select("*")
+    .gte("week_start", weekStartFrom)
+    .lte("week_start", weekStartTo);
+
+  if (error) {
+    console.error("Kunne ikke hente vakter for nøkkeltall:", error);
+    return [];
+  }
+
+  nokkeltallShiftsCache = data || [];
+  return nokkeltallShiftsCache;
+}
+
+function computeVikarUsageByMonth(shifts) {
+  const byMonth = {};
+
+  shifts.forEach(shift => {
+    if (shift.employee !== "Vikar") return;
+    const value = (shift.shift_value || "").trim();
+    if (!value) return;
+
+    const date = addDays(new Date(shift.week_start + "T12:00:00"), shift.day_index);
+    const monthKey = toMonthKey(date);
+    const hours = parseShiftHours(value);
+
+    if (!byMonth[monthKey]) byMonth[monthKey] = { shiftCount: 0, totalHours: 0, byPerson: {} };
+
+    byMonth[monthKey].shiftCount += 1;
+    byMonth[monthKey].totalHours += hours;
+
+    const name = parseVikarName(value);
+    byMonth[monthKey].byPerson[name] = (byMonth[monthKey].byPerson[name] || 0) + hours;
+  });
+
+  return byMonth;
+}
+
+function monthLabel(monthKey) {
+  const [year, month] = monthKey.split("-").map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString("no-NO", { month: "long", year: "numeric" });
+}
+
+let vikarUsageByMonthCache = {};
+
+function renderVikarTables() {
+  const trendBody = document.getElementById("vikarTrendTableBody");
+  const personBody = document.getElementById("vikarPersonTableBody");
+  if (!trendBody || !personBody) return;
+
+  const months = Object.keys(vikarUsageByMonthCache).sort();
+
+  trendBody.innerHTML = months.length
+    ? months.map(monthKey => {
+        const m = vikarUsageByMonthCache[monthKey];
+        return `
+          <tr>
+            <td><strong>${monthLabel(monthKey)}</strong></td>
+            <td>${m.shiftCount}</td>
+            <td>${m.totalHours ? m.totalHours.toFixed(1) + " t" : "–"}</td>
+          </tr>
+        `;
+      }).join("")
+    : `<tr><td colspan="3" class="muted">Ingen vikarvakter registrert i perioden.</td></tr>`;
+
+  const currentMonthKey = toMonthKey(new Date());
+  const currentMonth = vikarUsageByMonthCache[currentMonthKey];
+
+  const statVikarHoursMonth = document.getElementById("statVikarHoursMonth");
+  if (statVikarHoursMonth) {
+    statVikarHoursMonth.textContent = currentMonth ? currentMonth.totalHours.toFixed(1) : "0";
+  }
+
+  if (!currentMonth || !Object.keys(currentMonth.byPerson).length) {
+    personBody.innerHTML = `<tr><td colspan="3" class="muted">Ingen vikarvakter denne måneden.</td></tr>`;
+    return;
+  }
+
+  personBody.innerHTML = Object.entries(currentMonth.byPerson)
+    .sort(([, a], [, b]) => b - a)
+    .map(([name, hours]) => {
+      const shiftCount = nokkeltallShiftsCache.filter(shift =>
+        shift.employee === "Vikar" &&
+        parseVikarName(shift.shift_value) === name &&
+        toMonthKey(addDays(new Date(shift.week_start + "T12:00:00"), shift.day_index)) === currentMonthKey
+      ).length;
+
+      return `
+        <tr>
+          <td><strong>${escapeHtml(name)}</strong></td>
+          <td>${shiftCount}</td>
+          <td>${hours ? hours.toFixed(1) + " t" : "–"}</td>
+        </tr>
+      `;
+    }).join("");
+}
+
+async function loadStatCards() {
+  const { count: openSwaps } = await supabaseClient
+    .from("kbfb_shift_swap_requests")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "pending");
+
+  const statOpenSwaps = document.getElementById("statOpenSwaps");
+  if (statOpenSwaps) statOpenSwaps.textContent = openSwaps ?? "0";
+
+  const statPendingAbsences = document.getElementById("statPendingAbsences");
+  if (statPendingAbsences) {
+    statPendingAbsences.textContent = absencesCache.filter(a => a.status === "Ønsket").length;
+  }
+}
+
+async function initializeNokkeltall() {
+  const container = document.getElementById("nokkeltallStats");
+  if (!container) return;
+
+  await loadAbsencesFromSupabase();
+  renderAbsenceStatsTable("month");
+  renderAbsenceStatsTable("year");
+  await loadStatCards();
+
+  // Last 6 months of shifts, so the vikarbruk trend has something to show.
+  const sixMonthsAgo = getMonday(addDays(new Date(), -180));
+  await loadShiftsForNokkeltall(toDateKey(sixMonthsAgo), toDateKey(getMonday(new Date())));
+  vikarUsageByMonthCache = computeVikarUsageByMonth(nokkeltallShiftsCache);
+  renderVikarTables();
+
+  const periodToggle = document.getElementById("absenceStatsPeriodToggle");
+  if (periodToggle) {
+    periodToggle.querySelectorAll("button").forEach(button => {
+      button.addEventListener("click", () => {
+        periodToggle.querySelectorAll("button").forEach(b => b.className = "secondary-btn");
+        button.className = "primary-btn";
+        renderAbsenceStatsTable(button.dataset.period);
+      });
+    });
+  }
+
+  setupNokkeltallExports();
+}
+
+/* ---------- EKSPORT (Excel via SheetJS, PDF via utskrift) ---------- */
+
+function downloadWorkbook(sheetData, sheetName, fileName) {
+  if (typeof XLSX === "undefined") {
+    alert("Eksport-biblioteket lastet ikke inn. Sjekk internettforbindelsen og prøv igjen.");
+    return;
+  }
+
+  const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+  XLSX.writeFile(workbook, fileName);
+}
+
+function setupNokkeltallExports() {
+  const exportAbsenceExcel = document.getElementById("exportAbsenceExcel");
+  const exportVikarExcel = document.getElementById("exportVikarExcel");
+  const exportWeekExcel = document.getElementById("exportWeekExcel");
+  const exportPrintPdf = document.getElementById("exportPrintPdf");
+
+  if (exportAbsenceExcel) {
+    exportAbsenceExcel.addEventListener("click", () => {
+      const { start, end } = currentPeriodRange("year");
+      const stats = computeAbsenceStats(absencesCache, start, end);
+      const rows = [["Ansatt", "Sykefravær (dager)", "Ferie (dager)", "Avspasering brukt (timer)", "Permisjon (dager)"]];
+
+      Object.entries(stats).forEach(([name, s]) => {
+        rows.push([name, s.sickDays, s.vacationDays, s.avspaseringHours, s.permisjonDays]);
+      });
+
+      downloadWorkbook(rows, "Fraværsstatistikk", `fravaersstatistikk-${toDateKey(new Date())}.xlsx`);
+    });
+  }
+
+  if (exportVikarExcel) {
+    exportVikarExcel.addEventListener("click", () => {
+      const rows = [["Måned", "Antall vikarvakter", "Estimerte timer"]];
+
+      Object.keys(vikarUsageByMonthCache).sort().forEach(monthKey => {
+        const m = vikarUsageByMonthCache[monthKey];
+        rows.push([monthLabel(monthKey), m.shiftCount, Number(m.totalHours.toFixed(1))]);
+      });
+
+      downloadWorkbook(rows, "Vikarbruk", `vikarbruk-${toDateKey(new Date())}.xlsx`);
+    });
+  }
+
+  if (exportWeekExcel) {
+    exportWeekExcel.addEventListener("click", async () => {
+      const weekStart = toDateKey(getMonday(new Date()));
+      const { data, error } = await supabaseClient
+        .from("kbfb_shifts")
+        .select("*")
+        .eq("week_start", weekStart);
+
+      if (error) {
+        alert("Kunne ikke hente denne ukas vaktplan.");
+        return;
+      }
+
+      const dayNames = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag"];
+      const rows = [["Avdeling", "Ansatt", ...dayNames]];
+      const byPerson = {};
+
+      (data || []).forEach(shift => {
+        const key = `${shift.department}__${shift.employee}`;
+        if (!byPerson[key]) {
+          byPerson[key] = { department: shift.department, employee: shift.employee, days: ["", "", "", "", ""] };
+        }
+        byPerson[key].days[shift.day_index] = shift.shift_value || "";
+      });
+
+      Object.values(byPerson)
+        .sort((a, b) => a.department.localeCompare(b.department) || a.employee.localeCompare(b.employee))
+        .forEach(row => rows.push([row.department, row.employee, ...row.days]));
+
+      downloadWorkbook(rows, "Vaktplan", `vaktplan-uke-${getWeekNumber(getMonday(new Date()))}.xlsx`);
+    });
+  }
+
+  if (exportPrintPdf) {
+    exportPrintPdf.addEventListener("click", () => window.print());
+  }
+}
+
+initializeNokkeltall();
 
 /* ---------- FORBEDRINGSBEHOV (FEEDBACK) ---------- */
 

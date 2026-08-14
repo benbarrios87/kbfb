@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nøkkeltall | KBFB Personal</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#234d31" />
+  <link rel="apple-touch-icon" href="images/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="KBFB" />
+</head>
+
+<body>
+  <div class="layout">
+    <aside class="sidebar nature-sidebar">
+      <div class="brand">
+        <div class="brand-icon">🌲</div>
+        <h2>KBFB</h2>
+        <p>Personalrommet</p>
+      </div>
+
+      <nav>
+        <a href="dashboard.html">🏠 Hjem</a>
+        <a href="vakter.html">📅 Vakter<span class="nav-badge" style="display:none;"></span></a>
+        <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
+        <a data-hide-from-vikar href="datoer.html">📆 Datoer</a>
+        <a href="vikarer.html">🕒 Vikarer</a>
+        <a data-hide-from-vikar href="ferieogavspasering.html">🌴 Ferie/avsp/overtid</a>
+        <a href="bestillinger.html">🛒 Bestillinger</a>
+        <a data-hide-from-vikar href="kalender.html">📍 Hvor er Benjamin?</a>
+        <a data-hide-from-vikar href="filarkiv.html">📁 Filarkiv (kommer)</a>
+        <a data-hide-from-vikar href="aarshjul.html">🗓️ Årshjul (kommer)</a>
+        <a data-hide-from-vikar href="turbank.html">🏕️ Turbank (kommer)</a>
+        <a href="nokkeltall.html" class="active" data-admin-only>📊 Nøkkeltall</a>
+        <a href="admin.html" data-admin-only>⚙️ Admin</a>
+      </nav>
+
+      <div class="sidebar-feedback">
+        <p>💬 Innspill?</p>
+        <form id="feedbackForm">
+          <textarea id="feedbackText" rows="2" placeholder="Skriv her..." required></textarea>
+          <button type="submit">Send</button>
+        </form>
+        <p id="feedbackStatus"></p>
+      </div>
+
+      <div class="sidebar-footer">
+        <span class="user-badge" id="userBadge"></span>
+        <button class="logout-btn" id="logoutBtn">Logg ut</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="forest-hero compact">
+        <div>
+          <p class="eyebrow">Kun for admin</p>
+          <h1>Nøkkeltall</h1>
+          <p class="muted">Fravær, vikarbruk og eksport - samlet ett sted.</p>
+        </div>
+        <div class="hero-badge">📊 Oversikt</div>
+      </section>
+
+      <section class="stat-grid" id="nokkeltallStats">
+        <div class="stat-card">
+          <span class="stat-value" id="statOpenSwaps">–</span>
+          <span class="stat-label">Åpne vaktbytter</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="statPendingAbsences">–</span>
+          <span class="stat-label">Ubehandlet fravær</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="statSickDaysYtd">–</span>
+          <span class="stat-label">Sykefraværsdager hittil i år</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="statVikarHoursMonth">–</span>
+          <span class="stat-label">Vikartimer denne måneden</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Fravær</p>
+            <h2>🤒 Fraværsstatistikk per ansatt</h2>
+          </div>
+          <div class="view-toggle" id="absenceStatsPeriodToggle">
+            <button type="button" class="secondary-btn" data-period="month">Denne måneden</button>
+            <button type="button" class="primary-btn" data-period="year">Hittil i år</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="shift-table" id="absenceStatsTable">
+            <thead>
+              <tr>
+                <th>Ansatt</th>
+                <th>Sykefravær (dager)</th>
+                <th>Ferie (dager)</th>
+                <th>Avspasering brukt (timer)</th>
+                <th>Permisjon (dager)</th>
+              </tr>
+            </thead>
+            <tbody id="absenceStatsTableBody">
+              <tr><td colspan="5" class="muted">Laster...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="muted" style="margin-top: 10px;">
+          Teller kun fravær med status "Ønsket" eller "Godkjent" (ikke avslåtte). Dager regnes fra og med start- til og med sluttdato.
+        </p>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Vikarbruk</p>
+            <h2>🕒 Vikartimer per måned</h2>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="shift-table" id="vikarTrendTable">
+            <thead>
+              <tr>
+                <th>Måned</th>
+                <th>Antall vikarvakter</th>
+                <th>Estimerte timer</th>
+              </tr>
+            </thead>
+            <tbody id="vikarTrendTableBody">
+              <tr><td colspan="3" class="muted">Laster...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 style="margin-top: 22px;">Fordelt på vikar - denne måneden</h3>
+        <div class="table-wrap">
+          <table class="shift-table" id="vikarPersonTable">
+            <thead>
+              <tr>
+                <th>Navn</th>
+                <th>Antall vakter</th>
+                <th>Estimerte timer</th>
+              </tr>
+            </thead>
+            <tbody id="vikarPersonTableBody">
+              <tr><td colspan="3" class="muted">Laster...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="muted" style="margin-top: 10px;">
+          Timer estimeres ut fra klokkeslett skrevet inn i vaktcellen (f.eks. "08:00-16:00"). Vakter uten gjenkjennelig klokkeslett telles med i antallet, men ikke i timetallet.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>⬇️ Eksporter</h2>
+        <p class="muted">Last ned data til Excel, eller lag en PDF via utskrift.</p>
+
+        <div class="dash-shortcuts" style="margin-top: 14px;">
+          <button type="button" class="secondary-btn" id="exportAbsenceExcel">📥 Fraværsstatistikk (Excel)</button>
+          <button type="button" class="secondary-btn" id="exportVikarExcel">📥 Vikarbruk (Excel)</button>
+          <button type="button" class="secondary-btn" id="exportWeekExcel">📥 Denne ukas vaktplan (Excel)</button>
+          <button type="button" class="secondary-btn" id="exportPrintPdf">🖨️ Skriv ut / Lagre som PDF</button>
+        </div>
+        <p class="muted" style="margin-top: 10px;">
+          "Skriv ut / Lagre som PDF" åpner nettleserens utskriftsdialog for denne siden - velg "Lagre som PDF" som skriver der.
+        </p>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+  <script src="pwa.js"></script>
+</body>
+</html>
