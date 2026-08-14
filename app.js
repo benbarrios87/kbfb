@@ -133,14 +133,25 @@ async function loadEventsFromSupabase() {
 let employeesCache = [];
 
 // Same palette as the vikar color picker (vikarer.html) - one color per
-// person, shown on their vaktplan row.
+// person, shown on their vaktplan row. Kept wide (16) since a small
+// barnehage staff list still needs every person to be visually distinct.
 const employeeColorPalette = [
   { value: "#fef3c7", label: "Gul" },
-  { value: "#dbeafe", label: "Blå" },
-  { value: "#dcfce7", label: "Grønn" },
-  { value: "#f3e8ff", label: "Lilla" },
+  { value: "#ffedd5", label: "Oransje" },
+  { value: "#fee2e2", label: "Korall" },
   { value: "#ffe4e6", label: "Rosa" },
-  { value: "#e0f2fe", label: "Lys blå" }
+  { value: "#fae8ff", label: "Fuksia" },
+  { value: "#f3e8ff", label: "Lilla" },
+  { value: "#e0e7ff", label: "Indigo" },
+  { value: "#dbeafe", label: "Blå" },
+  { value: "#e0f2fe", label: "Lys blå" },
+  { value: "#cffafe", label: "Cyan" },
+  { value: "#ccfbf1", label: "Turkis" },
+  { value: "#d1fae5", label: "Smaragd" },
+  { value: "#dcfce7", label: "Grønn" },
+  { value: "#ecfccb", label: "Lime" },
+  { value: "#fef9c3", label: "Sand" },
+  { value: "#e2e8f0", label: "Grå" }
 ];
 
 async function loadEmployeesFromSupabase() {
