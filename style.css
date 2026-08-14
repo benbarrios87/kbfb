@@ -716,6 +716,25 @@ select {
   color: #7a5d2b;
 }
 
+.support-toggle {
+  display: block;
+  margin: 10px auto 0;
+  border: 1px dashed var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-weight: 750;
+  font-size: 0.85rem;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.support-toggle:hover {
+  background: var(--green-soft);
+  color: var(--green-dark);
+  border-color: var(--green);
+}
+
 .avatar {
   width: 34px;
   height: 34px;

@@ -1051,6 +1051,74 @@ function buildShiftDropdowns() {
     cell.appendChild(customInput);
   });
 }
+
+/* ---------- VIKAR/FORELDREINNSATS/EKSTRA - SKJUL NÅR TOMME ----------
+   These support rows exist on every department table but most weeks
+   only one or none of them are actually used - showing all three,
+   every week, made the schedule feel cluttered. So: hide a support row
+   by default when it has nothing entered for the displayed week, and
+   let a small toggle per department reveal them again for editing. Any
+   row that DOES have content stays visible automatically - nothing
+   real ever gets hidden. */
+
+function supportRowHasContent(row) {
+  const isVikarRow = row.dataset.employee === "Vikar";
+
+  return Array.from(row.querySelectorAll(".shift-cell")).some(cell => {
+    const badge = cell.querySelector(".badge");
+    if (badge) {
+      const value = badge.textContent.trim();
+      return !!value && value !== "—";
+    }
+
+    if (isVikarRow) {
+      const nameChip = cell.querySelector(".vikar-chip");
+      const timeInput = cell.querySelector(".custom-shift-input");
+      const hasName = !!nameChip && nameChip.style.display !== "none";
+      return hasName || !!timeInput?.value.trim();
+    }
+
+    const customInput = cell.querySelector(".custom-shift-input");
+    return !!customInput?.value.trim();
+  });
+}
+
+function applySupportRowVisibility() {
+  document.querySelectorAll(".department-section").forEach(section => {
+    const supportRows = Array.from(section.querySelectorAll(".support-row"));
+    const toggle = section.querySelector(".support-toggle");
+    if (!supportRows.length) return;
+
+    const expanded = section.dataset.supportExpanded === "1";
+    const emptyRows = supportRows.filter(row => !supportRowHasContent(row));
+
+    supportRows.forEach(row => {
+      row.style.display = emptyRows.includes(row) && !expanded ? "none" : "";
+    });
+
+    if (!toggle) return;
+
+    if (!emptyRows.length) {
+      toggle.style.display = "none";
+      return;
+    }
+
+    toggle.style.display = "";
+    toggle.textContent = expanded
+      ? "− Skjul tomme rader"
+      : "+ Vis vikar / foreldreinnsats / ekstra";
+  });
+}
+
+document.querySelectorAll(".support-toggle").forEach(toggle => {
+  toggle.addEventListener("click", () => {
+    const section = toggle.closest(".department-section");
+    if (!section) return;
+    section.dataset.supportExpanded = section.dataset.supportExpanded === "1" ? "0" : "1";
+    applySupportRowVisibility();
+  });
+});
+
 function renderWeekEvents() {
   if (!weekEvents) return;
 
@@ -1090,6 +1158,7 @@ async function updateWeekView() {
   });
 
   buildShiftDropdowns();
+  applySupportRowVisibility();
   updateShiftHeadcounts();
   renderWeekEvents();
   populateSwapWithSelect();
