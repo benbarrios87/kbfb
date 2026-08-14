@@ -4344,41 +4344,47 @@ function renderSupplies() {
   const declined = suppliesCache.filter(s => s.declined);
 
   supplyOpenList.innerHTML = open.length
-    ? open.map(s => `
-      <div class="summary-item">
-        <strong>${escapeHtml(s.item)}</strong>
-        <span>${supplyPriorityLabel[s.priority] || ""} · Meldt av ${escapeHtml(s.requested_by)}</span>
+    ? `<div class="supply-list">${open.map(s => `
+      <div class="supply-item${s.priority === "haster" ? " urgent" : ""}">
+        <div class="supply-item-top">
+          <span class="supply-item-name">${escapeHtml(s.item)}</span>
+          <span class="supply-priority-badge ${s.priority}">${supplyPriorityLabel[s.priority] || ""}</span>
+        </div>
+        <div class="supply-meta">${avatarSpanFor(s.requested_by, "avatar-tiny")}Meldt av ${escapeHtml(s.requested_by)}</div>
         ${isAdmin ? `
-          <div style="display: flex; gap: 8px; margin-top: 6px;">
+          <div class="supply-actions">
             <button class="secondary-btn" type="button" data-mark-ordered="${s.id}">Bestilt ✓</button>
             <button class="secondary-btn" type="button" data-decline-supply="${s.id}">Avslå</button>
             <button class="secondary-btn" type="button" data-delete-supply="${s.id}">Fjern</button>
           </div>
-          <div data-order-box="${s.id}" style="display: none; margin-top: 8px; display: grid; gap: 6px;">
+          <div class="supply-inline-form" data-order-box="${s.id}" style="display: none;">
             <input type="text" placeholder="Kommentar (valgfritt)..." data-order-note-input="${s.id}" />
             <button class="secondary-btn" type="button" data-confirm-order="${s.id}" style="width: fit-content;">Bekreft bestilling</button>
           </div>
-          <div data-decline-box="${s.id}" style="display: none; margin-top: 8px; display: grid; gap: 6px;">
+          <div class="supply-inline-form" data-decline-box="${s.id}" style="display: none;">
             <input type="text" placeholder="Grunn (valgfritt)..." data-decline-note-input="${s.id}" />
             <button class="secondary-btn" type="button" data-confirm-decline="${s.id}" style="width: fit-content;">Bekreft avslag</button>
           </div>
         ` : ""}
       </div>
-    `).join("")
-    : `<p class="muted">Ingenting meldt inn ennå.</p>`;
+    `).join("")}</div>`
+    : `<p class="muted">Ingenting meldt inn ennå. 🎉</p>`;
 
   if (supplyOrderedSection) {
     supplyOrderedSection.style.display = ordered.length ? "" : "none";
   }
 
   if (supplyOrderedList) {
-    supplyOrderedList.innerHTML = ordered.map(s => `
-      <div class="summary-item">
-        <strong>${escapeHtml(s.item)}</strong>
-        <span>Meldt av ${escapeHtml(s.requested_by)} · Bestilt ✓${s.admin_note ? ` · ${escapeHtml(s.admin_note)}` : ""}</span>
-        ${isAdmin ? `<button class="secondary-btn" type="button" data-delete-supply="${s.id}" style="margin-top: 6px; width: fit-content;">Fjern</button>` : ""}
+    supplyOrderedList.innerHTML = `<div class="supply-list">${ordered.map(s => `
+      <div class="supply-item done">
+        <div class="supply-item-top">
+          <span class="supply-item-name">✓ ${escapeHtml(s.item)}</span>
+          <span class="supply-status-tag ordered">Bestilt</span>
+        </div>
+        <div class="supply-meta">${avatarSpanFor(s.requested_by, "avatar-tiny")}Meldt av ${escapeHtml(s.requested_by)}${s.admin_note ? ` · ${escapeHtml(s.admin_note)}` : ""}</div>
+        ${isAdmin ? `<div class="supply-actions"><button class="secondary-btn" type="button" data-delete-supply="${s.id}">Fjern</button></div>` : ""}
       </div>
-    `).join("");
+    `).join("")}</div>`;
   }
 
   if (supplyDeclinedSection) {
@@ -4386,13 +4392,16 @@ function renderSupplies() {
   }
 
   if (supplyDeclinedList) {
-    supplyDeclinedList.innerHTML = declined.map(s => `
-      <div class="summary-item">
-        <strong>${escapeHtml(s.item)}</strong>
-        <span>Meldt av ${escapeHtml(s.requested_by)} · Avslått${s.admin_note ? ` · ${escapeHtml(s.admin_note)}` : ""}</span>
-        ${isAdmin ? `<button class="secondary-btn" type="button" data-delete-supply="${s.id}" style="margin-top: 6px; width: fit-content;">Fjern</button>` : ""}
+    supplyDeclinedList.innerHTML = `<div class="supply-list">${declined.map(s => `
+      <div class="supply-item done">
+        <div class="supply-item-top">
+          <span class="supply-item-name">${escapeHtml(s.item)}</span>
+          <span class="supply-status-tag declined">Avslått</span>
+        </div>
+        <div class="supply-meta">${avatarSpanFor(s.requested_by, "avatar-tiny")}Meldt av ${escapeHtml(s.requested_by)}${s.admin_note ? ` · ${escapeHtml(s.admin_note)}` : ""}</div>
+        ${isAdmin ? `<div class="supply-actions"><button class="secondary-btn" type="button" data-delete-supply="${s.id}">Fjern</button></div>` : ""}
       </div>
-    `).join("");
+    `).join("")}</div>`;
   }
 
   document.querySelectorAll("[data-mark-ordered]").forEach(button => {

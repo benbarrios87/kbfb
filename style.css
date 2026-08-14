@@ -2204,3 +2204,117 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   font-weight: 750;
   color: var(--muted);
 }
+
+/* ===== BESTILLINGER ===== */
+
+.supply-list {
+  display: grid;
+  gap: 14px;
+}
+
+.supply-item {
+  background: #fffdf7;
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--green);
+  border-radius: 20px;
+  padding: 16px 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.supply-item.urgent {
+  border-left-color: #cc4a4a;
+  background: linear-gradient(135deg, #fff8f5, #fffdf7);
+}
+
+.supply-item.done {
+  border-left-color: var(--muted);
+  opacity: 0.75;
+}
+
+.supply-item-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.supply-item-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.supply-item.done .supply-item-name {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.supply-priority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.supply-priority-badge.haster {
+  background: #fde3e0;
+  color: #a13a2e;
+}
+
+.supply-priority-badge.nice_to_have {
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+
+.supply-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.supply-status-tag {
+  font-weight: 800;
+}
+
+.supply-status-tag.ordered {
+  color: var(--green-dark);
+}
+
+.supply-status-tag.declined {
+  color: #a13a2e;
+}
+
+.supply-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.supply-actions .secondary-btn {
+  font-size: 0.85rem;
+  padding: 8px 14px;
+}
+
+.supply-inline-form {
+  display: grid;
+  gap: 8px;
+  background: var(--sand);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.supply-inline-form input {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-family: inherit;
+}
