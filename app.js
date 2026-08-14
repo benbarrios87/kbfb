@@ -345,6 +345,106 @@ function renderDashboardBirthdayBanner() {
   banner.style.display = "flex";
 }
 
+// Big confetti burst on top of the banner above - fires once per
+// birthday-person per day (sessionStorage-gated), for whoever visits the
+// dashboard that day, not just the birthday person themselves.
+function triggerBirthdayConfettiIfNeeded() {
+  const birthdayEmployees = getEmployeesWithBirthdayToday();
+  if (!birthdayEmployees.length) return;
+
+  const todayKey = toDateKey(new Date());
+  const sessionKey = `kbfb-birthday-confetti-${todayKey}`;
+  if (sessionStorage.getItem(sessionKey)) return;
+  sessionStorage.setItem(sessionKey, "1");
+
+  const names = birthdayEmployees.map(employee => employee.name);
+  const namesText = names.length === 1
+    ? names[0]
+    : `${names.slice(0, -1).join(", ")} og ${names[names.length - 1]}`;
+
+  launchBirthdayConfetti(namesText);
+}
+
+function launchBirthdayConfetti(namesText) {
+  const message = document.createElement("div");
+  message.className = "birthday-confetti-message";
+  message.textContent = `🎉 Gratulerer med dagen, ${namesText}! 🎉`;
+  document.body.appendChild(message);
+
+  const canvas = document.createElement("canvas");
+  canvas.className = "birthday-confetti-canvas";
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  document.body.appendChild(canvas);
+
+  const ctx = canvas.getContext("2d");
+  const colors = ["#ff6b6b", "#ffd93d", "#6bcb77", "#4d96ff", "#ff8fab", "#c77dff", "#ffa62b"];
+  const pieces = [];
+
+  for (let i = 0; i < 260; i++) {
+    pieces.push({
+      x: Math.random() * canvas.width,
+      y: -20 - Math.random() * canvas.height,
+      size: 6 + Math.random() * 9,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      speedY: 2 + Math.random() * 4.5,
+      speedX: -2.5 + Math.random() * 5,
+      rotation: Math.random() * 360,
+      rotationSpeed: -9 + Math.random() * 18,
+      shape: Math.random() > 0.5 ? "rect" : "circle"
+    });
+  }
+
+  let frame = 0;
+  const maxFrames = 480;
+
+  function draw() {
+    frame++;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    pieces.forEach(piece => {
+      piece.y += piece.speedY;
+      piece.x += piece.speedX;
+      piece.rotation += piece.rotationSpeed;
+
+      if (piece.y > canvas.height + 20) {
+        piece.y = -20;
+        piece.x = Math.random() * canvas.width;
+      }
+
+      ctx.save();
+      ctx.translate(piece.x, piece.y);
+      ctx.rotate((piece.rotation * Math.PI) / 180);
+      ctx.fillStyle = piece.color;
+
+      if (piece.shape === "rect") {
+        ctx.fillRect(-piece.size / 2, -piece.size / 4, piece.size, piece.size / 2);
+      } else {
+        ctx.beginPath();
+        ctx.arc(0, 0, piece.size / 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    });
+
+    if (frame < maxFrames) {
+      requestAnimationFrame(draw);
+    } else {
+      canvas.style.transition = "opacity 0.8s ease";
+      message.style.transition = "opacity 0.8s ease";
+      canvas.style.opacity = "0";
+      message.style.opacity = "0";
+      setTimeout(() => {
+        canvas.remove();
+        message.remove();
+      }, 800);
+    }
+  }
+
+  draw();
+}
+
 // Personal "Hei {name}!" greeting with photo, top-left of the dashboard
 // hero. Re-run once loadEmployeeAvatars() resolves too, so the real
 // photo swaps in for the initial-letter placeholder once it's fetched.
@@ -406,6 +506,7 @@ function renderDashboardEvents() {
     : `<p class="muted">Ingen kommende datoer.</p>`;
 
   renderDashboardBirthdayBanner();
+  triggerBirthdayConfettiIfNeeded();
 }
 
 function renderDashboardKitchenNotes() {
@@ -3243,7 +3344,8 @@ function updateAbsenceStatusVisibility() {
   if (startField) startField.style.display = isAvspasering ? "none" : "";
   if (endField) endField.style.display = isAvspasering ? "none" : "";
   if (absenceStartDate) absenceStartDate.required = !isAvspasering;
-  if (absenceEndDate) absenceEndDate.required = !isAvspasering;
+  // Til dato is always optional - a single day (e.g. one egenmeldingsdag) is
+  // the common case, so it defaults to matching fra dato if left blank.
   if (absenceNote) absenceNote.required = isAvspasering;
 }
 
@@ -3263,7 +3365,7 @@ if (absenceForm) {
       name: absenceName.value,
       type: absenceType.value,
       start_date: isAvspaseringEntry ? todayKey : absenceStartDate.value,
-      end_date: isAvspaseringEntry ? todayKey : absenceEndDate.value,
+      end_date: isAvspaseringEntry ? todayKey : (absenceEndDate.value || absenceStartDate.value),
       hours: absenceHours.value ? Number(absenceHours.value) : null,
       status: absenceStatus.value,
       note: absenceNote.value.trim()
