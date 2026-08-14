@@ -345,12 +345,18 @@ function renderDashboardBirthdayBanner() {
   banner.style.display = "flex";
 }
 
+// Was comparing Date objects where the week's end boundary carried the
+// same 00:00:00 time as its start (from getMonday), while eventDate was
+// always T12:00:00 - so Friday's own notes/events (noon) fell *after*
+// the Friday-midnight end boundary and got excluded from "this week".
+// In practice: on a Friday, today's kitchen notes silently disappeared
+// from the dashboard while Thursday's still showed. Comparing plain
+// yyyy-mm-dd strings sidesteps the time-of-day mismatch entirely.
 function eventIsInWeek(eventDate, weekStart) {
-  const date = new Date(eventDate + "T12:00:00");
-  const start = new Date(weekStart);
-  const end = addDays(start, 4);
+  const startKey = toDateKey(weekStart);
+  const endKey = toDateKey(addDays(weekStart, 4));
 
-  return date >= start && date <= end;
+  return eventDate >= startKey && eventDate <= endKey;
 }
 
 /* ---------- DASHBOARD ---------- */
