@@ -115,6 +115,10 @@ async function requireAuth() {
     loadTodayShiftsForDashboard();
   }
 
+  if (typeof renderDashboardGreeting === "function") {
+    renderDashboardGreeting();
+  }
+
   if (typeof loadKindMessages === "function") {
     loadKindMessages();
   }

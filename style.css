@@ -426,6 +426,19 @@ select {
   opacity: 0.25;
 }
 
+.hero-greeting {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.hero-greeting .avatar-medium {
+  border: 2px solid rgba(255, 255, 255, 0.55);
+}
+
 .forest-hero h1 {
   color: white;
 }
@@ -1942,6 +1955,13 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   margin-right: 6px;
 }
 
+.avatar-medium {
+  width: 38px;
+  height: 38px;
+  font-size: 1.05rem;
+  margin-right: 8px;
+}
+
 .avatar-sidebar {
   width: 28px;
   height: 28px;
@@ -1978,9 +1998,13 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   background: rgba(255, 255, 255, 0.7);
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 5px 12px 5px 5px;
+  padding: 5px 14px 5px 5px;
   font-weight: 750;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+}
+
+.today-shift-person .avatar-medium {
+  margin-right: 4px;
 }
 
 .weather-current {

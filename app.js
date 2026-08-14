@@ -345,6 +345,20 @@ function renderDashboardBirthdayBanner() {
   banner.style.display = "flex";
 }
 
+// Personal "Hei {name}!" greeting with photo, top-left of the dashboard
+// hero. Re-run once loadEmployeeAvatars() resolves too, so the real
+// photo swaps in for the initial-letter placeholder once it's fetched.
+function renderDashboardGreeting() {
+  const container = document.getElementById("dashboardGreeting");
+  if (!container || typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  const hour = new Date().getHours();
+  const greetingWord = hour < 10 ? "God morgen" : hour < 18 ? "Hei" : "God kveld";
+
+  container.innerHTML =
+    `${avatarSpanFor(currentEmployee.name, "avatar-medium")}${greetingWord}, ${escapeHtml(currentEmployee.name)}! 👋`;
+}
+
 // Was comparing Date objects where the week's end boundary carried the
 // same 00:00:00 time as its start (from getMonday), while eventDate was
 // always T12:00:00 - so Friday's own notes/events (noon) fell *after*
@@ -466,7 +480,7 @@ async function loadTodayShiftsForDashboard() {
       <div class="today-shift-list">
         ${byDepartment[dept].map(shift => supportRows.includes(shift.employee)
           ? `<span class="today-shift-person">🕒 ${escapeHtml(shift.shift_value)}</span>`
-          : `<span class="today-shift-person">${avatarSpanFor(shift.employee, "avatar-tiny")}${escapeHtml(shift.employee)} <span class="badge ${getShiftSelectClass(shift.shift_value)}">${escapeHtml(shift.shift_value)}</span></span>`
+          : `<span class="today-shift-person">${avatarSpanFor(shift.employee, "avatar-medium")}${escapeHtml(shift.employee)} <span class="badge ${getShiftSelectClass(shift.shift_value)}">${escapeHtml(shift.shift_value)}</span></span>`
         ).join("")}
       </div>
     </div>
@@ -3567,6 +3581,7 @@ async function loadEmployeeAvatars() {
   if (typeof applyEmployeeAvatarsToGrid === "function") applyEmployeeAvatarsToGrid();
   if (typeof renderQuickNotes === "function") renderQuickNotes();
   if (typeof renderUserBadge === "function") renderUserBadge();
+  if (typeof renderDashboardGreeting === "function") renderDashboardGreeting();
 }
 
 // Builds the HTML for a small round avatar next to someone's name -
