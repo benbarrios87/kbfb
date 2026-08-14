@@ -422,8 +422,18 @@ function renderDashboardKitchenNotes() {
         <strong>${escapeHtml(note.author)}</strong>
         <span>${escapeHtml(note.text)}</span>
       </div>
-    `).join("")
+    `).join("") + renderDayReadBar(todayKey)
     : `<p class="muted">Ingen beskjeder i dag.</p>`;
+
+  dashboardKitchenNotes.querySelectorAll("[data-read-date]").forEach(button => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      await toggleDayRead(button.dataset.readDate);
+      await loadDayReadsFromSupabase();
+      renderDashboardKitchenNotes();
+      if (typeof renderQuickNotes === "function") renderQuickNotes();
+    });
+  });
 }
 
 const departmentEmoji = { Sommerfuglen: "🦋", Regnbuen: "🌈" };
@@ -1916,6 +1926,7 @@ function renderQuickNotes() {
       await toggleDayRead(button.dataset.readDate);
       await loadDayReadsFromSupabase();
       renderQuickNotes();
+      if (typeof renderDashboardKitchenNotes === "function") renderDashboardKitchenNotes();
     });
   });
 }
