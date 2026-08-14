@@ -2153,3 +2153,54 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
     break-inside: avoid;
   }
 }
+
+/* ===== KJØKKENBOKA - DAGSKVITTERING ===== */
+
+.day-read-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.day-read-btn {
+  border: 1px solid var(--line);
+  background: #f8f5ef;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  font-weight: 750;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.day-read-btn:hover {
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+
+.day-read-btn.read {
+  background: var(--green-soft);
+  border-color: var(--green);
+  color: var(--green-dark);
+}
+
+.day-read-avatars {
+  display: flex;
+  align-items: center;
+}
+
+.day-read-avatars .avatar {
+  margin-right: -8px;
+  border: 2px solid #fffdf7;
+}
+
+.day-read-more {
+  margin-left: 10px;
+  font-size: 0.78rem;
+  font-weight: 750;
+  color: var(--muted);
+}

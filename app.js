@@ -1779,6 +1779,75 @@ function renderReactionBar(noteId) {
   `;
 }
 
+/* ---------- KJØKKENBOKA - DAGSKVITTERING ----------
+   Mirrors how the real, physical kitchen book works: you flip through
+   a day's notes and sign that you've seen them, once, for the whole
+   day - not a per-message tick. */
+
+let dayReadsCache = [];
+
+async function loadDayReadsFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_day_reads")
+    .select("*");
+
+  if (error) {
+    console.error("Kunne ikke hente lest-kvitteringer:", error);
+    return [];
+  }
+
+  dayReadsCache = data || [];
+  return dayReadsCache;
+}
+
+function readersForDay(dateKey) {
+  return dayReadsCache.filter(read => read.date === dateKey);
+}
+
+async function toggleDayRead(dateKey) {
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  const existing = dayReadsCache.find(
+    read => read.date === dateKey && read.reader === currentEmployee.name
+  );
+
+  if (existing) {
+    const { error } = await supabaseClient
+      .from("kbfb_day_reads")
+      .delete()
+      .eq("id", existing.id);
+
+    if (error) console.error("Kunne ikke fjerne lest-kvittering:", error);
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("kbfb_day_reads")
+    .insert([{ date: dateKey, reader: currentEmployee.name }]);
+
+  if (error) console.error("Kunne ikke lagre lest-kvittering:", error);
+}
+
+function renderDayReadBar(dateKey) {
+  const readers = readersForDay(dateKey);
+  const myName = typeof currentEmployee !== "undefined" ? currentEmployee?.name : null;
+  const iHaveRead = readers.some(read => read.reader === myName);
+
+  return `
+    <div class="day-read-bar">
+      <button type="button" class="day-read-btn${iHaveRead ? " read" : ""}" data-read-date="${dateKey}">
+        ${iHaveRead ? "✓ Lest" : "Merk som lest"}
+      </button>
+      ${readers.length ? `
+        <div class="day-read-avatars" title="${readers.map(r => escapeHtml(r.reader)).join(", ")}">
+          ${readers.slice(0, 6).map(r => avatarSpanFor(r.reader, "avatar-tiny")).join("")}
+          ${readers.length > 6 ? `<span class="day-read-more">+${readers.length - 6}</span>` : ""}
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
 function renderQuickNoteAuthor() {
   if (quickNoteAuthorDisplay && typeof currentEmployee !== "undefined" && currentEmployee) {
     quickNoteAuthorDisplay.value = currentEmployee.name;
@@ -1817,6 +1886,8 @@ function renderQuickNotes() {
             ${renderReactionBar(note.id)}
           </article>
         `).join("") : `<p class="muted">Ingen beskjeder.</p>`}
+
+        ${dayNotes.length ? renderDayReadBar(dateKey) : ""}
       </div>
     `;
   }).join("");
@@ -1835,6 +1906,15 @@ function renderQuickNotes() {
       button.disabled = true;
       await toggleNoteReaction(button.dataset.reactNoteId, button.dataset.reactEmoji);
       await loadNoteReactionsFromSupabase();
+      renderQuickNotes();
+    });
+  });
+
+  document.querySelectorAll("[data-read-date]").forEach(button => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      await toggleDayRead(button.dataset.readDate);
+      await loadDayReadsFromSupabase();
       renderQuickNotes();
     });
   });
@@ -1924,7 +2004,8 @@ if (quickNoteForm) {
 async function initializeNotes() {
   await Promise.all([
     loadNotesFromSupabase(),
-    loadNoteReactionsFromSupabase()
+    loadNoteReactionsFromSupabase(),
+    loadDayReadsFromSupabase()
   ]);
   renderQuickNotes();
   renderDashboardKitchenNotes();
