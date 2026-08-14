@@ -27,7 +27,7 @@
         <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
         <a data-hide-from-vikar href="datoer.html">📆 Datoer</a>
         <a href="vikarer.html">🕒 Vikarer</a>
-        <a data-hide-from-vikar href="ferieogavspasering.html">🌴 Ferie/avsp/overtid</a>
+        <a data-hide-from-vikar data-hide-from-guest href="ferieogavspasering.html">🌴 Ferie/avsp/overtid</a>
         <a href="bestillinger.html">🛒 Bestillinger</a>
         <a data-hide-from-vikar href="kalender.html">📍 Hvor er Benjamin?</a>
         <a class="active" data-hide-from-vikar href="filarkiv.html">📁 Filarkiv</a>
@@ -37,7 +37,7 @@
         <a href="admin.html" data-admin-only>⚙️ Admin</a>
       </nav>
 
-      <div class="sidebar-feedback">
+      <div class="sidebar-feedback" data-hide-from-guest>
         <p>💬 Innspill?</p>
         <form id="feedbackForm">
           <textarea id="feedbackText" rows="2" placeholder="Skriv her..." required></textarea>

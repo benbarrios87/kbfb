@@ -3697,6 +3697,19 @@ function enforceAdminPageAccess() {
   }
 }
 
+// Guest kitchen-iPad login: sensitive pages are hidden from the nav, but
+// that alone doesn't stop someone typing the URL directly - this is the
+// actual gate, same pattern as enforceAdminPageAccess.
+function enforceGuestPageRestrictions() {
+  const restrictedPages = ["ferieogavspasering.html"];
+  if (!restrictedPages.some(page => window.location.pathname.endsWith(page))) return;
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  if (currentEmployee.role === "Gjest") {
+    window.location.href = "dashboard.html";
+  }
+}
+
 async function initializeAdmin() {
   if (!adminEmployeeTableBody) return;
 

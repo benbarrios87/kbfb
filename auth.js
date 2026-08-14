@@ -41,6 +41,10 @@ async function requireAuth() {
     enforceAdminPageAccess();
   }
 
+  if (typeof enforceGuestPageRestrictions === "function") {
+    enforceGuestPageRestrictions();
+  }
+
   if (typeof loadEmployeeAvatars === "function") {
     loadEmployeeAvatars();
   }
@@ -138,6 +142,12 @@ function isSubstitute() {
   return !!(currentEmployee && currentEmployee.role === "Vikar");
 }
 
+// Shared kitchen iPad login: can read/write Kjøkkenboka, everything else
+// either hidden (sensitive pages) or shown read-only (no edit controls).
+function isGuest() {
+  return !!(currentEmployee && currentEmployee.role === "Gjest");
+}
+
 function applyRoleVisibility() {
   const isAdmin = !!(currentEmployee && currentEmployee.is_admin);
   document.querySelectorAll("[data-admin-only]").forEach((el) => {
@@ -147,6 +157,11 @@ function applyRoleVisibility() {
   const substitute = isSubstitute();
   document.querySelectorAll("[data-hide-from-vikar]").forEach((el) => {
     el.style.display = substitute ? "none" : "";
+  });
+
+  const guest = isGuest();
+  document.querySelectorAll("[data-hide-from-guest]").forEach((el) => {
+    el.style.display = guest ? "none" : "";
   });
 }
 
