@@ -1317,8 +1317,9 @@ textarea {
 }
 
 .shared-photo-img {
+  display: block;
   width: 100%;
-  max-height: 220px;
+  height: 220px;
   object-fit: cover;
   border-radius: 14px;
   margin-top: 6px;
