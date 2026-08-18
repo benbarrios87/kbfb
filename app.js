@@ -266,7 +266,8 @@ function categoryLabel(category) {
     foreldre: "Foreldre",
     styre: "Styremøte",
     su: "SU-møte",
-    bursdag: "Bursdag"
+    bursdag: "Bursdag",
+    jubileum: "Jubileum"
   };
 
   return labels[category] || "Generelt";
@@ -281,7 +282,8 @@ function categoryEmoji(category) {
     foreldre: "🟨",
     styre: "🟩",
     su: "🟪",
-    bursdag: "🎂"
+    bursdag: "🎂",
+    jubileum: "🏆"
   };
 
   return emojis[category] || "⚪";
@@ -342,10 +344,71 @@ function getUpcomingBirthdayEvents() {
     .filter(event => event.date);
 }
 
+/* ---------- JUBILEUM ----------
+   Same idea as birthdays, but built on kbfb_employees.start_date - here
+   the year matters too, since it's used to count "X år hos oss" on
+   each anniversary. Celebrated every year, not just round numbers. */
+
+function employeeStartInfo(employee) {
+  if (!employee?.start_date) return null;
+  const parsed = new Date(employee.start_date + "T12:00:00");
+  if (Number.isNaN(parsed.getTime())) return null;
+  return { month: parsed.getMonth(), day: parsed.getDate(), year: parsed.getFullYear() };
+}
+
+// Next anniversary from today, plus how many years of service it marks.
+function nextAnniversary(employee, fromDate = new Date()) {
+  const info = employeeStartInfo(employee);
+  if (!info) return null;
+
+  const today = new Date(fromDate);
+  today.setHours(0, 0, 0, 0);
+
+  let candidateYear = today.getFullYear();
+  let candidate = new Date(candidateYear, info.month, info.day);
+  if (candidate < today) {
+    candidateYear += 1;
+    candidate = new Date(candidateYear, info.month, info.day);
+  }
+
+  const years = candidateYear - info.year;
+  if (years <= 0) return null;
+
+  return { dateKey: toDateKey(candidate), years };
+}
+
+function getEmployeesWithAnniversaryToday(fromDate = new Date()) {
+  const todayKey = toDateKey(fromDate);
+
+  return employeesCache
+    .map(employee => {
+      const next = nextAnniversary(employee, fromDate);
+      return next && next.dateKey === todayKey ? { employee, years: next.years } : null;
+    })
+    .filter(Boolean);
+}
+
+function getUpcomingAnniversaryEvents() {
+  return employeesCache
+    .map(employee => {
+      const next = nextAnniversary(employee);
+      if (!next) return null;
+
+      return {
+        date: next.dateKey,
+        title: `${employee.name} har ${next.years}-årsjubileum`,
+        category: "jubileum",
+        note: "",
+        isAnniversary: true
+      };
+    })
+    .filter(Boolean);
+}
+
 function getUpcomingEventsWithBirthdays(limit = 5) {
   const todayKey = toDateKey(new Date());
 
-  return [...getEvents(), ...getUpcomingBirthdayEvents()]
+  return [...getEvents(), ...getUpcomingBirthdayEvents(), ...getUpcomingAnniversaryEvents()]
     .filter(event => event.date >= todayKey)
     .sort((a, b) => new Date(a.date) - new Date(b.date))
     .slice(0, limit);
@@ -357,18 +420,29 @@ function renderDashboardBirthdayBanner() {
   if (!banner || !text) return;
 
   const birthdayEmployees = getEmployeesWithBirthdayToday();
+  const anniversaryEmployees = getEmployeesWithAnniversaryToday();
 
-  if (!birthdayEmployees.length) {
+  if (!birthdayEmployees.length && !anniversaryEmployees.length) {
     banner.style.display = "none";
     return;
   }
 
-  const names = birthdayEmployees.map(employee => escapeHtml(employee.name));
-  const namesText = names.length === 1
-    ? names[0]
-    : `${names.slice(0, -1).join(", ")} og ${names[names.length - 1]}`;
+  const lines = [];
 
-  text.innerHTML = `🎉🎂 Gratulerer med dagen, ${namesText}!`;
+  if (birthdayEmployees.length) {
+    const names = birthdayEmployees.map(employee => escapeHtml(employee.name));
+    const namesText = names.length === 1
+      ? names[0]
+      : `${names.slice(0, -1).join(", ")} og ${names[names.length - 1]}`;
+
+    lines.push(`🎉🎂 Gratulerer med dagen, ${namesText}!`);
+  }
+
+  anniversaryEmployees.forEach(({ employee, years }) => {
+    lines.push(`🏆 Gratulerer med ${years} år hos oss, ${escapeHtml(employee.name)}!`);
+  });
+
+  text.innerHTML = lines.join("<br>");
   banner.style.display = "flex";
 }
 
@@ -3888,6 +3962,9 @@ function renderAdminEmployeeTable() {
       </td>
       <td>
         <input type="date" class="admin-field" data-id="${employee.id}" data-field="birthday" value="${employee.birthday || ""}" style="width: 150px;" />
+      </td>
+      <td>
+        <input type="date" class="admin-field" data-id="${employee.id}" data-field="start_date" value="${employee.start_date || ""}" style="width: 150px;" />
       </td>
       <td style="text-align: center;">
         <input type="checkbox" class="admin-field" data-id="${employee.id}" data-field="is_admin" ${employee.is_admin ? "checked" : ""} />
