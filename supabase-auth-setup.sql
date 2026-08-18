@@ -726,3 +726,54 @@ CREATE POLICY "kbfb_avvik_admin_all" ON public.kbfb_avvik
   FOR ALL TO authenticated
   USING (public.kbfb_is_admin())
   WITH CHECK (public.kbfb_is_admin());
+
+-- =========================================================
+-- STEP 23: kbfb_shared_photos + "shared-photos" storage bucket
+--   Dashboard "Del et bilde" widget - staff share a photo + optional
+--   caption from their day, feed shows only the latest 3. Same
+--   upload-then-getPublicUrl pattern as the avatars bucket.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_shared_photos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  author text NOT NULL,
+  photo_url text NOT NULL,
+  caption text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_shared_photos ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_shared_photos_select_all" ON public.kbfb_shared_photos;
+CREATE POLICY "kbfb_shared_photos_select_all" ON public.kbfb_shared_photos
+  FOR SELECT TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "kbfb_shared_photos_insert_own" ON public.kbfb_shared_photos;
+CREATE POLICY "kbfb_shared_photos_insert_own" ON public.kbfb_shared_photos
+  FOR INSERT TO authenticated
+  WITH CHECK (author = public.kbfb_current_employee_name());
+
+DROP POLICY IF EXISTS "kbfb_shared_photos_delete" ON public.kbfb_shared_photos;
+CREATE POLICY "kbfb_shared_photos_delete" ON public.kbfb_shared_photos
+  FOR DELETE TO authenticated
+  USING (author = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('shared-photos', 'shared-photos', true)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "shared_photos_authenticated_upload" ON storage.objects;
+CREATE POLICY "shared_photos_authenticated_upload" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'shared-photos');
+
+DROP POLICY IF EXISTS "shared_photos_delete" ON storage.objects;
+CREATE POLICY "shared_photos_delete" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'shared-photos');
+
+DROP POLICY IF EXISTS "shared_photos_public_read" ON storage.objects;
+CREATE POLICY "shared_photos_public_read" ON storage.objects
+  FOR SELECT TO public
+  USING (bucket_id = 'shared-photos');

@@ -688,6 +688,105 @@ async function loadDashboardWeather() {
 
 /* ---------- HYGGELIG BESKJED ---------- */
 
+/* ---------- DEL ET BILDE (dashboard photo-share widget) ---------- */
+
+const photoShareForm = document.getElementById("photoShareForm");
+const photoShareInput = document.getElementById("photoShareInput");
+const photoShareCaption = document.getElementById("photoShareCaption");
+const photoShareStatus = document.getElementById("photoShareStatus");
+const photoShareFeed = document.getElementById("photoShareFeed");
+
+async function loadSharedPhotos() {
+  if (!photoShareFeed) return;
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_shared_photos")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(3);
+
+  if (error) {
+    console.error("Kunne ikke hente delte bilder:", error);
+    return;
+  }
+
+  if (!data.length) {
+    photoShareFeed.innerHTML = `<p class="muted">Ingen bilder delt ennå. Vær den første!</p>`;
+    return;
+  }
+
+  const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
+
+  photoShareFeed.innerHTML = data.map(photo => `
+    <div class="compact-item">
+      <strong>${avatarSpanFor(photo.author, "avatar-tiny")}${escapeHtml(photo.author)}</strong>
+      <img class="shared-photo-img" src="${photo.photo_url}" alt="${escapeHtml(photo.caption || "Delt bilde")}" />
+      ${photo.caption ? `<span>${escapeHtml(photo.caption)}</span>` : ""}
+      ${(isAdmin || (typeof currentEmployee !== "undefined" && currentEmployee?.name === photo.author)) ? `<button class="kitchen-delete" data-shared-photo-id="${photo.id}" style="margin-top: 4px;">Slett</button>` : ""}
+    </div>
+  `).join("");
+
+  document.querySelectorAll("[data-shared-photo-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      await supabaseClient.from("kbfb_shared_photos").delete().eq("id", button.dataset.sharedPhotoId);
+      await loadSharedPhotos();
+    });
+  });
+}
+
+if (photoShareForm) {
+  photoShareForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (typeof currentEmployee === "undefined" || !currentEmployee) {
+      if (photoShareStatus) photoShareStatus.textContent = "Fant ikke innlogget bruker. Prøv å laste siden på nytt.";
+      return;
+    }
+
+    const file = photoShareInput.files[0];
+    if (!file) return;
+
+    if (photoShareStatus) photoShareStatus.textContent = "Laster opp...";
+
+    const extension = file.name.split(".").pop() || "jpg";
+    const filePath = `${currentEmployee.id}-${Date.now()}.${extension}`;
+
+    const { error: uploadError } = await supabaseClient.storage
+      .from("shared-photos")
+      .upload(filePath, file, { contentType: file.type || "image/jpeg" });
+
+    if (uploadError) {
+      console.error("Kunne ikke laste opp bilde:", uploadError);
+      if (photoShareStatus) photoShareStatus.textContent = "Kunne ikke laste opp bilde.";
+      return;
+    }
+
+    const { data: publicUrlData } = supabaseClient.storage
+      .from("shared-photos")
+      .getPublicUrl(filePath);
+
+    const { error } = await supabaseClient.from("kbfb_shared_photos").insert([{
+      author: currentEmployee.name,
+      photo_url: publicUrlData.publicUrl,
+      caption: photoShareCaption.value.trim() || null
+    }]);
+
+    if (error) {
+      console.error("Kunne ikke dele bilde:", error);
+      if (photoShareStatus) photoShareStatus.textContent = "Kunne ikke dele bilde. Prøv igjen.";
+      return;
+    }
+
+    photoShareForm.reset();
+    if (photoShareStatus) photoShareStatus.textContent = "Bilde delt!";
+    await loadSharedPhotos();
+  });
+}
+
+loadSharedPhotos();
+
+/* ---------- HYGGELIG BESKJED ---------- */
+
 const kindMessageForm = document.getElementById("kindMessageForm");
 const kindMessageText = document.getElementById("kindMessageText");
 const kindMessageFeed = document.getElementById("kindMessageFeed");

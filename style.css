@@ -1315,6 +1315,14 @@ textarea {
   color: var(--green-dark);
 }
 
+.shared-photo-img {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 14px;
+  margin-top: 6px;
+}
+
 .compact-item span {
   color: var(--muted);
   font-weight: 650;
