@@ -825,7 +825,19 @@ async function loadSharedPhotos() {
     });
   });
 
+  photoShareFeed.querySelectorAll(".shared-photo-img").forEach(img => {
+    img.addEventListener("click", () => openPhotoLightbox(img.src));
+  });
+
   wireSharedPhotoReactionButtons();
+}
+
+function openPhotoLightbox(url) {
+  const overlay = document.createElement("div");
+  overlay.className = "photo-lightbox";
+  overlay.innerHTML = `<img src="${escapeHtml(url)}" alt="" />`;
+  overlay.addEventListener("click", () => overlay.remove());
+  document.body.appendChild(overlay);
 }
 
 if (photoShareForm) {
@@ -3023,6 +3035,7 @@ if (subForm) {
     const endDate = subEndDate.value || subDate.value;
     const dates = getWeekdaysBetween(startDate, endDate);
     let anyFailed = false;
+    let anyDuplicate = false;
 
     for (const date of dates) {
       const sub = {
@@ -3035,17 +3048,24 @@ if (subForm) {
         note: subNote.value.trim()
       };
 
+      // One vakt per vikar per dag - even if the time/avdeling differs from
+      // an existing entry, it's still a double-booking on the same day.
       const duplicate = subsCache.some(existing =>
         existing.name === sub.name &&
-        existing.date === sub.date &&
-        existing.start_time === sub.start_time &&
-        existing.end_time === sub.end_time
+        existing.date === sub.date
       );
 
-      if (!duplicate) {
-        const saved = await saveSubToSupabase(sub);
-        if (!saved) anyFailed = true;
+      if (duplicate) {
+        anyDuplicate = true;
+        continue;
       }
+
+      const saved = await saveSubToSupabase(sub);
+      if (!saved) anyFailed = true;
+    }
+
+    if (anyDuplicate) {
+      alert(`${subName.value} har allerede en vakt registrert på minst én av disse dagene - den ble ikke lagt til på nytt. Slett den gamle først hvis du vil endre den.`);
     }
 
     if (anyFailed) {

@@ -809,3 +809,15 @@ DROP POLICY IF EXISTS "kbfb_photo_reactions_delete_own" ON public.kbfb_photo_rea
 CREATE POLICY "kbfb_photo_reactions_delete_own" ON public.kbfb_photo_reactions
   FOR DELETE TO authenticated
   USING (author = public.kbfb_current_employee_name());
+
+-- =========================================================
+-- STEP 25: one vikarvakt per vikar per dag (kbfb_sub_hours)
+--   app.js already blocks this client-side (name+date match), but a
+--   vikar managed to double-book anyway - this is the real backstop.
+--   NOTE: this will FAIL if a duplicate (same name+date) already
+--   exists in the table - delete the duplicate row in vikarer.html's
+--   Vikarlogg first (admin "Slett"), then run this.
+-- =========================================================
+
+ALTER TABLE public.kbfb_sub_hours DROP CONSTRAINT IF EXISTS kbfb_sub_hours_name_date_unique;
+ALTER TABLE public.kbfb_sub_hours ADD CONSTRAINT kbfb_sub_hours_name_date_unique UNIQUE (name, date);
