@@ -1174,6 +1174,7 @@ textarea {
   padding: 7px 10px;
   font-weight: 900;
   cursor: pointer;
+  justify-self: start;
 }
 /* ===== DASHBOARD 2.0 ===== */
 
