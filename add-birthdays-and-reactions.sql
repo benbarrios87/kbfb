@@ -1,22 +1,25 @@
 -- =========================================================
--- KBFB - Bursdager, emoji-reaksjoner og dagskvittering på
--- kjøkkenbok-notater.
+-- KBFB - Bursdager, jubileum, emoji-reaksjoner og
+-- dagskvittering på kjøkkenbok-notater.
 -- Trygt å kjøre denne filen på nytt selv om du har kjørt en
 -- tidligere versjon av den - alt her er idempotent (IF NOT
 -- EXISTS / DROP POLICY IF EXISTS), så det som allerede finnes
--- bare hoppes over, og kun det nye (seksjon 3) opprettes.
+-- bare hoppes over, og kun det nye opprettes.
 -- Krever at supabase-auth-setup.sql allerede er kjørt (bruker
 -- kbfb_is_admin() og kbfb_current_employee_name() derfra).
 -- =========================================================
 
 -- ---------------------------------------------------------
--- 1) Bursdag på ansatte
---    Kun dag/måned brukes i appen - året i datoen ignoreres,
---    så det spiller ingen rolle hvilket år som legges inn.
+-- 1) Bursdag + ansettelsesdato (for jubileum) på ansatte
+--    Bursdag: kun dag/måned brukes i appen - året ignoreres.
+--    Ansettelsesdato: hele datoen brukes, for å regne ut
+--    antall år på jubileumsdagen (dag/måned samme logikk som
+--    bursdag, men året brukes til å telle "X år hos oss").
 -- ---------------------------------------------------------
 
 ALTER TABLE public.kbfb_employees
-  ADD COLUMN IF NOT EXISTS birthday date;
+  ADD COLUMN IF NOT EXISTS birthday date,
+  ADD COLUMN IF NOT EXISTS start_date date;
 
 -- ---------------------------------------------------------
 -- 2) Reaksjoner på kjøkkenbok-notater (kbfb_notes)
@@ -49,6 +52,11 @@ DROP POLICY IF EXISTS "kbfb_note_reactions_insert_own" ON public.kbfb_note_react
 CREATE POLICY "kbfb_note_reactions_insert_own" ON public.kbfb_note_reactions
   FOR INSERT TO authenticated
   WITH CHECK (author = public.kbfb_current_employee_name());
+
+DROP POLICY IF EXISTS "kbfb_note_reactions_delete_own" ON public.kbfb_note_reactions;
+CREATE POLICY "kbfb_note_reactions_delete_own" ON public.kbfb_note_reactions
+  FOR DELETE TO authenticated
+  USING (author = public.kbfb_current_employee_name());
 
 -- ---------------------------------------------------------
 -- 3) Dagskvittering på kjøkkenboka - "jeg har lest dagens
