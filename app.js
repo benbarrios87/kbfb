@@ -696,14 +696,105 @@ const photoShareCaption = document.getElementById("photoShareCaption");
 const photoShareStatus = document.getElementById("photoShareStatus");
 const photoShareFeed = document.getElementById("photoShareFeed");
 
+let photoReactionsCache = [];
+
+async function loadPhotoReactionsFromSupabase() {
+  const { data, error } = await supabaseClient.from("kbfb_photo_reactions").select("*");
+
+  if (error) {
+    console.error("Kunne ikke hente bildereaksjoner:", error);
+    return [];
+  }
+
+  photoReactionsCache = data || [];
+  return photoReactionsCache;
+}
+
+function reactionsForPhoto(photoId) {
+  const myName = typeof currentEmployee !== "undefined" ? currentEmployee?.name : null;
+
+  return REACTION_EMOJIS.map(emoji => {
+    const matches = photoReactionsCache.filter(
+      reaction => reaction.photo_id === photoId && reaction.emoji === emoji
+    );
+
+    return {
+      emoji,
+      count: matches.length,
+      reactedByMe: matches.some(reaction => reaction.author === myName)
+    };
+  });
+}
+
+async function togglePhotoReaction(photoId, emoji) {
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  const existing = photoReactionsCache.find(
+    reaction => reaction.photo_id === photoId && reaction.emoji === emoji && reaction.author === currentEmployee.name
+  );
+
+  if (existing) {
+    const { error } = await supabaseClient.from("kbfb_photo_reactions").delete().eq("id", existing.id);
+    if (error) console.error("Kunne ikke fjerne reaksjon:", error);
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("kbfb_photo_reactions")
+    .insert([{ photo_id: photoId, author: currentEmployee.name, emoji }]);
+
+  if (error) console.error("Kunne ikke lagre reaksjon:", error);
+}
+
+function renderPhotoReactionBar(photoId) {
+  const reactions = reactionsForPhoto(photoId);
+
+  return `
+    <div class="reaction-bar" data-photo-id="${photoId}">
+      ${reactions.map(reaction => `
+        <button
+          type="button"
+          class="reaction-btn${reaction.reactedByMe ? " reacted" : ""}"
+          data-react-photo-id="${photoId}"
+          data-react-emoji="${reaction.emoji}"
+        >
+          <span>${reaction.emoji}</span>
+          ${reaction.count ? `<span class="reaction-count">${reaction.count}</span>` : ""}
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function wireSharedPhotoReactionButtons() {
+  document.querySelectorAll("[data-react-photo-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      await togglePhotoReaction(button.dataset.reactPhotoId, button.dataset.reactEmoji);
+      await loadPhotoReactionsFromSupabase();
+
+      document.querySelectorAll(".compact-item .reaction-bar[data-photo-id]").forEach(bar => {
+        bar.outerHTML = renderPhotoReactionBar(bar.dataset.photoId);
+      });
+
+      wireSharedPhotoReactionButtons();
+    });
+  });
+}
+
 async function loadSharedPhotos() {
   if (!photoShareFeed) return;
 
-  const { data, error } = await supabaseClient
-    .from("kbfb_shared_photos")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(3);
+  const [sharedPhotosResult] = await Promise.all([
+    supabaseClient
+      .from("kbfb_shared_photos")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(3),
+    loadPhotoReactionsFromSupabase()
+  ]);
+
+  const { data, error } = sharedPhotosResult;
 
   if (error) {
     console.error("Kunne ikke hente delte bilder:", error);
@@ -722,6 +813,7 @@ async function loadSharedPhotos() {
       <strong>${avatarSpanFor(photo.author, "avatar-tiny")}${escapeHtml(photo.author)}</strong>
       <img class="shared-photo-img" src="${photo.photo_url}" alt="${escapeHtml(photo.caption || "Delt bilde")}" />
       ${photo.caption ? `<span>${escapeHtml(photo.caption)}</span>` : ""}
+      ${renderPhotoReactionBar(photo.id)}
       ${(isAdmin || (typeof currentEmployee !== "undefined" && currentEmployee?.name === photo.author)) ? `<button class="kitchen-delete" data-shared-photo-id="${photo.id}" style="margin-top: 4px;">Slett</button>` : ""}
     </div>
   `).join("");
@@ -732,6 +824,8 @@ async function loadSharedPhotos() {
       await loadSharedPhotos();
     });
   });
+
+  wireSharedPhotoReactionButtons();
 }
 
 if (photoShareForm) {

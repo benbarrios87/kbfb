@@ -777,3 +777,35 @@ DROP POLICY IF EXISTS "shared_photos_public_read" ON storage.objects;
 CREATE POLICY "shared_photos_public_read" ON storage.objects
   FOR SELECT TO public
   USING (bucket_id = 'shared-photos');
+
+-- =========================================================
+-- STEP 24: kbfb_photo_reactions (emoji reactions on "Del et bilde" photos)
+--   Same idea/emoji set as kbfb_note_reactions (see
+--   add-birthdays-and-reactions.sql) but a separate table since it
+--   references kbfb_shared_photos, not kbfb_notes.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_photo_reactions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  photo_id uuid NOT NULL REFERENCES public.kbfb_shared_photos(id) ON DELETE CASCADE,
+  author text NOT NULL,
+  emoji text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (photo_id, author, emoji)
+);
+
+ALTER TABLE public.kbfb_photo_reactions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_photo_reactions_select_all" ON public.kbfb_photo_reactions;
+CREATE POLICY "kbfb_photo_reactions_select_all" ON public.kbfb_photo_reactions
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "kbfb_photo_reactions_insert_own" ON public.kbfb_photo_reactions;
+CREATE POLICY "kbfb_photo_reactions_insert_own" ON public.kbfb_photo_reactions
+  FOR INSERT TO authenticated
+  WITH CHECK (author = public.kbfb_current_employee_name());
+
+DROP POLICY IF EXISTS "kbfb_photo_reactions_delete_own" ON public.kbfb_photo_reactions;
+CREATE POLICY "kbfb_photo_reactions_delete_own" ON public.kbfb_photo_reactions
+  FOR DELETE TO authenticated
+  USING (author = public.kbfb_current_employee_name());
