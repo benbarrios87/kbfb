@@ -127,6 +127,38 @@
           </div>
         </article>
 
+        <article class="card dash-card large photo-share-card" id="photoShareCard">
+          <h2>📷 Del et bilde</h2>
+          <p class="muted">Del et lite glimt fra hverdagen med kollegaene. Viser bare de siste 3.</p>
+
+          <form id="photoShareForm" class="quick-note-form" data-hide-from-guest>
+            <label>
+              Bilde
+              <input type="file" id="photoShareInput" accept="image/*" required />
+            </label>
+            <label>
+              Bildetekst (valgfritt)
+              <input type="text" id="photoShareCaption" maxlength="120" placeholder="F.eks. Turdag i skogen!" />
+            </label>
+            <button class="primary-btn form-button" type="submit">Del bilde</button>
+          </form>
+          <p id="photoShareStatus" class="muted"></p>
+
+          <div id="photoShareFeed" class="compact-feed" style="margin-top: 14px;"></div>
+        </article>
+
+        <article class="card dash-card large kind-message-card" id="kindMessageCard">
+          <h2>💛 Hyggelig beskjed</h2>
+          <p class="muted">Send noe hyggelig til en kollega.</p>
+
+          <form id="kindMessageForm" class="quick-note-form" data-hide-from-guest>
+            <textarea id="kindMessageText" rows="2" placeholder="Skriv noe hyggelig..." required></textarea>
+            <button class="primary-btn form-button" type="submit">Send</button>
+          </form>
+
+          <div id="kindMessageFeed" class="compact-feed" style="margin-top: 14px;"></div>
+        </article>
+
         <article class="card dash-card" id="myAccountCard" data-hide-from-guest>
           <h2>👤 Min konto</h2>
 
@@ -165,38 +197,6 @@
             <button class="primary-btn form-button" type="submit">Bytt passord</button>
           </form>
           <p id="changePasswordStatus" class="muted"></p>
-        </article>
-
-        <article class="card dash-card large photo-share-card" id="photoShareCard">
-          <h2>📷 Del et bilde</h2>
-          <p class="muted">Del et lite glimt fra hverdagen med kollegaene. Viser bare de siste 3.</p>
-
-          <form id="photoShareForm" class="quick-note-form" data-hide-from-guest>
-            <label>
-              Bilde
-              <input type="file" id="photoShareInput" accept="image/*" required />
-            </label>
-            <label>
-              Bildetekst (valgfritt)
-              <input type="text" id="photoShareCaption" maxlength="120" placeholder="F.eks. Turdag i skogen!" />
-            </label>
-            <button class="primary-btn form-button" type="submit">Del bilde</button>
-          </form>
-          <p id="photoShareStatus" class="muted"></p>
-
-          <div id="photoShareFeed" class="compact-feed" style="margin-top: 14px;"></div>
-        </article>
-
-        <article class="card dash-card large kind-message-card" id="kindMessageCard">
-          <h2>💛 Hyggelig beskjed</h2>
-          <p class="muted">Send noe hyggelig til en kollega.</p>
-
-          <form id="kindMessageForm" class="quick-note-form" data-hide-from-guest>
-            <textarea id="kindMessageText" rows="2" placeholder="Skriv noe hyggelig..." required></textarea>
-            <button class="primary-btn form-button" type="submit">Send</button>
-          </form>
-
-          <div id="kindMessageFeed" class="compact-feed" style="margin-top: 14px;"></div>
         </article>
       </section>
     </main>
