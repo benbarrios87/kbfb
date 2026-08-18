@@ -795,6 +795,7 @@ function reactionsForPhoto(photoId) {
     return {
       emoji,
       count: matches.length,
+      names: matches.map(reaction => reaction.author),
       reactedByMe: matches.some(reaction => reaction.author === myName)
     };
   });
@@ -831,6 +832,7 @@ function renderPhotoReactionBar(photoId) {
           class="reaction-btn${reaction.reactedByMe ? " reacted" : ""}"
           data-react-photo-id="${photoId}"
           data-react-emoji="${reaction.emoji}"
+          ${reaction.count ? `title="${escapeHtml(reaction.names.join(", "))}"` : ""}
         >
           <span>${reaction.emoji}</span>
           ${reaction.count ? `<span class="reaction-count">${reaction.count}</span>` : ""}
