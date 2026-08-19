@@ -843,6 +843,15 @@ CREATE TABLE IF NOT EXISTS public.kbfb_push_subscriptions (
 
 ALTER TABLE public.kbfb_push_subscriptions ENABLE ROW LEVEL SECURITY;
 
+-- Needed even though the client never reads this table back: Postgres
+-- requires SELECT visibility on the target row for INSERT ... ON
+-- CONFLICT DO UPDATE (i.e. .upsert()) to work under RLS at all, even
+-- when the insert doesn't actually conflict with anything.
+DROP POLICY IF EXISTS "kbfb_push_subs_select_own" ON public.kbfb_push_subscriptions;
+CREATE POLICY "kbfb_push_subs_select_own" ON public.kbfb_push_subscriptions
+  FOR SELECT TO authenticated
+  USING (employee_name = public.kbfb_current_employee_name());
+
 DROP POLICY IF EXISTS "kbfb_push_subs_insert_own" ON public.kbfb_push_subscriptions;
 CREATE POLICY "kbfb_push_subs_insert_own" ON public.kbfb_push_subscriptions
   FOR INSERT TO authenticated

@@ -3751,14 +3751,35 @@ function renderAbsences() {
 
       await loadAbsencesFromSupabase();
       renderAbsences();
+
+      if (record) {
+        sendPushNotification(
+          [record.name],
+          "Søknad godkjent",
+          `${record.type} ${formatDateRange(record.start_date, record.end_date)} er godkjent`,
+          "ferieogavspasering.html"
+        );
+      }
     });
   });
 
   document.querySelectorAll("[data-reject-id]").forEach(button => {
     button.addEventListener("click", async () => {
-      await updateAbsenceStatusInSupabase(button.dataset.rejectId, "Avslått");
+      const id = button.dataset.rejectId;
+      const record = absencesCache.find(item => String(item.id) === String(id));
+
+      await updateAbsenceStatusInSupabase(id, "Avslått");
       await loadAbsencesFromSupabase();
       renderAbsences();
+
+      if (record) {
+        sendPushNotification(
+          [record.name],
+          "Søknad avslått",
+          `${record.type} ${formatDateRange(record.start_date, record.end_date)} ble avslått`,
+          "ferieogavspasering.html"
+        );
+      }
     });
   });
 }
