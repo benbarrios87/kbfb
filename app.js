@@ -613,9 +613,16 @@ function renderDashboardEvents() {
 function renderDashboardKitchenNotes() {
   if (!dashboardKitchenNotes) return;
 
-  const todayKey = toDateKey(new Date());
+  const now = new Date();
+  const target = getUpcomingShiftDate(now);
+  const targetKey = toDateKey(target);
+  const dayLabel = relativeDayLabel(target, now);
+
+  const kitchenPriorityTag = document.getElementById("kitchenPriorityTag");
+  if (kitchenPriorityTag) kitchenPriorityTag.textContent = `📌 Sjekk ${dayLabel}`;
+
   const notes = notesCache
-    .filter(note => note.date === todayKey)
+    .filter(note => note.date === targetKey)
     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
   dashboardKitchenNotes.innerHTML = notes.length
@@ -624,8 +631,8 @@ function renderDashboardKitchenNotes() {
         <strong>${escapeHtml(note.author)}</strong>
         <span>${escapeHtml(note.text)}</span>
       </div>
-    `).join("") + renderDayReadBar(todayKey)
-    : `<p class="muted">Ingen beskjeder i dag.</p>`;
+    `).join("") + renderDayReadBar(targetKey)
+    : `<p class="muted">Ingen beskjeder ${dayLabel}.</p>`;
 
   dashboardKitchenNotes.querySelectorAll("[data-read-date]").forEach(button => {
     button.addEventListener("click", async () => {
@@ -640,22 +647,41 @@ function renderDashboardKitchenNotes() {
 
 const departmentEmoji = { Sommerfuglen: "🦋", Regnbuen: "🌈" };
 
-// "Hvem jobber i dag" - today's on-duty staff per department, independent
-// of whatever week the dashboard's own week-nav is browsing.
+// Barnehagen stenger kl 17 - etter det er "i dag" ikke lenger nyttig
+// info, så vis neste virkedag i stedet (hopper over helg).
+const BARNEHAGE_CLOSING_HOUR = 17;
+const NORWEGIAN_WEEKDAYS = ["søndag", "mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag"];
+
+function getUpcomingShiftDate(now = new Date()) {
+  const target = new Date(now);
+  if (now.getHours() >= BARNEHAGE_CLOSING_HOUR) target.setDate(target.getDate() + 1);
+  while (target.getDay() === 0 || target.getDay() === 6) target.setDate(target.getDate() + 1);
+  return target;
+}
+
+function relativeDayLabel(target, now) {
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTarget = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+  const diffDays = Math.round((startOfTarget - startOfToday) / 86400000);
+  if (diffDays === 0) return "i dag";
+  if (diffDays === 1) return "i morgen";
+  return `på ${NORWEGIAN_WEEKDAYS[target.getDay()]}`;
+}
+
+// "Hvem jobber" - on-duty staff per department for the next relevant day,
+// independent of whatever week the dashboard's own week-nav is browsing.
 async function loadTodayShiftsForDashboard() {
   const container = document.getElementById("dashboardTodayShifts");
   if (!container) return;
 
-  const today = new Date();
-  const dayOfWeek = today.getDay();
+  const now = new Date();
+  const target = getUpcomingShiftDate(now);
 
-  if (dayOfWeek === 0 || dayOfWeek === 6) {
-    container.innerHTML = `<p class="muted">Helg - ingen vakter i dag.</p>`;
-    return;
-  }
+  const priorityTag = document.getElementById("shiftPriorityTag");
+  if (priorityTag) priorityTag.textContent = `📌 Sjekk ${relativeDayLabel(target, now)}`;
 
-  const dayIndex = dayOfWeek - 1;
-  const weekStartValue = toDateKey(getMonday(today));
+  const dayIndex = target.getDay() - 1;
+  const weekStartValue = toDateKey(getMonday(target));
 
   const { data, error } = await supabaseClient
     .from("kbfb_shifts")
@@ -683,7 +709,7 @@ async function loadTodayShiftsForDashboard() {
   const departments = Object.keys(byDepartment).sort();
 
   if (!departments.length) {
-    container.innerHTML = `<p class="muted">Ingen vakter registrert for i dag ennå.</p>`;
+    container.innerHTML = `<p class="muted">Ingen vakter registrert ${relativeDayLabel(target, now)} ennå.</p>`;
     return;
   }
 
@@ -980,7 +1006,7 @@ async function loadKindMessages() {
     .from("kbfb_kind_messages")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(15);
+    .limit(3);
 
   if (error) {
     console.error("Kunne ikke hente hyggelige beskjeder:", error);
@@ -1681,7 +1707,145 @@ function updateShiftHeadcounts() {
   });
 }
 
+/* ---------- PUSH-VARSLER (Vaktbytte fase 2) ---------- */
+
+// Public VAPID key - safe to expose client-side, this is the whole point
+// of the public/private VAPID split. Must match VAPID_PRIVATE_KEY set as
+// a secret on the send-push-notification Edge Function.
+const VAPID_PUBLIC_KEY = "BB92MHo91AseC98rWXwcVt-ZoV5ZWHTIJe7ILE7oomXPR11GxfaajTGZG9IlJ9gt_JvhuzBT6VtVo10CXVE-Shk";
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)));
+}
+
+function pushSupported() {
+  return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+}
+
+async function getPushSubscription() {
+  if (!pushSupported()) return null;
+  const registration = await navigator.serviceWorker.ready;
+  return registration.pushManager.getSubscription();
+}
+
+async function enablePushNotifications() {
+  if (!pushSupported()) {
+    alert("Denne nettleseren/enheten støtter ikke push-varsler.");
+    return false;
+  }
+
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") {
+    alert("Du må tillate varsler i nettleseren for å skru dette på.");
+    return false;
+  }
+
+  const registration = await navigator.serviceWorker.ready;
+  const subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+  });
+
+  const json = subscription.toJSON();
+  const { error } = await supabaseClient
+    .from("kbfb_push_subscriptions")
+    .upsert([{
+      employee_name: currentEmployee.name,
+      endpoint: json.endpoint,
+      p256dh: json.keys.p256dh,
+      auth: json.keys.auth,
+    }], { onConflict: "endpoint" });
+
+  if (error) {
+    console.error("Kunne ikke lagre push-abonnement:", error);
+    alert("Kunne ikke skru på varsler. Prøv igjen.");
+    return false;
+  }
+
+  return true;
+}
+
+async function disablePushNotifications() {
+  const subscription = await getPushSubscription();
+  if (!subscription) return;
+
+  await supabaseClient.from("kbfb_push_subscriptions").delete().eq("endpoint", subscription.endpoint);
+  await subscription.unsubscribe();
+}
+
+function setPushToggleLabel(button, subscribed) {
+  button.textContent = subscribed ? "🔕 Skru av varsler på denne enheten" : "🔔 Skru på varsler på denne enheten";
+  button.dataset.subscribed = subscribed ? "1" : "0";
+}
+
+async function initPushToggle() {
+  const button = document.getElementById("pushToggleBtn");
+  const status = document.getElementById("pushToggleStatus");
+  if (!button) return;
+
+  if (!pushSupported()) {
+    button.style.display = "none";
+    if (status) status.textContent = "Push-varsler støttes ikke i denne nettleseren.";
+    return;
+  }
+
+  const existing = await getPushSubscription();
+  setPushToggleLabel(button, !!existing);
+
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    const subscribed = button.dataset.subscribed === "1";
+
+    if (subscribed) {
+      await disablePushNotifications();
+      setPushToggleLabel(button, false);
+      if (status) status.textContent = "Varsler skrudd av på denne enheten.";
+    } else {
+      const success = await enablePushNotifications();
+      setPushToggleLabel(button, success);
+      if (status) status.textContent = success ? "Varsler skrudd på for denne enheten ✓" : "";
+    }
+
+    button.disabled = false;
+  });
+}
+
+// Fire-and-forget - a failed push should never block the action that
+// triggered it (sending a swap request, accepting one, ...).
+async function sendPushNotification(employeeNames, title, body, url) {
+  const targets = [...new Set(employeeNames)].filter(name => name && name !== currentEmployee?.name);
+  if (!targets.length) return;
+
+  try {
+    await supabaseClient.functions.invoke("send-push-notification", {
+      body: { to: targets, title, body, url },
+    });
+  } catch (error) {
+    console.error("Kunne ikke sende push-varsel:", error);
+  }
+}
+
+async function notifyDepartmentLeadersOfSwap(departments, message) {
+  const uniqueDepartments = [...new Set(departments.filter(Boolean))];
+  if (!uniqueDepartments.length) return;
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_employees")
+    .select("name")
+    .eq("role", "Avdelingsleder")
+    .in("department", uniqueDepartments);
+
+  if (error || !data?.length) return;
+
+  sendPushNotification(data.map(employee => employee.name), "Vaktbytte godtatt", message, "vakter.html");
+}
+
 /* ---------- VAKTBYTTE ---------- */
+
+let swapInboxCache = [];
 
 const swapRequestForm = document.getElementById("swapRequestForm");
 const swapDate = document.getElementById("swapDate");
@@ -1864,6 +2028,7 @@ if (swapRequestForm) {
     swapRequestForm.reset();
     if (swapPreview) swapPreview.innerHTML = "";
     if (typeof loadSentSwapRequests === "function") loadSentSwapRequests();
+    sendPushNotification([targetName], "Ny byttforespørsel", `${currentEmployee.name} vil bytte vakt med deg`, "vakter.html");
   });
 }
 
@@ -1881,6 +2046,8 @@ async function loadSwapInbox() {
     console.error("Kunne ikke hente byttforespørsler:", error);
     return;
   }
+
+  swapInboxCache = data || [];
 
   const swapAlertBanner = document.getElementById("swapAlertBanner");
   const swapAlertText = document.getElementById("swapAlertText");
@@ -1923,7 +2090,9 @@ async function loadSwapInbox() {
   document.querySelectorAll("[data-accept-swap]").forEach(button => {
     button.addEventListener("click", async () => {
       button.disabled = true;
-      const { error } = await supabaseClient.rpc("kbfb_accept_shift_swap", { request_id: button.dataset.acceptSwap });
+      const requestId = button.dataset.acceptSwap;
+      const req = swapInboxCache.find(candidate => String(candidate.id) === requestId);
+      const { error } = await supabaseClient.rpc("kbfb_accept_shift_swap", { request_id: requestId });
 
       if (error) {
         alert("Kunne ikke godta byttet: " + error.message);
@@ -1936,6 +2105,14 @@ async function loadSwapInbox() {
       buildShiftDropdowns();
       updateShiftHeadcounts();
       await loadSwapInbox();
+
+      if (req) {
+        const actualDate = toDateKey(addDays(new Date(req.week_start + "T12:00:00"), req.day_index));
+        notifyDepartmentLeadersOfSwap(
+          [req.from_department, req.to_department],
+          `${currentEmployee.name} og ${req.from_employee} har byttet vakt ${formatNorwegianDate(actualDate)}`
+        );
+      }
     });
   });
 

@@ -139,8 +139,15 @@ async function requireAuth() {
     loadSharedPhotos();
   }
 
+  if (typeof initPushToggle === "function") {
+    initPushToggle();
+  }
+
   // Keep swap-related UI (nav badge, inbox, sent requests) fresh without
-  // needing to reload the page - there's no live push yet, so poll instead.
+  // needing to reload the page - this is a lighter-weight backstop
+  // alongside the real push notifications, in case a push was missed
+  // (permission not granted, browser killed it, etc.) while the tab
+  // is actually open.
   setInterval(() => {
     if (typeof loadSwapNavBadge === "function") loadSwapNavBadge();
     if (typeof loadSwapInbox === "function") loadSwapInbox();

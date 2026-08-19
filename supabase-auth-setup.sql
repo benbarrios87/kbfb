@@ -821,3 +821,40 @@ CREATE POLICY "kbfb_photo_reactions_delete_own" ON public.kbfb_photo_reactions
 
 ALTER TABLE public.kbfb_sub_hours DROP CONSTRAINT IF EXISTS kbfb_sub_hours_name_date_unique;
 ALTER TABLE public.kbfb_sub_hours ADD CONSTRAINT kbfb_sub_hours_name_date_unique UNIQUE (name, date);
+
+-- =========================================================
+-- STEP 26: kbfb_push_subscriptions (Vaktbytte fase 2 - real push)
+--   Stores one row per browser/device that has turned on notifications
+--   (Web Push subscription: endpoint + the two keys the browser gives
+--   us). The send-push-notification Edge Function reads this table
+--   with the service-role key (bypasses RLS below entirely) - these
+--   policies only govern what the logged-in browser itself can do:
+--   save/refresh its own subscription, and remove it again.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_push_subscriptions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  employee_name text NOT NULL,
+  endpoint text NOT NULL UNIQUE,
+  p256dh text NOT NULL,
+  auth text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_push_subscriptions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_push_subs_insert_own" ON public.kbfb_push_subscriptions;
+CREATE POLICY "kbfb_push_subs_insert_own" ON public.kbfb_push_subscriptions
+  FOR INSERT TO authenticated
+  WITH CHECK (employee_name = public.kbfb_current_employee_name());
+
+DROP POLICY IF EXISTS "kbfb_push_subs_update_own" ON public.kbfb_push_subscriptions;
+CREATE POLICY "kbfb_push_subs_update_own" ON public.kbfb_push_subscriptions
+  FOR UPDATE TO authenticated
+  USING (employee_name = public.kbfb_current_employee_name())
+  WITH CHECK (employee_name = public.kbfb_current_employee_name());
+
+DROP POLICY IF EXISTS "kbfb_push_subs_delete_own" ON public.kbfb_push_subscriptions;
+CREATE POLICY "kbfb_push_subs_delete_own" ON public.kbfb_push_subscriptions
+  FOR DELETE TO authenticated
+  USING (employee_name = public.kbfb_current_employee_name());
