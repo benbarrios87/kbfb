@@ -610,6 +610,43 @@ function renderDashboardEvents() {
   triggerBirthdayConfettiIfNeeded();
 }
 
+// Best-effort: finds a clock time mentioned inside a note's own text
+// ("kl 14", "14:30", "kl. 9.15") so the day's notes can be shown in the
+// order things actually happen, not the order they were typed. Notes
+// with no recognizable time sort to the bottom (stable - keeps their
+// relative order). Known limitation: a bare "20.08"-style date inside
+// a note could get misread as a time (20:08) - "kl "-prefixed times
+// are checked first and are unambiguous, so this only affects notes
+// that mention a bare DD.MM date with no "kl" anywhere in the text.
+function extractMentionedTimeMinutes(text) {
+  if (!text) return null;
+
+  const withKl = text.match(/\bkl\.?\s*(\d{1,2})(?:[:.,](\d{2}))?/i);
+  if (withKl) {
+    const hours = Number(withKl[1]);
+    const minutes = withKl[2] ? Number(withKl[2]) : 0;
+    if (hours <= 23 && minutes <= 59) return hours * 60 + minutes;
+  }
+
+  const bare = text.match(/\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/);
+  if (bare) return Number(bare[1]) * 60 + Number(bare[2]);
+
+  return null;
+}
+
+function sortNotesByMentionedTime(notes) {
+  return notes
+    .map((note, index) => ({ note, index, time: extractMentionedTimeMinutes(note.text) }))
+    .sort((a, b) => {
+      if (a.time === null || b.time === null) {
+        if (a.time === null && b.time === null) return a.index - b.index;
+        return a.time === null ? 1 : -1;
+      }
+      return a.time - b.time || a.index - b.index;
+    })
+    .map(entry => entry.note);
+}
+
 function renderDashboardKitchenNotes() {
   if (!dashboardKitchenNotes) return;
 
@@ -621,9 +658,7 @@ function renderDashboardKitchenNotes() {
   const kitchenPriorityTag = document.getElementById("kitchenPriorityTag");
   if (kitchenPriorityTag) kitchenPriorityTag.textContent = `📌 Sjekk ${dayLabel}`;
 
-  const notes = notesCache
-    .filter(note => note.date === targetKey)
-    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  const notes = sortNotesByMentionedTime(notesCache.filter(note => note.date === targetKey));
 
   dashboardKitchenNotes.innerHTML = notes.length
     ? notes.map(note => `
@@ -2529,7 +2564,7 @@ function renderQuickNotes() {
   quickNoteFeed.innerHTML = dayNamesLong.map((dayName, dayIndex) => {
     const date = addDays(kitchenViewedWeekStart, dayIndex);
     const dateKey = toDateKey(date);
-    const dayNotes = notesCache.filter(note => note.date === dateKey);
+    const dayNotes = sortNotesByMentionedTime(notesCache.filter(note => note.date === dateKey));
 
     return `
       <div class="kitchen-day">
