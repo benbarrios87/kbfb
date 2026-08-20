@@ -656,7 +656,7 @@ function renderDashboardKitchenNotes() {
   const dayLabel = relativeDayLabel(target, now);
 
   const kitchenPriorityTag = document.getElementById("kitchenPriorityTag");
-  if (kitchenPriorityTag) kitchenPriorityTag.textContent = `📌 Sjekk ${dayLabel}`;
+  if (kitchenPriorityTag) kitchenPriorityTag.textContent = `📌 Kjøkkenboka ${dayLabel}`;
 
   const notes = sortNotesByMentionedTime(notesCache.filter(note => note.date === targetKey));
 
@@ -713,7 +713,7 @@ async function loadTodayShiftsForDashboard() {
   const target = getUpcomingShiftDate(now);
 
   const priorityTag = document.getElementById("shiftPriorityTag");
-  if (priorityTag) priorityTag.textContent = `📌 Sjekk ${relativeDayLabel(target, now)}`;
+  if (priorityTag) priorityTag.textContent = `📌 Hvem jobber ${relativeDayLabel(target, now)}`;
 
   const dayIndex = target.getDay() - 1;
   const weekStartValue = toDateKey(getMonday(target));
