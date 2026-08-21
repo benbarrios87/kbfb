@@ -867,3 +867,18 @@ DROP POLICY IF EXISTS "kbfb_push_subs_delete_own" ON public.kbfb_push_subscripti
 CREATE POLICY "kbfb_push_subs_delete_own" ON public.kbfb_push_subscriptions
   FOR DELETE TO authenticated
   USING (employee_name = public.kbfb_current_employee_name());
+
+-- =========================================================
+-- STEP 27: kbfb_shift_swap_requests - let the sender clear out their
+--   own finished (accepted/declined) requests from "Sendte forespørsler"
+--   on vakter.html. Still pending ones can't be self-deleted this way -
+--   only the recipient's Godta/Avslå or admin should resolve those.
+-- =========================================================
+
+DROP POLICY IF EXISTS "kbfb_swap_delete_own_completed_or_admin" ON public.kbfb_shift_swap_requests;
+CREATE POLICY "kbfb_swap_delete_own_completed_or_admin" ON public.kbfb_shift_swap_requests
+  FOR DELETE TO authenticated
+  USING (
+    (from_employee = public.kbfb_current_employee_name() AND status <> 'pending')
+    OR public.kbfb_is_admin()
+  );

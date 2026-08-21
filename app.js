@@ -2219,9 +2219,28 @@ async function loadSentSwapRequests() {
         <strong>Bytte med ${escapeHtml(req.to_employee)} ${formatNorwegianDate(actualDate)}</strong>
         <span>${swapStatusLabel[req.status] || req.status}</span>
         ${reasonLine}
+        ${req.status !== "pending" ? `<button class="kitchen-delete" data-delete-sent-swap="${req.id}">Slett</button>` : ""}
       </div>
     `;
   }).join("");
+
+  document.querySelectorAll("[data-delete-sent-swap]").forEach(button => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      const { error } = await supabaseClient
+        .from("kbfb_shift_swap_requests")
+        .delete()
+        .eq("id", button.dataset.deleteSentSwap);
+
+      if (error) {
+        alert("Kunne ikke slette: " + error.message);
+        button.disabled = false;
+        return;
+      }
+
+      await loadSentSwapRequests();
+    });
+  });
 }
 
 // Runs on every page (not just vakter.html) so the "Vakter" nav link
