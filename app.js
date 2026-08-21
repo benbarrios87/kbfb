@@ -4037,6 +4037,23 @@ if (absenceName) {
   absenceName.addEventListener("change", updateAbsenceStatusVisibility);
 }
 
+// Accepts either decimal hours ("1,25"/"1.25") or time:minutt ("1:15")
+// and always returns decimal hours - "1:15" is unambiguous (1t 15min =
+// 1.25), which plain decimal typing isn't (people naturally write
+// "1,15" for 1t 15min, which is actually 1.15 = 1t 9min).
+function parseHoursInput(raw) {
+  const value = (raw || "").trim();
+  if (!value) return null;
+
+  const timeMatch = value.match(/^(\d+):([0-5]?\d)$/);
+  if (timeMatch) {
+    return Number(timeMatch[1]) + Number(timeMatch[2]) / 60;
+  }
+
+  const num = Number(value.replace(",", "."));
+  return Number.isNaN(num) ? null : num;
+}
+
 if (absenceForm) {
   absenceForm.addEventListener("submit", async event => {
     event.preventDefault();
@@ -4049,7 +4066,7 @@ if (absenceForm) {
       type: absenceType.value,
       start_date: isAvspaseringEntry ? todayKey : absenceStartDate.value,
       end_date: isAvspaseringEntry ? todayKey : (absenceEndDate.value || absenceStartDate.value),
-      hours: absenceHours.value.trim() ? Number(absenceHours.value.trim().replace(",", ".")) : null,
+      hours: parseHoursInput(absenceHours.value),
       status: absenceStatus.value,
       note: absenceNote.value.trim()
     };
