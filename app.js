@@ -741,6 +741,19 @@ async function loadTodayShiftsForDashboard() {
     byDepartment[shift.department].push(shift);
   });
 
+  // Chronological by shift start (TV -> TM -> MV -> SV), not whatever
+  // order the rows happened to come back in - anything else (MØTE,
+  // ANNET, vikar/foreldre/ekstra entries) keeps its relative order at
+  // the end.
+  const shiftOrder = ["TV", "TM", "MV", "SV"];
+  Object.values(byDepartment).forEach(shifts => {
+    shifts.sort((a, b) => {
+      const aIndex = shiftOrder.indexOf(a.shift_value);
+      const bIndex = shiftOrder.indexOf(b.shift_value);
+      return (aIndex === -1 ? shiftOrder.length : aIndex) - (bIndex === -1 ? shiftOrder.length : bIndex);
+    });
+  });
+
   const departments = Object.keys(byDepartment).sort();
 
   if (!departments.length) {
