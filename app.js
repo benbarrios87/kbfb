@@ -1273,7 +1273,7 @@ const monthViewContent = document.getElementById("monthViewContent");
 let viewedWeekStart = getMonday(new Date());
 const realCurrentWeekStart = getMonday(new Date());
 
-const shiftValues = ["", "TV", "TM", "MV", "SV", "F", "AVS", "TJ", "PERM", "MØTE", "ANNET"];
+const shiftValues = ["", "TV", "TM", "MV", "SV", "F", "AVS", "TJ", "PERM", "PLANDAG", "MØTE", "ANNET"];
 
 function getCurrentWeekKey() {
   return toDateKey(viewedWeekStart);
@@ -1286,7 +1286,7 @@ function getShiftSelectClass(value) {
   if (value === "SM") return "sm";
   if (value === "SV") return "sv";
   if (value === "PT") return "pt";
-  if (value === "F" || value === "AVS" || value === "TJ" || value === "PERM") return "free";
+  if (value === "F" || value === "AVS" || value === "TJ" || value === "PERM" || value === "PLANDAG") return "free";
   if (value === "KONTOR" || value === "MØTE") return "office";
   if (value === "ANNET") return "custom";
   return "";
@@ -1706,7 +1706,7 @@ async function updateWeekView() {
   renderResponsibilityBanner(toDateKey(viewedWeekStart));
 }
 
-const absenceShiftCodes = ["F", "AVS", "TJ", "PERM"];
+const absenceShiftCodes = ["F", "AVS", "TJ", "PERM", "PLANDAG"];
 
 function updateShiftHeadcounts() {
   document.querySelectorAll(".department-table").forEach(table => {
