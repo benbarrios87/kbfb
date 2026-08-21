@@ -4049,7 +4049,7 @@ if (absenceForm) {
       type: absenceType.value,
       start_date: isAvspaseringEntry ? todayKey : absenceStartDate.value,
       end_date: isAvspaseringEntry ? todayKey : (absenceEndDate.value || absenceStartDate.value),
-      hours: absenceHours.value ? Number(absenceHours.value) : null,
+      hours: absenceHours.value.trim() ? Number(absenceHours.value.trim().replace(",", ".")) : null,
       status: absenceStatus.value,
       note: absenceNote.value.trim()
     };
