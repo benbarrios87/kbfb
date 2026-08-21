@@ -1296,7 +1296,11 @@ function getShiftSelectClass(value) {
 // applyEmployeeRowColors) instead of the shift type - so here we just
 // reset to a neutral, legible style rather than coloring by shift value.
 function colorShiftSelect(select) {
-  select.className = "shift-select neutral";
+  // Row color replaces shift-type coloring for regular shifts - but
+  // "unavailable" (F/AVS/TJ/PERM/PLANDAG) still needs to read as red at a
+  // glance regardless of whose row it's on, so that one signal survives.
+  const isUnavailable = getShiftSelectClass(select.value) === "free";
+  select.className = isUnavailable ? "shift-select free" : "shift-select neutral";
 }
 
 // Whole rows on the vaktplan department tables show the employee's own
@@ -1343,7 +1347,8 @@ function buildShiftDropdowns() {
     if (!isAdmin) {
       cell.innerHTML = "";
       const badge = document.createElement("span");
-      badge.className = "badge neutral";
+      const isUnavailable = getShiftSelectClass(defaultValue) === "free";
+      badge.className = isUnavailable ? "badge free" : "badge neutral";
       badge.textContent = defaultValue || "—";
       cell.appendChild(badge);
       return;
