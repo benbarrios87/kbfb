@@ -1579,6 +1579,13 @@ function supportRowHasContent(row) {
       return hasName || !!timeInput?.value.trim();
     }
 
+    // A "support" row that's actually a named person (e.g. Lola) still gets
+    // the normal shift-type dropdown, not a free-text cell - check that too,
+    // otherwise her existing shifts would look empty in the admin edit view
+    // and the row would wrongly collapse.
+    const select = cell.querySelector("select.shift-select");
+    if (select) return !!select.value;
+
     const customInput = cell.querySelector(".custom-shift-input");
     return !!customInput?.value.trim();
   });
