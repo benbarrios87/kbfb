@@ -1772,7 +1772,7 @@ function updateShiftHeadcounts() {
 // Public VAPID key - safe to expose client-side, this is the whole point
 // of the public/private VAPID split. Must match VAPID_PRIVATE_KEY set as
 // a secret on the send-push-notification Edge Function.
-const VAPID_PUBLIC_KEY = "BB92MHo91AseC98rWXwcVt-ZoV5ZWHTIJe7ILE7oomXPR11GxfaajTGZG9IlJ9gt_JvhuzBT6VtVo10CXVE-Shk";
+const VAPID_PUBLIC_KEY = "BLdbTLsLsfwTGcJe7CezOkqX5tAQIB8M47mFCql2plJnRx7Hh13xkdCmuW_l5JDNIshQ-J-32JqUSKAcbbTYj-8";
 
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
