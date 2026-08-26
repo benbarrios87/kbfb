@@ -2373,6 +2373,39 @@ if (weekViewBtn) {
   });
 }
 
+const exportWeekVaktplanBtn = document.getElementById("exportWeekVaktplanBtn");
+
+if (exportWeekVaktplanBtn) {
+  exportWeekVaktplanBtn.addEventListener("click", () => {
+    const weekKey = getCurrentWeekKey();
+    const dayNames = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag"];
+    const dayHeaders = dayNames.map((name, i) => `${name} ${formatShortDate(addDays(viewedWeekStart, i))}`);
+
+    const rows = [["Avdeling", "Ansatt", ...dayHeaders]];
+
+    document.querySelectorAll(".department-table tbody tr[data-employee]").forEach(row => {
+      const department = row.dataset.department;
+      const employee = row.dataset.employee;
+
+      const days = [0, 1, 2, 3, 4].map(dayIndex => {
+        const match = shiftsCache.find(item =>
+          item.week_start === weekKey &&
+          item.department === department &&
+          item.employee === employee &&
+          item.day_index === dayIndex
+        );
+        return match?.shift_value || "";
+      });
+
+      if (employee === "Vikar" && !days.some(Boolean)) return;
+
+      rows.push([department, employee, ...days]);
+    });
+
+    downloadWorkbook(rows, `Uke ${getWeekNumber(viewedWeekStart)}`, `vaktplan-uke-${getWeekNumber(viewedWeekStart)}-${weekKey}.xlsx`);
+  });
+}
+
 /* ---------- ENKEL KJØKKENBOK - SUPABASE ---------- */
 
 const quickNoteForm = document.getElementById("quickNoteForm");

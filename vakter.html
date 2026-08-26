@@ -80,6 +80,7 @@
         <div class="view-toggle">
           <button id="weekViewBtn" class="primary-btn" type="button">Ukevisning</button>
           <button id="monthViewBtn" class="secondary-btn" type="button">Månedsvisning</button>
+          <button id="exportWeekVaktplanBtn" class="secondary-btn" type="button" data-admin-only>📥 Eksporter uka til Excel</button>
         </div>
 
         <div class="filters">
@@ -418,6 +419,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="supabase.js"></script>
   <script src="auth.js"></script>
   <script src="app.js"></script>
