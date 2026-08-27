@@ -909,3 +909,46 @@ CREATE POLICY "kbfb_absences_delete_own_pending_or_admin" ON public.kbfb_absence
 -- =========================================================
 
 ALTER TABLE public.kbfb_absences ADD COLUMN IF NOT EXISTS admin_comment text;
+
+-- =========================================================
+-- STEP 30: kbfb_absences - let Avdelingsleder godkjenne/avslå "Ønsker å
+--   avspasere" requests from their OWN department's staff, not just
+--   admin. New type where staff pick a future date to spend avspasering
+--   hours on (unlike "Avspasering brukt", which is same-day/no-approval
+--   logging of hours already used). Scoped narrowly: does NOT extend
+--   Avdelingsleder's update rights to Ferie/Tjenestefri/etc - those
+--   stay admin-only, matching app.js's canReviewAbsence().
+-- =========================================================
+
+DROP POLICY IF EXISTS "kbfb_absences_admin_update_delete" ON public.kbfb_absences;
+DROP POLICY IF EXISTS "kbfb_absences_update_admin_or_avdelingsleder" ON public.kbfb_absences;
+CREATE POLICY "kbfb_absences_update_admin_or_avdelingsleder" ON public.kbfb_absences
+  FOR UPDATE TO authenticated
+  USING (
+    (public.kbfb_is_admin() AND name <> public.kbfb_current_employee_name())
+    OR (
+      type = 'Ønsker å avspasere'
+      AND name <> public.kbfb_current_employee_name()
+      AND public.kbfb_current_employee_role() = 'Avdelingsleder'
+      AND EXISTS (
+        SELECT 1 FROM public.kbfb_employees req
+        JOIN public.kbfb_employees leader ON leader.user_id = auth.uid()
+        WHERE req.name = kbfb_absences.name
+          AND req.department = leader.department
+      )
+    )
+  )
+  WITH CHECK (
+    (public.kbfb_is_admin() AND name <> public.kbfb_current_employee_name())
+    OR (
+      type = 'Ønsker å avspasere'
+      AND name <> public.kbfb_current_employee_name()
+      AND public.kbfb_current_employee_role() = 'Avdelingsleder'
+      AND EXISTS (
+        SELECT 1 FROM public.kbfb_employees req
+        JOIN public.kbfb_employees leader ON leader.user_id = auth.uid()
+        WHERE req.name = kbfb_absences.name
+          AND req.department = leader.department
+      )
+    )
+  );

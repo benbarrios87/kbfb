@@ -3685,7 +3685,8 @@ async function updateAbsenceStatusInSupabase(id, status) {
 const shiftTypesFromAbsence = {
   "Ferie": "F",
   "Tjenestefri": "TJ",
-  "Permisjon": "PERM"
+  "Permisjon": "PERM",
+  "Ønsker å avspasere": "AVS"
 };
 
 async function upsertShiftForApproval(week_start, department, employee, day_index, shift_value) {
@@ -3876,7 +3877,9 @@ function renderHolidayRequestGroups() {
   const sommerEl = document.getElementById("holidayRequestsSommer");
   if (!julEl && !paskeEl && !sommerEl) return;
 
-  const relevant = (absencesCache || []).filter(r => r.type === "Ferie" || r.type === "Avspasering brukt");
+  const relevant = (absencesCache || []).filter(r =>
+    r.type === "Ferie" || r.type === "Avspasering brukt" || r.type === "Ønsker å avspasere"
+  );
 
   const renderGroup = (el, records) => {
     if (!el) return;
@@ -3899,6 +3902,40 @@ function renderHolidayRequestGroups() {
   renderGroup(julEl, relevant.filter(r => recordOverlapsWindow(r, dateInChristmasWindow)));
   renderGroup(paskeEl, relevant.filter(r => recordOverlapsWindow(r, dateInEasterWindow)));
   renderGroup(sommerEl, relevant.filter(r => recordOverlapsWindow(r, dateInSummerWindow)));
+}
+
+// Avdelingsleder can review (godkjenn/avslå/avventer) "Ønsker å
+// avspasere" requests from their own department's staff, without being
+// admin - notifyDepartmentLeadersOfAbsenceRequest() pushes them when one
+// comes in. Doesn't extend to Ferie/Tjenestefri/etc. - those stay admin-only.
+function canReviewAbsence(record) {
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return false;
+  if (currentEmployee.is_admin) return true;
+
+  if (currentEmployee.role !== "Avdelingsleder" || record.type !== "Ønsker å avspasere") return false;
+
+  const requester = employeesCache.find(e => e.name === record.name);
+  return !!requester && requester.department === currentEmployee.department;
+}
+
+async function notifyDepartmentLeadersOfAbsenceRequest(record) {
+  const requester = employeesCache.find(e => e.name === record.name);
+  if (!requester?.department) return;
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_employees")
+    .select("name")
+    .eq("role", "Avdelingsleder")
+    .eq("department", requester.department);
+
+  if (error || !data?.length) return;
+
+  sendPushNotification(
+    data.map(employee => employee.name),
+    "Ønsker å avspasere",
+    `${record.name} ønsker å avspasere ${formatDateRange(record.start_date, record.end_date)}`,
+    "ferieogavspasering.html"
+  );
 }
 
 function renderAbsences() {
@@ -3927,7 +3964,7 @@ function renderAbsences() {
       <td>${escapeHtml(record.status) || "Registrert"}${record.admin_comment ? `<br><span class="muted">💬 ${escapeHtml(record.admin_comment)}</span>` : ""}</td>
       <td>${escapeHtml(record.note)}</td>
       <td>
-        ${isAdmin && (record.status === "Ønsket" || record.status === "Avventer") && record.name !== currentEmployee?.name ? `
+        ${canReviewAbsence(record) && (record.status === "Ønsket" || record.status === "Avventer") && record.name !== currentEmployee?.name ? `
           <button class="secondary-btn" data-approve-id="${record.id}">Godkjenn</button>
           <button class="secondary-btn" data-reject-id="${record.id}">Avslå</button>
           <button class="secondary-btn" data-hold-id="${record.id}">⏳ Avventer</button>
@@ -3936,7 +3973,7 @@ function renderAbsences() {
             <button class="secondary-btn" type="button" data-confirm-hold="${record.id}" style="width: fit-content;">Bekreft avventer</button>
           </div>
         ` : ""}
-        ${isAdmin && (record.status === "Ønsket" || record.status === "Avventer") && record.name === currentEmployee?.name ? `
+        ${canReviewAbsence(record) && (record.status === "Ønsket" || record.status === "Avventer") && record.name === currentEmployee?.name ? `
           <span class="muted">Venter på noen andre</span>
         ` : ""}
         ${isAdmin || (record.status === "Ønsket" && record.name === currentEmployee?.name)
@@ -4082,6 +4119,7 @@ function renderAbsenceSummary(records) {
         break;
 
       case "Avspasering brukt":
+      case "Ønsker å avspasere":
         grouped[record.name].avsBrukt += hours || (days * 7.5);
         break;
 
@@ -4175,7 +4213,7 @@ function updateAbsenceStatusVisibility() {
     absenceStatus.value = "Registrert";
   } else {
     absenceStatusField.style.display = "";
-    if (absenceType.value === "Ferie" || absenceType.value === "Tjenestefri") {
+    if (absenceType.value === "Ferie" || absenceType.value === "Tjenestefri" || absenceType.value === "Ønsker å avspasere") {
       absenceStatus.value = "Ønsket";
     }
   }
@@ -4268,6 +4306,10 @@ if (absenceForm) {
         status: record.status,
         note: record.note ? `Fra overtid: ${record.note}` : "Automatisk opptjent fra overtid"
       });
+    }
+
+    if (record.type === "Ønsker å avspasere") {
+      notifyDepartmentLeadersOfAbsenceRequest(record);
     }
 
     await loadAbsencesFromSupabase();
