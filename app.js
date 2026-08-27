@@ -3823,13 +3823,16 @@ function getEasterSunday(year) {
   return new Date(year, month - 1, day);
 }
 
+// Romjulsuka specifically (26.-31. desember), not the whole Dec-Jan span -
+// julaften/juledagene/nyttår are closed anyway, romjula is what actually
+// needs staffing decisions.
 function dateInChristmasWindow(dateKey) {
   const d = new Date(dateKey + "T12:00:00");
-  return (d.getMonth() === 11 && d.getDate() >= 15) || (d.getMonth() === 0 && d.getDate() <= 6);
+  return d.getMonth() === 11 && d.getDate() >= 26 && d.getDate() <= 31;
 }
 
-// Palm Sunday week through 2. påskedag - matches the usual barnehage/skole
-// påskeferie window, not just the single Easter weekend.
+// Starts a few days before skjærtorsdag (Easter Sunday - 3) through 2.
+// påskedag - matches the usual barnehage/skole påskeferie window.
 function dateInEasterWindow(dateKey) {
   const d = new Date(dateKey + "T12:00:00");
   const easter = getEasterSunday(d.getFullYear());
@@ -3913,7 +3916,9 @@ function renderAbsences() {
         ${isAdmin && record.status === "Ønsket" && record.name === currentEmployee?.name ? `
           <span class="muted">Venter på noen andre</span>
         ` : ""}
-        ${isAdmin ? `<button class="kitchen-delete" data-absence-id="${record.id}">Slett</button>` : ""}
+        ${isAdmin || (record.status === "Ønsket" && record.name === currentEmployee?.name)
+          ? `<button class="kitchen-delete" data-absence-id="${record.id}">Slett</button>`
+          : ""}
       </td>
     </tr>
   `).join("");

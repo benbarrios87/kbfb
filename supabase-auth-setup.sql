@@ -882,3 +882,20 @@ CREATE POLICY "kbfb_swap_delete_own_completed_or_admin" ON public.kbfb_shift_swa
     (from_employee = public.kbfb_current_employee_name() AND status <> 'pending')
     OR public.kbfb_is_admin()
   );
+
+-- =========================================================
+-- STEP 28: kbfb_absences - let an employee delete their OWN entry while
+--   it's still pending ("Ønsket") - fixes their own mistakes (wrong
+--   date, wrong type, etc.) without needing to ask admin. Once it's
+--   been Godkjent/Avslått, only admin can remove it (matches the
+--   existing rule that only admin can update status after that point).
+-- =========================================================
+
+DROP POLICY IF EXISTS "kbfb_absences_admin_delete" ON public.kbfb_absences;
+DROP POLICY IF EXISTS "kbfb_absences_delete_own_pending_or_admin" ON public.kbfb_absences;
+CREATE POLICY "kbfb_absences_delete_own_pending_or_admin" ON public.kbfb_absences
+  FOR DELETE TO authenticated
+  USING (
+    public.kbfb_is_admin()
+    OR (name = public.kbfb_current_employee_name() AND status = 'Ønsket')
+  );
