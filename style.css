@@ -864,6 +864,24 @@ select {
   font-weight: 700;
 }
 
+.holiday-request-groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.holiday-request-group h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+@media (max-width: 850px) {
+  .holiday-request-groups {
+    grid-template-columns: 1fr;
+  }
+}
+
 .avvik-item-top {
   display: flex;
   align-items: center;

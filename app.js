@@ -3803,8 +3803,86 @@ function renderOvertimeSummary() {
   `).join("");
 }
 
+// Anonymous Gregorian algorithm (Computus) - Easter moves every year, so
+// "påske" can't be a fixed date range like Christmas/summer can.
+function getEasterSunday(year) {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+
+function dateInChristmasWindow(dateKey) {
+  const d = new Date(dateKey + "T12:00:00");
+  return (d.getMonth() === 11 && d.getDate() >= 15) || (d.getMonth() === 0 && d.getDate() <= 6);
+}
+
+// Palm Sunday week through 2. påskedag - matches the usual barnehage/skole
+// påskeferie window, not just the single Easter weekend.
+function dateInEasterWindow(dateKey) {
+  const d = new Date(dateKey + "T12:00:00");
+  const easter = getEasterSunday(d.getFullYear());
+  const start = new Date(easter);
+  start.setDate(start.getDate() - 10);
+  const end = new Date(easter);
+  end.setDate(end.getDate() + 1);
+  return d >= start && d <= end;
+}
+
+function dateInSummerWindow(dateKey) {
+  const week = getWeekNumber(new Date(dateKey + "T12:00:00"));
+  return week >= 27 && week <= 31;
+}
+
+function recordOverlapsWindow(record, matcherFn) {
+  return getWeekdaysBetween(record.start_date, record.end_date || record.start_date).some(matcherFn);
+}
+
+function renderHolidayRequestGroups() {
+  const julEl = document.getElementById("holidayRequestsJul");
+  const paskeEl = document.getElementById("holidayRequestsPaske");
+  const sommerEl = document.getElementById("holidayRequestsSommer");
+  if (!julEl && !paskeEl && !sommerEl) return;
+
+  const relevant = (absencesCache || []).filter(r => r.type === "Ferie" || r.type === "Avspasering brukt");
+
+  const renderGroup = (el, records) => {
+    if (!el) return;
+
+    if (!records.length) {
+      el.innerHTML = `<p class="muted">Ingen ønsker registrert.</p>`;
+      return;
+    }
+
+    const sorted = [...records].sort((a, b) => a.start_date.localeCompare(b.start_date));
+    el.innerHTML = sorted.map(record => `
+      <div class="summary-item">
+        <strong>${escapeHtml(record.name)}</strong>
+        <span>${escapeHtml(record.type)} · ${formatDateRange(record.start_date, record.end_date)}</span>
+        <span class="muted">${escapeHtml(record.status)}${record.note ? ` · ${escapeHtml(record.note)}` : ""}</span>
+      </div>
+    `).join("");
+  };
+
+  renderGroup(julEl, relevant.filter(r => recordOverlapsWindow(r, dateInChristmasWindow)));
+  renderGroup(paskeEl, relevant.filter(r => recordOverlapsWindow(r, dateInEasterWindow)));
+  renderGroup(sommerEl, relevant.filter(r => recordOverlapsWindow(r, dateInSummerWindow)));
+}
+
 function renderAbsences() {
   renderOvertimeSummary();
+  renderHolidayRequestGroups();
 
   if (!absenceTableBody || !absenceSummary) return;
 
