@@ -3858,9 +3858,12 @@ function dateInEasterWindow(dateKey) {
   return d >= start && d <= end;
 }
 
+// Only the boundary weeks matter here - uke 28-30 is tvunget ferie for
+// alle, so there's nothing to plan/decide there. 27 and 31 are where
+// people's ferie actually starts/ends, which is what needs sorting out.
 function dateInSummerWindow(dateKey) {
   const week = getWeekNumber(new Date(dateKey + "T12:00:00"));
-  return week >= 27 && week <= 31;
+  return week === 27 || week === 31;
 }
 
 function recordOverlapsWindow(record, matcherFn) {
