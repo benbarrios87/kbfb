@@ -899,3 +899,13 @@ CREATE POLICY "kbfb_absences_delete_own_pending_or_admin" ON public.kbfb_absence
     public.kbfb_is_admin()
     OR (name = public.kbfb_current_employee_name() AND status = 'Ønsket')
   );
+
+-- =========================================================
+-- STEP 29: kbfb_absences.admin_comment - "Avventer" status on a Ferie/
+--   avsp/overtid søknad. Lets admin hold a request (e.g. "sjekker mot
+--   utenlandsturen først") instead of only Godkjenn/Avslå, with an
+--   optional note explaining why. Update already covered by the
+--   existing "admin can update anything" policy - just need the column.
+-- =========================================================
+
+ALTER TABLE public.kbfb_absences ADD COLUMN IF NOT EXISTS admin_comment text;

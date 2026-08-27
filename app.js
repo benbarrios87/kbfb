@@ -3924,14 +3924,19 @@ function renderAbsences() {
       <td>${formatDateRange(record.start_date, record.end_date)}</td>
       <td>${countWeekdays(record.start_date, record.end_date)}</td>
       <td>${record.hours || ""}</td>
-      <td>${escapeHtml(record.status) || "Registrert"}</td>
+      <td>${escapeHtml(record.status) || "Registrert"}${record.admin_comment ? `<br><span class="muted">💬 ${escapeHtml(record.admin_comment)}</span>` : ""}</td>
       <td>${escapeHtml(record.note)}</td>
       <td>
-        ${isAdmin && record.status === "Ønsket" && record.name !== currentEmployee?.name ? `
+        ${isAdmin && (record.status === "Ønsket" || record.status === "Avventer") && record.name !== currentEmployee?.name ? `
           <button class="secondary-btn" data-approve-id="${record.id}">Godkjenn</button>
           <button class="secondary-btn" data-reject-id="${record.id}">Avslå</button>
+          <button class="secondary-btn" data-hold-id="${record.id}">⏳ Avventer</button>
+          <div data-hold-box="${record.id}" style="display: none; margin-top: 8px; display: grid; gap: 6px;">
+            <input type="text" placeholder="Hvorfor venter du? (valgfritt)" value="${escapeHtml(record.admin_comment || "")}" data-hold-comment-input="${record.id}" />
+            <button class="secondary-btn" type="button" data-confirm-hold="${record.id}" style="width: fit-content;">Bekreft avventer</button>
+          </div>
         ` : ""}
-        ${isAdmin && record.status === "Ønsket" && record.name === currentEmployee?.name ? `
+        ${isAdmin && (record.status === "Ønsket" || record.status === "Avventer") && record.name === currentEmployee?.name ? `
           <span class="muted">Venter på noen andre</span>
         ` : ""}
         ${isAdmin || (record.status === "Ønsket" && record.name === currentEmployee?.name)
@@ -3990,6 +3995,48 @@ function renderAbsences() {
           [record.name],
           "Søknad avslått",
           `${record.type} ${formatDateRange(record.start_date, record.end_date)} ble avslått`,
+          "ferieogavspasering.html"
+        );
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-hold-id]").forEach(button => {
+    button.addEventListener("click", () => {
+      const box = document.querySelector(`[data-hold-box="${button.dataset.holdId}"]`);
+      if (box) box.style.display = "grid";
+    });
+  });
+
+  document.querySelectorAll("[data-confirm-hold]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.confirmHold;
+      const record = absencesCache.find(item => String(item.id) === String(id));
+      const commentInput = document.querySelector(`[data-hold-comment-input="${id}"]`);
+      const comment = commentInput?.value.trim() || null;
+
+      button.disabled = true;
+
+      const { error } = await supabaseClient
+        .from("kbfb_absences")
+        .update({ status: "Avventer", admin_comment: comment })
+        .eq("id", id);
+
+      if (error) {
+        console.error("Kunne ikke sette avventer-status:", error);
+        alert("Kunne ikke lagre. Prøv igjen.");
+        button.disabled = false;
+        return;
+      }
+
+      await loadAbsencesFromSupabase();
+      renderAbsences();
+
+      if (record) {
+        sendPushNotification(
+          [record.name],
+          "Søknad under vurdering",
+          `${record.type} ${formatDateRange(record.start_date, record.end_date)} avventer${comment ? `: ${comment}` : ""}`,
           "ferieogavspasering.html"
         );
       }
