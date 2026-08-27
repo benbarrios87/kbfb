@@ -468,6 +468,30 @@ select {
   backdrop-filter: blur(8px);
 }
 
+details.card summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+details.card summary::-webkit-details-marker {
+  display: none;
+}
+
+details.card summary::marker {
+  content: "";
+}
+
+.details-toggle-icon {
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+details[open].card summary .details-toggle-icon {
+  transform: rotate(90deg);
+}
+
 .section-heading,
 .department-header {
   display: flex;

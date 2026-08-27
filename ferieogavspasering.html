@@ -64,26 +64,28 @@
         <div class="hero-badge">🌴 Personlig oversikt</div>
       </section>
 
-      <section class="card dates-highlight" data-admin-only>
-        <div class="section-heading">
+      <details class="card dates-highlight" data-admin-only>
+        <summary class="section-heading">
           <div>
+            <span class="details-toggle-icon">▸</span>
             <p class="eyebrow" id="overtimeSummaryMonth">Denne måneden</p>
             <h2>⏱️ Overtid</h2>
           </div>
-        </div>
+        </summary>
 
         <div id="overtimeSummary" class="summary-list">
           <p class="muted">Ingen overtid registrert denne måneden.</p>
         </div>
-      </section>
+      </details>
 
-      <section class="card dates-highlight" data-admin-only>
-        <div class="section-heading">
+      <details class="card dates-highlight" data-admin-only>
+        <summary class="section-heading">
           <div>
+            <span class="details-toggle-icon">▸</span>
             <p class="eyebrow">Planlegging</p>
             <h2>🎄 Ferieønsker: Jul, Påske og Sommer</h2>
           </div>
-        </div>
+        </summary>
         <p class="muted">Ferie og avspasering, gruppert etter de store periodene - lettere å se hvem som ønsker fri når, og sammenligne med tidligere år.</p>
 
         <div class="holiday-request-groups">
@@ -100,7 +102,7 @@
             <div id="holidayRequestsSommer" class="summary-list"><p class="muted">Ingen ønsker registrert.</p></div>
           </div>
         </div>
-      </section>
+      </details>
 
       <section class="grid">
         <article class="card">
@@ -208,14 +210,16 @@
         </article>
       </section>
 
-      <section class="card">
-        <div class="section-heading">
+      <details class="card">
+        <summary class="section-heading">
           <div>
+            <span class="details-toggle-icon">▸</span>
             <p class="eyebrow">Logg</p>
             <h2>Føringer</h2>
           </div>
-          <button id="clearAbsences" class="secondary-btn">Tøm testdata</button>
-        </div>
+        </summary>
+
+        <button id="clearAbsences" class="secondary-btn" style="margin-bottom: 12px;">Tøm testdata</button>
 
         <div class="table-wrap">
           <table class="shift-table">
@@ -234,13 +238,13 @@
             <tbody id="absenceTableBody"></tbody>
           </table>
         </div>
-      </section>
+      </details>
 
-      <section class="card" data-admin-only>
-        <h2>Feriedager og tjenestefri per ansatt</h2>
+      <details class="card" data-admin-only>
+        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Feriedager og tjenestefri per ansatt</h2></summary>
         <p class="muted">Standard er 25 feriedager og 10 tjenestefri-dager. Juster ved behov.</p>
         <div id="vacationQuotaList" class="summary-list"></div>
-      </section>
+      </details>
     </main>
   </div>
 
