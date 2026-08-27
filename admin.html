@@ -77,16 +77,16 @@
         </div>
       </section>
 
-      <section class="card">
-        <h2>💬 Forbedringsbehov</h2>
+      <details class="card">
+        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">💬 Forbedringsbehov</h2></summary>
         <p class="muted">Innspill fra ansatte, sendt inn fra Hjem-siden.</p>
         <div id="feedbackAdminList" class="summary-list">
           <p class="muted">Sjekker...</p>
         </div>
-      </section>
+      </details>
 
-      <section class="card">
-        <h2>Ny ansatt eller vikar - med innlogging med det samme</h2>
+      <details class="card">
+        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Ny ansatt eller vikar - med innlogging med det samme</h2></summary>
         <p class="muted">
           Dette skjemaet oppretter en ekte innloggingskonto og legger personen til i lista under - i ett steg.
           Krever at "create-employee-login"-funksjonen er satt opp i Supabase (én gang, se instruksjonen
@@ -126,20 +126,20 @@
           "Rolle" styrer tilgang: skriv nøyaktig <strong>Vikar</strong> for begrenset tilgang (kun Hjem, Vakter,
           Kjøkkenboka, Vikarer). Alt annet blir behandlet som vanlig ansatt med full tilgang.
         </p>
-      </section>
+      </details>
 
-      <section class="card">
-        <h2>Engangsoppsett: koble til Edge Function</h2>
+      <details class="card">
+        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Engangsoppsett: koble til Edge Function</h2></summary>
         <p class="muted">Gjøres én gang, av den som setter opp systemet. Ikke noe fremtidig admin trenger å røre.</p>
         <ol style="margin: 10px 0 0; padding-left: 20px; color: var(--muted); font-weight: 650;">
           <li>Gå til Supabase → Edge Functions → Create a new function. Kall den <strong>create-employee-login</strong>.</li>
           <li>Lim inn koden fra <code>supabase/functions/create-employee-login/index.ts</code> i repoet.</li>
           <li>Trykk Deploy. Ferdig - skjemaet over fungerer med en gang etter det.</li>
         </ol>
-      </section>
+      </details>
 
-      <section class="card">
-        <h2>Fallback: legg til uten innlogging (koble til manuelt senere)</h2>
+      <details class="card">
+        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Fallback: legg til uten innlogging (koble til manuelt senere)</h2></summary>
         <p class="muted">
           Bruk denne hvis Edge Function-en ikke er satt opp ennå. Legger bare til personen i lista -
           du må da fortsatt opprette innloggingen i Supabase manuelt og lime inn UUID-en i tabellen under.
@@ -163,10 +163,10 @@
 
           <button class="secondary-btn form-button" type="submit">Legg til uten innlogging</button>
         </form>
-      </section>
+      </details>
 
-      <section class="card">
-        <h2>Alle ansatte</h2>
+      <details class="card">
+        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Alle ansatte</h2></summary>
         <p class="muted">
           Bursdag brukes kun til dag/måned (f.eks. bursdagsbeskjed på Hjem-siden) - året i datovelgeren spiller ingen rolle.
           Ansettelsesdato brukes til jubileum - der brukes hele datoen, siden året teller antall år hos oss.
@@ -192,7 +192,7 @@
             <tbody id="adminEmployeeTableBody"></tbody>
           </table>
         </div>
-      </section>
+      </details>
     </main>
   </div>
 

@@ -127,14 +127,16 @@
         </form>
       </section>
 
-      <section class="card">
-        <div class="section-heading">
+      <details class="card">
+        <summary class="section-heading">
           <div>
+            <span class="details-toggle-icon">▸</span>
             <p class="eyebrow">Registrerte vakter</p>
             <h2>Vikarlogg</h2>
           </div>
-          <button id="clearSubs" class="secondary-btn" type="button">Tøm testdata</button>
-        </div>
+        </summary>
+
+        <button id="clearSubs" class="secondary-btn" type="button" style="margin-bottom: 12px;">Tøm testdata</button>
 
         <div class="table-wrap">
           <table class="shift-table" id="subTable">
@@ -152,9 +154,9 @@
             <tbody id="subTableBody"></tbody>
           </table>
         </div>
-      </section>
-      <article class="card" data-admin-only>
-          <h2>Legg til vikar</h2>
+      </details>
+      <details class="card" data-admin-only>
+          <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Legg til vikar</h2></summary>
 
           <form id="subPersonForm" class="form-grid">
             <label class="wide-field">
@@ -188,7 +190,7 @@
           <div id="subPersonList" class="summary-list">
             <p class="muted">Ingen vikarer lagt inn ennå.</p>
           </div>
-        </article>
+        </details>
     </main>
   </div>
 

@@ -83,16 +83,18 @@
         </div>
       </section>
 
-      <section class="card">
-        <div class="section-heading">
+      <details class="card">
+        <summary class="section-heading">
           <div>
+            <span class="details-toggle-icon">▸</span>
             <p class="eyebrow">Fravær</p>
             <h2>🤒 Fraværsstatistikk per ansatt</h2>
           </div>
-          <div class="view-toggle" id="absenceStatsPeriodToggle">
-            <button type="button" class="secondary-btn" data-period="month">Denne måneden</button>
-            <button type="button" class="primary-btn" data-period="year">Hittil i år</button>
-          </div>
+        </summary>
+
+        <div class="view-toggle" id="absenceStatsPeriodToggle" style="margin-bottom: 12px;">
+          <button type="button" class="secondary-btn" data-period="month">Denne måneden</button>
+          <button type="button" class="primary-btn" data-period="year">Hittil i år</button>
         </div>
 
         <div class="table-wrap">
@@ -114,15 +116,16 @@
         <p class="muted" style="margin-top: 10px;">
           Teller kun fravær med status "Ønsket" eller "Godkjent" (ikke avslåtte). Dager regnes fra og med start- til og med sluttdato.
         </p>
-      </section>
+      </details>
 
-      <section class="card">
-        <div class="section-heading">
+      <details class="card">
+        <summary class="section-heading">
           <div>
+            <span class="details-toggle-icon">▸</span>
             <p class="eyebrow">Vikarbruk</p>
             <h2>🕒 Vikartimer per måned</h2>
           </div>
-        </div>
+        </summary>
 
         <div class="table-wrap">
           <table class="shift-table" id="vikarTrendTable">
@@ -157,7 +160,7 @@
         <p class="muted" style="margin-top: 10px;">
           Timer estimeres ut fra klokkeslett skrevet inn i vaktcellen (f.eks. "08:00-16:00"). Vakter uten gjenkjennelig klokkeslett telles med i antallet, men ikke i timetallet.
         </p>
-      </section>
+      </details>
 
       <section class="card">
         <h2>⬇️ Eksporter</h2>
