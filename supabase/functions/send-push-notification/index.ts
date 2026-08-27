@@ -96,9 +96,13 @@ Deno.serve(async (req) => {
         sent++;
       } catch (err) {
         // 404/410 = the browser dropped this subscription (uninstalled,
-        // cleared data, ...) - remove it so we stop retrying forever.
+        // cleared data, ...). 403 = this subscription was created under a
+        // DIFFERENT VAPID key than the one configured now (e.g. after a
+        // key rotation) - either way it can never succeed again as-is, so
+        // remove it. The employee just needs to turn notifications off/on
+        // again to get a fresh subscription under the current key.
         const statusCode = (err as { statusCode?: number })?.statusCode;
-        if (statusCode === 404 || statusCode === 410) {
+        if (statusCode === 404 || statusCode === 410 || statusCode === 403) {
           await adminClient.from("kbfb_push_subscriptions").delete().eq("id", sub.id);
         } else {
           console.error("Push-sending feilet for", sub.employee_name, err);
