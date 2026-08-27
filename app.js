@@ -2126,13 +2126,28 @@ async function loadSwapInbox() {
     return;
   }
 
-  swapInboxList.innerHTML = data.map(req => {
+  // The from_shift_value/to_shift_value columns are a snapshot from when
+  // the request was SENT - if a shift got edited (by admin, or the other
+  // person) any time between then and now, that snapshot goes stale and
+  // no longer matches what accepting would actually do. Re-fetch live
+  // values so what's shown here is always what you'd actually get.
+  const liveValues = await Promise.all(data.map(req =>
+    Promise.all([
+      fetchShiftValue(req.week_start, req.from_department, req.from_employee, req.day_index),
+      fetchShiftValue(req.week_start, req.to_department, req.to_employee, req.day_index)
+    ])
+  ));
+
+  swapInboxList.innerHTML = data.map((req, index) => {
     const actualDate = toDateKey(addDays(new Date(req.week_start + "T12:00:00"), req.day_index));
+    const [liveFromValue, liveToValue] = liveValues[index];
+    const isStale = liveFromValue !== (req.from_shift_value || "") || liveToValue !== (req.to_shift_value || "");
 
     return `
       <div class="summary-item">
         <strong>${escapeHtml(req.from_employee)} vil bytte vakt med deg ${formatNorwegianDate(actualDate)}</strong>
-        <span>${escapeHtml(req.from_employee)} har: ${escapeHtml(req.from_shift_value) || "—"} · Du har: ${escapeHtml(req.to_shift_value) || "—"}</span>
+        <span>${escapeHtml(req.from_employee)} har: ${escapeHtml(liveFromValue) || "—"} · Du har: ${escapeHtml(liveToValue) || "—"}</span>
+        ${isStale ? `<span class="muted">⚠️ Vaktene er endret siden forespørselen ble sendt - dette er det som faktisk byttes nå.</span>` : ""}
         <div style="display: flex; gap: 8px; margin-top: 6px;">
           <button class="secondary-btn" type="button" data-accept-swap="${req.id}">Godta</button>
           <button class="secondary-btn" type="button" data-decline-swap="${req.id}">Avslå</button>
