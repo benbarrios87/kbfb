@@ -4290,8 +4290,11 @@ if (absenceForm) {
       note: absenceNote.value.trim()
     };
 
+    const absenceFormStatus = document.getElementById("absenceFormStatus");
+
     const saved = await saveAbsenceToSupabase(record);
     if (!saved) {
+      if (absenceFormStatus) absenceFormStatus.textContent = "";
       alert("Kunne ikke lagre fravær. Prøv igjen.");
       return;
     }
@@ -4319,6 +4322,13 @@ if (absenceForm) {
     updateAbsenceStatusVisibility();
 
     renderAbsences();
+
+    // Føringer-loggen er lukket som standard (kollaps-visning) - uten
+    // dette kan en vellykket lagring se ut som ingenting skjedde, siden
+    // den nye raden havner i en boks som ikke er åpnet ennå.
+    if (absenceFormStatus) absenceFormStatus.textContent = "✓ Lagret! Se den i Føringer-loggen under (trykk for å åpne).";
+    const foeringerDetails = document.getElementById("foeringerDetails");
+    if (foeringerDetails) foeringerDetails.open = true;
   });
 }
 
