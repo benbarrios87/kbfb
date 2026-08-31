@@ -3918,6 +3918,61 @@ function canReviewAbsence(record) {
   return !!requester && requester.department === currentEmployee.department;
 }
 
+// Whether this person could ever review *something* (used to decide if the
+// "Til godkjenning" card is worth showing at all, regardless of whether
+// there's anything pending for them right now).
+function canReviewAnyAbsence() {
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return false;
+  return !!currentEmployee.is_admin || currentEmployee.role === "Avdelingsleder";
+}
+
+// Pulled out of the Føringer log so approving/avslå/avventer has one clear
+// home instead of being buried in the last column of a long table - the
+// log itself is now read-only history.
+function renderPendingApprovalCard() {
+  const card = document.getElementById("pendingApprovalCard");
+  const list = document.getElementById("pendingApprovalList");
+  if (!card || !list) return;
+
+  if (!canReviewAnyAbsence()) {
+    card.style.display = "none";
+    return;
+  }
+
+  const pending = (absencesCache || []).filter(record =>
+    (record.status === "Ønsket" || record.status === "Avventer") &&
+    record.name !== currentEmployee?.name &&
+    canReviewAbsence(record)
+  );
+
+  card.style.display = "";
+
+  if (!pending.length) {
+    list.innerHTML = `<p class="muted">Ingen ventende søknader.</p>`;
+    return;
+  }
+
+  const sorted = [...pending].sort((a, b) => a.start_date.localeCompare(b.start_date));
+
+  list.innerHTML = sorted.map(record => `
+    <div class="summary-item">
+      <strong>${escapeHtml(record.name)} · ${escapeHtml(record.type)}</strong>
+      <span>${formatDateRange(record.start_date, record.end_date)}${record.hours ? ` · ${record.hours} t` : ""}</span>
+      ${record.note ? `<span class="muted">${escapeHtml(record.note)}</span>` : ""}
+      ${record.status === "Avventer" ? `<span class="muted">⏳ Avventer${record.admin_comment ? `: ${escapeHtml(record.admin_comment)}` : ""}</span>` : ""}
+      <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+        <button class="primary-btn" data-approve-id="${record.id}">Godkjenn</button>
+        <button class="secondary-btn" data-reject-id="${record.id}">Avslå</button>
+        <button class="secondary-btn" data-hold-id="${record.id}">⏳ Avventer</button>
+      </div>
+      <div data-hold-box="${record.id}" style="display: none; margin-top: 8px; display: grid; gap: 6px;">
+        <input type="text" placeholder="Hvorfor venter du? (valgfritt)" value="${escapeHtml(record.admin_comment || "")}" data-hold-comment-input="${record.id}" />
+        <button class="secondary-btn" type="button" data-confirm-hold="${record.id}" style="width: fit-content;">Bekreft avventer</button>
+      </div>
+    </div>
+  `).join("");
+}
+
 async function notifyDepartmentLeadersOfAbsenceRequest(record) {
   const requester = employeesCache.find(e => e.name === record.name);
   if (!requester?.department) return;
@@ -3941,6 +3996,7 @@ async function notifyDepartmentLeadersOfAbsenceRequest(record) {
 function renderAbsences() {
   renderOvertimeSummary();
   renderHolidayRequestGroups();
+  renderPendingApprovalCard();
 
   if (!absenceTableBody || !absenceSummary) return;
 
@@ -3954,6 +4010,9 @@ function renderAbsences() {
 
   const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
 
+  // Godkjenn/Avslå/Avventer lives in "Til godkjenning" above now - this
+  // log is read-only history, so it just shows the outcome + admin's
+  // comment (if any) plus a delete button where that's still allowed.
   absenceTableBody.innerHTML = records.map(record => `
     <tr>
       <td>${escapeHtml(record.name)}</td>
@@ -3964,18 +4023,6 @@ function renderAbsences() {
       <td>${escapeHtml(record.status) || "Registrert"}${record.admin_comment ? `<br><span class="muted">💬 ${escapeHtml(record.admin_comment)}</span>` : ""}</td>
       <td>${escapeHtml(record.note)}</td>
       <td>
-        ${canReviewAbsence(record) && (record.status === "Ønsket" || record.status === "Avventer") && record.name !== currentEmployee?.name ? `
-          <button class="secondary-btn" data-approve-id="${record.id}">Godkjenn</button>
-          <button class="secondary-btn" data-reject-id="${record.id}">Avslå</button>
-          <button class="secondary-btn" data-hold-id="${record.id}">⏳ Avventer</button>
-          <div data-hold-box="${record.id}" style="display: none; margin-top: 8px; display: grid; gap: 6px;">
-            <input type="text" placeholder="Hvorfor venter du? (valgfritt)" value="${escapeHtml(record.admin_comment || "")}" data-hold-comment-input="${record.id}" />
-            <button class="secondary-btn" type="button" data-confirm-hold="${record.id}" style="width: fit-content;">Bekreft avventer</button>
-          </div>
-        ` : ""}
-        ${canReviewAbsence(record) && (record.status === "Ønsket" || record.status === "Avventer") && record.name === currentEmployee?.name ? `
-          <span class="muted">Venter på noen andre</span>
-        ` : ""}
         ${isAdmin || (record.status === "Ønsket" && record.name === currentEmployee?.name)
           ? `<button class="kitchen-delete" data-absence-id="${record.id}">Slett</button>`
           : ""}
