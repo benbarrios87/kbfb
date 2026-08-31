@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Årshjul | KBFB Personal</title>
+  <title>HMS | KBFB Personal</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="images/icon-192.png" type="image/png" />
@@ -30,14 +30,14 @@
         <a href="vikarer.html">🕒 Vikarer</a>
         <a data-hide-from-vikar data-hide-from-guest href="ferieogavspasering.html">🌴 Ferie/avsp/overtid</a>
         <a href="bestillinger.html">🛒 Bestillinger</a>
-       <a data-hide-from-vikar href="kalender.html">📍 Hvor er Benjamin?</a>
+        <a data-hide-from-vikar href="kalender.html">📍 Hvor er Benjamin?</a>
         <a data-hide-from-vikar href="filarkiv.html">📁 Filarkiv</a>
-        <a class="active" data-hide-from-vikar href="aarshjul.html">🗓️ Årshjul (kommer)</a>
+        <a data-hide-from-vikar href="aarshjul.html">🗓️ Årshjul (kommer)</a>
         <a data-hide-from-vikar href="turbank.html">🏕️ Turbank (kommer)</a>
         <a href="nokkeltall.html" data-admin-only>📊 Nøkkeltall</a>
         <a href="admin.html" data-admin-only>⚙️ Admin</a>
         <a data-admin-only href="avvik.html">⚠️ Avvik</a>
-        <a data-admin-only href="hms.html">🏥 HMS</a>
+        <a class="active" data-admin-only href="hms.html">🏥 HMS</a>
       </nav>
 
       <div class="sidebar-feedback" data-hide-from-guest>
@@ -58,20 +58,39 @@
     <main class="main">
       <section class="forest-hero compact">
         <div>
-          <p class="eyebrow">Kommer etter hvert</p>
-          <h1>Årshjul</h1>
-          <p class="muted">Denne siden er ikke bygget ennå.</p>
+          <p class="eyebrow">Kun for admin - internt system</p>
+          <h1>HMS</h1>
+          <p class="muted">Samlet sted for HMS-arbeidet - sjekklister først, mer kommer etter hvert. Gradvis erstatning for PBL Mentor.</p>
         </div>
-        <div class="hero-badge">🚧 Under arbeid</div>
+        <div class="hero-badge">🏥 HMS-system</div>
       </section>
 
       <section class="card">
-        <h2>🗓️ Årshjul kommer etter hvert</h2>
-        <p class="muted">
-          I mellomtiden finner du de viktige datoene under "Datoer" i menyen - det er der de faktisk
-          føres inn og vises i dag.
-        </p>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">HMS-arbeid</p>
+            <h2>📋 Sjekklister</h2>
+          </div>
+        </div>
+        <p class="muted">Importert fra de gamle PBL-listene. Åpne en sjekkliste, kryss av det som stemmer, og trykk "Fullfør sjekkliste" - det lagres i brukslogg under.</p>
+
+        <div id="checklistList" class="checklist-groups">
+          <p class="muted">Laster sjekklister...</p>
+        </div>
       </section>
+
+      <details class="card">
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
+            <p class="eyebrow">Historikk</p>
+            <h2>Brukslogg</h2>
+          </div>
+        </summary>
+        <div id="checklistLog" class="summary-list">
+          <p class="muted">Ingen sjekklister fullført ennå.</p>
+        </div>
+      </details>
     </main>
   </div>
 

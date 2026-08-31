@@ -4711,7 +4711,7 @@ async function loadPendingApprovalsSummary() {
 // nothing stops someone typing the URL directly - this is the actual
 // gate. Runs on every page (cheap early-return everywhere but admin.html).
 function enforceAdminPageAccess() {
-  const protectedPages = ["admin.html", "nokkeltall.html", "avvik.html"];
+  const protectedPages = ["admin.html", "nokkeltall.html", "avvik.html", "hms.html"];
   if (!protectedPages.some(page => window.location.pathname.endsWith(page))) return;
   if (typeof currentEmployee === "undefined" || !currentEmployee) return;
 
@@ -5310,6 +5310,189 @@ if (avvikStatusFilter) {
 }
 
 loadAvvikFromSupabase();
+
+/* ---------- HMS - SJEKKLISTER (admin-only for nå) ---------- */
+
+let checklistsCache = [];
+let checklistCompletionsCache = [];
+
+async function loadChecklistsFromSupabase() {
+  const container = document.getElementById("checklistList");
+  if (!container) return;
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_checklists")
+    .select("*")
+    .eq("active", true)
+    .order("name");
+
+  if (error) {
+    console.error("Kunne ikke hente sjekklister:", error);
+    container.innerHTML = `<p class="muted">Kunne ikke hente sjekklister.</p>`;
+    return;
+  }
+
+  checklistsCache = data || [];
+  await loadChecklistCompletionsFromSupabase();
+  renderChecklists();
+  renderChecklistLog();
+}
+
+async function loadChecklistCompletionsFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_checklist_completions")
+    .select("*")
+    .order("completed_at", { ascending: false })
+    .limit(200);
+
+  if (error) {
+    console.error("Kunne ikke hente sjekkliste-brukslogg:", error);
+    return [];
+  }
+
+  checklistCompletionsCache = data || [];
+  return checklistCompletionsCache;
+}
+
+// checklistCompletionsCache is already sorted newest-first, so the first
+// match per checklist is its most recent completion.
+function lastCompletionFor(checklistId) {
+  return checklistCompletionsCache.find(c => c.checklist_id === checklistId) || null;
+}
+
+function renderChecklists() {
+  const container = document.getElementById("checklistList");
+  if (!container) return;
+
+  if (!checklistsCache.length) {
+    container.innerHTML = `<p class="muted">Ingen sjekklister lagt inn ennå.</p>`;
+    return;
+  }
+
+  const grouped = {};
+  checklistsCache.forEach(checklist => {
+    const area = checklist.hms_omrade || "Annet";
+    if (!grouped[area]) grouped[area] = [];
+    grouped[area].push(checklist);
+  });
+
+  const areas = Object.keys(grouped).sort();
+
+  container.innerHTML = areas.map(area => `
+    <div class="checklist-area">
+      <h3>${escapeHtml(area)}</h3>
+      ${grouped[area].map(checklist => renderChecklistCard(checklist)).join("")}
+    </div>
+  `).join("");
+
+  wireChecklistCards();
+}
+
+function renderChecklistCard(checklist) {
+  const last = lastCompletionFor(checklist.id);
+  const lastText = last
+    ? `Sist utført: ${formatNorwegianDate(toDateKey(new Date(last.completed_at)))} av ${escapeHtml(last.completed_by)}`
+    : "Aldri utført ennå";
+
+  const items = checklist.items || [];
+
+  return `
+    <details class="card checklist-card">
+      <summary class="section-heading">
+        <div>
+          <span class="details-toggle-icon">▸</span>
+          <h2 style="display: inline;">${escapeHtml(checklist.name)}</h2>
+        </div>
+      </summary>
+
+      ${checklist.beskrivelse ? `<p class="muted">${escapeHtml(checklist.beskrivelse)}</p>` : ""}
+
+      <div class="checklist-meta">
+        <span><strong>Avdeling:</strong> ${escapeHtml(checklist.avdeling)}</span>
+        <span><strong>Gjentakelse:</strong> ${escapeHtml(checklist.gjentakelse)}</span>
+        ${checklist.gjelder_for ? `<span><strong>Gjelder for:</strong> ${escapeHtml(checklist.gjelder_for)}</span>` : ""}
+      </div>
+      <p class="muted">${lastText}</p>
+
+      <form class="checklist-run-form" data-checklist-id="${checklist.id}">
+        <div class="checklist-items">
+          ${items.map(item => `
+            <label class="checklist-item">
+              <input type="checkbox" data-item-id="${item.id}" />
+              <span>${escapeHtml(item.text)}</span>
+            </label>
+          `).join("")}
+        </div>
+
+        <label class="wide-field">
+          Notat (valgfritt)
+          <input type="text" class="checklist-note-input" placeholder="F.eks. avvik funnet, tiltak..." />
+        </label>
+
+        <button class="primary-btn form-button" type="submit">✓ Fullfør sjekkliste</button>
+      </form>
+    </details>
+  `;
+}
+
+function wireChecklistCards() {
+  document.querySelectorAll(".checklist-run-form").forEach(form => {
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+
+      if (typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+      const checklistId = form.dataset.checklistId;
+      const checkedItems = Array.from(form.querySelectorAll('input[type="checkbox"]:checked'))
+        .map(checkbox => Number(checkbox.dataset.itemId));
+      const noteInput = form.querySelector(".checklist-note-input");
+      const note = noteInput?.value.trim() || null;
+
+      const { error } = await supabaseClient.from("kbfb_checklist_completions").insert([{
+        checklist_id: checklistId,
+        completed_by: currentEmployee.name,
+        checked_items: checkedItems,
+        note
+      }]);
+
+      if (error) {
+        console.error("Kunne ikke lagre sjekkliste:", error);
+        alert("Kunne ikke lagre. Prøv igjen.");
+        return;
+      }
+
+      await loadChecklistCompletionsFromSupabase();
+      renderChecklists();
+      renderChecklistLog();
+    });
+  });
+}
+
+function renderChecklistLog() {
+  const container = document.getElementById("checklistLog");
+  if (!container) return;
+
+  if (!checklistCompletionsCache.length) {
+    container.innerHTML = `<p class="muted">Ingen sjekklister fullført ennå.</p>`;
+    return;
+  }
+
+  container.innerHTML = checklistCompletionsCache.slice(0, 30).map(completion => {
+    const checklist = checklistsCache.find(item => item.id === completion.checklist_id);
+    const totalItems = checklist?.items?.length || 0;
+    const checkedCount = (completion.checked_items || []).length;
+
+    return `
+      <div class="summary-item">
+        <strong>${escapeHtml(checklist?.name || "Ukjent sjekkliste")}</strong>
+        <span>${escapeHtml(completion.completed_by)} · ${formatNorwegianDate(toDateKey(new Date(completion.completed_at)))} · ${checkedCount}/${totalItems} avkrysset</span>
+        ${completion.note ? `<span class="muted">${escapeHtml(completion.note)}</span>` : ""}
+      </div>
+    `;
+  }).join("");
+}
+
+loadChecklistsFromSupabase();
 
 /* ---------- MIN KONTO (passord + profilbilde) ---------- */
 

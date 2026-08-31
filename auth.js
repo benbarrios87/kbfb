@@ -135,6 +135,10 @@ async function requireAuth() {
     loadAvvikFromSupabase();
   }
 
+  if (typeof loadChecklistsFromSupabase === "function") {
+    loadChecklistsFromSupabase();
+  }
+
   if (typeof loadSharedPhotos === "function") {
     loadSharedPhotos();
   }

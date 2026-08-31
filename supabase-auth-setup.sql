@@ -952,3 +952,61 @@ CREATE POLICY "kbfb_absences_update_admin_or_avdelingsleder" ON public.kbfb_abse
       )
     )
   );
+
+-- =========================================================
+-- STEP 31: kbfb_checklists + kbfb_checklist_completions (Sjekklister)
+--   In-house replacement for the PBL Mentor "Sjekklister" module.
+--   Admin-only to manage/view for now (same admin-only-first pattern as
+--   Avvik) - templates hold the item list as jsonb (array of {id, text}),
+--   completions record which items were checked off on one run.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_checklists (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  hms_omrade text,
+  avdeling text NOT NULL DEFAULT 'Hele barnehagen',
+  gjelder_for text,
+  gjentakelse text NOT NULL DEFAULT 'Startes manuelt',
+  ansvarlig text,
+  beskrivelse text,
+  items jsonb NOT NULL DEFAULT '[]'::jsonb,
+  active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_checklists ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_checklists_select_admin" ON public.kbfb_checklists;
+CREATE POLICY "kbfb_checklists_select_admin" ON public.kbfb_checklists
+  FOR SELECT TO authenticated
+  USING (public.kbfb_is_admin());
+
+DROP POLICY IF EXISTS "kbfb_checklists_admin_write" ON public.kbfb_checklists;
+CREATE POLICY "kbfb_checklists_admin_write" ON public.kbfb_checklists
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());
+
+CREATE TABLE IF NOT EXISTS public.kbfb_checklist_completions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  checklist_id uuid NOT NULL REFERENCES public.kbfb_checklists(id) ON DELETE CASCADE,
+  completed_by text NOT NULL,
+  completed_at timestamptz NOT NULL DEFAULT now(),
+  checked_items jsonb NOT NULL DEFAULT '[]'::jsonb,
+  note text
+);
+
+ALTER TABLE public.kbfb_checklist_completions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_checklist_completions_select_admin" ON public.kbfb_checklist_completions;
+CREATE POLICY "kbfb_checklist_completions_select_admin" ON public.kbfb_checklist_completions
+  FOR SELECT TO authenticated
+  USING (public.kbfb_is_admin());
+
+DROP POLICY IF EXISTS "kbfb_checklist_completions_admin_write" ON public.kbfb_checklist_completions;
+CREATE POLICY "kbfb_checklist_completions_admin_write" ON public.kbfb_checklist_completions
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());

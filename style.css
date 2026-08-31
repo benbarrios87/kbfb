@@ -888,6 +888,52 @@ details[open].card summary .details-toggle-icon {
   font-weight: 700;
 }
 
+.checklist-groups {
+  display: grid;
+  gap: 22px;
+}
+
+.checklist-area h3 {
+  margin: 0 0 10px;
+  color: var(--green-dark);
+}
+
+.checklist-card {
+  margin-bottom: 10px;
+}
+
+.checklist-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 10px 0;
+  color: var(--muted);
+  font-weight: 650;
+  font-size: 0.92rem;
+}
+
+.checklist-items {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--sand);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.checklist-item input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
 .holiday-request-groups {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
