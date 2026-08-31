@@ -1707,6 +1707,12 @@ async function updateWeekView() {
   weekTitle.textContent = `Uke ${weekNumber}`;
   weekDates.textContent = `${formatShortDate(viewedWeekStart)}–${formatShortDate(friday)} · Åpningstid 07:30–17:00`;
 
+  // Repeated next to each department name too, since you can't see the
+  // week title up top anymore once you've scrolled down to a table.
+  document.querySelectorAll(".dept-week-pill").forEach(pill => {
+    pill.textContent = `Uke ${weekNumber}`;
+  });
+
   const dayNames = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag"];
 
   document.querySelectorAll(".day-head").forEach(head => {

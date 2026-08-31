@@ -539,6 +539,14 @@ details[open].card summary .details-toggle-icon {
   font-size: 1.9rem;
 }
 
+.dept-week-pill {
+  font-size: 0.85rem;
+  padding: 4px 12px;
+  vertical-align: middle;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
 .department-header span,
 .small-pill {
   background: rgba(47, 107, 63, 0.12);
