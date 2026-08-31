@@ -36,7 +36,6 @@
         <a data-hide-from-vikar href="turbank.html">🏕️ Turbank (kommer)</a>
         <a href="nokkeltall.html" data-admin-only>📊 Nøkkeltall</a>
         <a href="admin.html" data-admin-only>⚙️ Admin</a>
-        <a data-admin-only href="avvik.html">⚠️ Avvik</a>
         <a class="active" data-admin-only href="hms.html">🏥 HMS</a>
       </nav>
 
@@ -60,37 +59,122 @@
         <div>
           <p class="eyebrow">Kun for admin - internt system</p>
           <h1>HMS</h1>
-          <p class="muted">Samlet sted for HMS-arbeidet - sjekklister først, mer kommer etter hvert. Gradvis erstatning for PBL Mentor.</p>
+          <p class="muted">Samlet sted for HMS-arbeidet. Gradvis erstatning for PBL Mentor.</p>
         </div>
         <div class="hero-badge">🏥 HMS-system</div>
       </section>
 
-      <section class="card">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">HMS-arbeid</p>
-            <h2>📋 Sjekklister</h2>
-          </div>
-        </div>
-        <p class="muted">Importert fra de gamle PBL-listene. Åpne en sjekkliste, kryss av det som stemmer, og trykk "Fullfør sjekkliste" - det lagres i brukslogg under.</p>
+      <div class="hms-tile-grid">
+        <button type="button" class="hms-tile hms-tile-avvik active" data-hms-section="avvik">
+          <span class="hms-tile-count" id="hmsAvvikCount">–</span>
+          <span class="hms-tile-label">⚠️ Avvik</span>
+        </button>
+        <button type="button" class="hms-tile hms-tile-sjekklister" data-hms-section="sjekklister">
+          <span class="hms-tile-count" id="hmsSjekklisterCount">–</span>
+          <span class="hms-tile-label">📋 Sjekklister</span>
+        </button>
+      </div>
 
-        <div id="checklistList" class="checklist-groups">
-          <p class="muted">Laster sjekklister...</p>
-        </div>
-      </section>
+      <div id="hmsSectionAvvik" class="hms-section">
+        <section class="card">
+          <h2>Meld nytt avvik</h2>
+          <form id="avvikForm" class="form-grid">
+            <label>
+              Kategori
+              <select id="avvikCategory" required>
+                <option value="HMS/sikkerhet">HMS/sikkerhet</option>
+                <option value="Ansatte/arbeidsmiljø">Ansatte/arbeidsmiljø</option>
+                <option value="Barn/pedagogisk">Barn/pedagogisk</option>
+                <option value="Bygg/utstyr/uteområde">Bygg/utstyr/uteområde</option>
+                <option value="Rutinebrudd">Rutinebrudd</option>
+                <option value="Annet">Annet</option>
+              </select>
+            </label>
 
-      <details class="card">
-        <summary class="section-heading">
-          <div>
-            <span class="details-toggle-icon">▸</span>
-            <p class="eyebrow">Historikk</p>
-            <h2>Brukslogg</h2>
+            <label>
+              Alvorlighet
+              <select id="avvikSeverity">
+                <option value="Lav">Lav</option>
+                <option value="Middels">Middels</option>
+                <option value="Høy">Høy</option>
+              </select>
+            </label>
+
+            <label>
+              Avdeling
+              <select id="avvikDepartment">
+                <option value="">Ikke avdelingsspesifikt</option>
+                <option value="Sommerfuglen">Sommerfuglen</option>
+                <option value="Regnbuen">Regnbuen</option>
+                <option value="Begge">Begge/hele barnehagen</option>
+              </select>
+            </label>
+
+            <label>
+              Dato avviket skjedde
+              <input id="avvikDate" type="date" required />
+            </label>
+
+            <label class="wide-field">
+              Hva skjedde?
+              <textarea id="avvikDescription" rows="3" placeholder="Beskriv hva som skjedde, hvem som var involvert, og eventuelle umiddelbare tiltak." required></textarea>
+            </label>
+
+            <button class="primary-btn form-button" type="submit">Registrer avvik</button>
+          </form>
+          <p id="avvikFormStatus" class="muted" style="margin-top: 10px;"></p>
+        </section>
+
+        <section class="card">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Oversikt</p>
+              <h2>Avvik</h2>
+            </div>
+            <label class="compact-filter">
+              Vis
+              <select id="avvikStatusFilter">
+                <option value="open">Åpne (Meldt + Under behandling)</option>
+                <option value="all">Alle</option>
+                <option value="Lukket">Kun lukkede</option>
+              </select>
+            </label>
           </div>
-        </summary>
-        <div id="checklistLog" class="summary-list">
-          <p class="muted">Ingen sjekklister fullført ennå.</p>
-        </div>
-      </details>
+
+          <div id="avvikList" class="summary-list">
+            <p class="muted">Ingen avvik registrert ennå.</p>
+          </div>
+        </section>
+      </div>
+
+      <div id="hmsSectionSjekklister" class="hms-section" style="display: none;">
+        <section class="card">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">HMS-arbeid</p>
+              <h2>📋 Sjekklister</h2>
+            </div>
+          </div>
+          <p class="muted">Importert fra de gamle PBL-listene. Åpne en sjekkliste, kryss av det som stemmer, og trykk "Fullfør sjekkliste" - det lagres i brukslogg under.</p>
+
+          <div id="checklistList" class="checklist-groups">
+            <p class="muted">Laster sjekklister...</p>
+          </div>
+        </section>
+
+        <details class="card">
+          <summary class="section-heading">
+            <div>
+              <span class="details-toggle-icon">▸</span>
+              <p class="eyebrow">Historikk</p>
+              <h2>Brukslogg</h2>
+            </div>
+          </summary>
+          <div id="checklistLog" class="summary-list">
+            <p class="muted">Ingen sjekklister fullført ennå.</p>
+          </div>
+        </details>
+      </div>
     </main>
   </div>
 

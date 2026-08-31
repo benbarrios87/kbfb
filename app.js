@@ -5227,8 +5227,38 @@ function avvikSeverityClass(severity) {
   return "lav";
 }
 
+// HMS-tiles show a live count so you can see at a glance whether there's
+// something to look at, without opening the section.
+function updateHmsTileCounts() {
+  const avvikCountEl = document.getElementById("hmsAvvikCount");
+  if (avvikCountEl) {
+    avvikCountEl.textContent = avvikCache.filter(item => item.status !== "Lukket").length;
+  }
+
+  const checklistCountEl = document.getElementById("hmsSjekklisterCount");
+  if (checklistCountEl) {
+    checklistCountEl.textContent = checklistsCache.length;
+  }
+}
+
+function switchHmsSection(section) {
+  document.querySelectorAll(".hms-section").forEach(el => {
+    el.style.display = el.id === `hmsSection${section.charAt(0).toUpperCase()}${section.slice(1)}` ? "" : "none";
+  });
+
+  document.querySelectorAll(".hms-tile").forEach(tile => {
+    tile.classList.toggle("active", tile.dataset.hmsSection === section);
+  });
+}
+
+document.querySelectorAll(".hms-tile").forEach(tile => {
+  tile.addEventListener("click", () => switchHmsSection(tile.dataset.hmsSection));
+});
+
 function renderAvvikList() {
   if (!avvikListEl) return;
+
+  updateHmsTileCounts();
 
   const filter = avvikStatusFilter?.value || "open";
   const visible = avvikCache.filter(item => {
@@ -5363,6 +5393,8 @@ function lastCompletionFor(checklistId) {
 function renderChecklists() {
   const container = document.getElementById("checklistList");
   if (!container) return;
+
+  updateHmsTileCounts();
 
   if (!checklistsCache.length) {
     container.innerHTML = `<p class="muted">Ingen sjekklister lagt inn ennå.</p>`;
