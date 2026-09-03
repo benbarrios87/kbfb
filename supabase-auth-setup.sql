@@ -1048,3 +1048,40 @@ CREATE POLICY "kbfb_arshjul_admin_write" ON public.kbfb_arshjul_items
 -- =========================================================
 
 ALTER TABLE public.kbfb_arshjul_items ADD COLUMN IF NOT EXISTS completed boolean NOT NULL DEFAULT false;
+
+-- =========================================================
+-- STEP 34: kbfb_arshjul_items.notat - optional free-text note admin
+--   can add/edit on any item (separate from the fixed description
+--   set when the item was created), e.g. "utsatt til uke 42".
+-- =========================================================
+
+ALTER TABLE public.kbfb_arshjul_items ADD COLUMN IF NOT EXISTS notat text;
+
+-- =========================================================
+-- STEP 35: kbfb_arshjul_subitems - optional sub-checklist inside an
+--   årshjul-punkt (e.g. "Beredskapsuke" opens to show its own steps,
+--   each with its own checkbox). Deleting the parent item deletes its
+--   subitems automatically (ON DELETE CASCADE). Same RLS shape as the
+--   parent table: everyone can read, only admin can write.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_arshjul_subitems (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  arshjul_item_id uuid NOT NULL REFERENCES public.kbfb_arshjul_items(id) ON DELETE CASCADE,
+  text text NOT NULL,
+  completed boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_arshjul_subitems ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_arshjul_subitems_select_authenticated" ON public.kbfb_arshjul_subitems;
+CREATE POLICY "kbfb_arshjul_subitems_select_authenticated" ON public.kbfb_arshjul_subitems
+  FOR SELECT TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "kbfb_arshjul_subitems_admin_write" ON public.kbfb_arshjul_subitems;
+CREATE POLICY "kbfb_arshjul_subitems_admin_write" ON public.kbfb_arshjul_subitems
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());

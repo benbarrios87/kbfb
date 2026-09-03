@@ -6065,8 +6065,10 @@ const ARSHJUL_MONTH_COLORS = [
 ];
 
 let arshjulItemsCache = [];
+let arshjulSubitemsCache = [];
 let arshjulSelectedVariant = "Leder";
 let arshjulSelectedMonth = null;
+let arshjulOpenSubitemIds = new Set();
 
 function arshjulPolarPoint(cx, cy, r, angleDeg) {
   const rad = (angleDeg * Math.PI) / 180;
@@ -6095,8 +6097,33 @@ async function loadArshjulItemsFromSupabase() {
   return arshjulItemsCache;
 }
 
+async function loadArshjulSubitemsFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_arshjul_subitems")
+    .select("*")
+    .order("created_at");
+
+  if (error) {
+    console.error("Kunne ikke hente sjekkpunkter:", error);
+    return [];
+  }
+
+  arshjulSubitemsCache = data || [];
+  return arshjulSubitemsCache;
+}
+
+async function refreshArshjulData() {
+  await Promise.all([loadArshjulItemsFromSupabase(), loadArshjulSubitemsFromSupabase()]);
+  renderArshjulWheel();
+  renderArshjulMonthDetail();
+}
+
 function itemsForArshjulMonth(variant, month) {
   return arshjulItemsCache.filter(item => item.variant === variant && item.month === month);
+}
+
+function subitemsForArshjulItem(itemId) {
+  return arshjulSubitemsCache.filter(sub => sub.arshjul_item_id === itemId);
 }
 
 function renderArshjulWheel() {
@@ -6161,10 +6188,41 @@ function renderArshjulMonthDetail() {
   const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
 
   listEl.innerHTML = items.length
-    ? items.map(item => `
-      <div class="summary-item arshjul-item${item.completed ? " arshjul-item-completed" : ""}" data-arshjul-toggle-id="${item.id}">
-        <strong>${item.completed ? "✓ " : ""}${escapeHtml(item.title)}</strong>
+    ? items.map(item => {
+      const subitems = subitemsForArshjulItem(item.id);
+      const doneCount = subitems.filter(sub => sub.completed).length;
+      const isOpen = arshjulOpenSubitemIds.has(String(item.id));
+
+      return `
+      <div class="summary-item arshjul-item${item.completed ? " arshjul-item-completed" : ""}">
+        <label class="arshjul-item-check">
+          <input type="checkbox" data-arshjul-toggle-id="${item.id}" ${item.completed ? "checked" : ""} ${isAdmin ? "" : "disabled"} />
+          <strong>${escapeHtml(item.title)}</strong>
+        </label>
         ${item.description ? `<span>${escapeHtml(item.description)}</span>` : ""}
+        ${isAdmin
+          ? `<input type="text" class="arshjul-notat-input" data-arshjul-notat-id="${item.id}" value="${escapeHtml(item.notat || "")}" placeholder="Notat (valgfritt)" />`
+          : (item.notat ? `<span class="muted">📝 ${escapeHtml(item.notat)}</span>` : "")}
+        ${(isAdmin || subitems.length) ? `
+          <details class="arshjul-subitems" data-arshjul-subitems-id="${item.id}" ${isOpen ? "open" : ""}>
+            <summary><span class="details-toggle-icon">▸</span> Sjekkliste${subitems.length ? ` (${doneCount}/${subitems.length})` : ""}</summary>
+            <div class="arshjul-subitem-list">
+              ${subitems.map(sub => `
+                <label class="arshjul-subitem${sub.completed ? " arshjul-subitem-completed" : ""}">
+                  <input type="checkbox" data-arshjul-subitem-toggle-id="${sub.id}" ${sub.completed ? "checked" : ""} ${isAdmin ? "" : "disabled"} />
+                  <span>${escapeHtml(sub.text)}</span>
+                  ${isAdmin ? `<button class="kitchen-delete" type="button" data-arshjul-subitem-delete-id="${sub.id}">✕</button>` : ""}
+                </label>
+              `).join("")}
+            </div>
+            ${isAdmin ? `
+              <form class="arshjul-subitem-form" data-arshjul-subitem-form-id="${item.id}">
+                <input type="text" placeholder="Nytt sjekkpunkt..." required />
+                <button type="submit" class="secondary-btn">Legg til</button>
+              </form>
+            ` : ""}
+          </details>
+        ` : ""}
         ${isAdmin ? `
           <div class="arshjul-item-controls">
             <select class="arshjul-move-select" data-arshjul-move-id="${item.id}">
@@ -6174,33 +6232,46 @@ function renderArshjulMonthDetail() {
           </div>
         ` : ""}
       </div>
-    `).join("")
+    `;
+    }).join("")
     : `<p class="muted">Ingenting lagt inn for denne måneden ennå.</p>`;
 
-  // Trykk på selve punktet for å markere gjennomført/ikke - men ikke når
-  // klikket faktisk var på flytt-nedtrekket eller slett-knappen inni det.
-  listEl.querySelectorAll("[data-arshjul-toggle-id]").forEach(card => {
-    card.addEventListener("click", async event => {
-      if (event.target.closest("select, button")) return;
-      if (!isAdmin) return;
-
-      const id = card.dataset.arshjulToggleId;
-      const item = arshjulItemsCache.find(candidate => String(candidate.id) === String(id));
-      if (!item) return;
+  listEl.querySelectorAll("[data-arshjul-toggle-id]").forEach(checkbox => {
+    checkbox.addEventListener("change", async () => {
+      const id = checkbox.dataset.arshjulToggleId;
 
       const { error } = await supabaseClient
         .from("kbfb_arshjul_items")
-        .update({ completed: !item.completed })
+        .update({ completed: checkbox.checked })
         .eq("id", id);
 
       if (error) {
         console.error("Kunne ikke oppdatere årshjul-punkt:", error);
+        checkbox.checked = !checkbox.checked;
+        return;
+      }
+
+      await refreshArshjulData();
+    });
+  });
+
+  listEl.querySelectorAll("[data-arshjul-notat-id]").forEach(input => {
+    input.addEventListener("change", async () => {
+      const id = input.dataset.arshjulNotatId;
+      const notat = input.value.trim() || null;
+
+      const { error } = await supabaseClient
+        .from("kbfb_arshjul_items")
+        .update({ notat })
+        .eq("id", id);
+
+      if (error) {
+        console.error("Kunne ikke lagre notat:", error);
+        alert("Kunne ikke lagre notatet. Prøv igjen.");
         return;
       }
 
       await loadArshjulItemsFromSupabase();
-      renderArshjulWheel();
-      renderArshjulMonthDetail();
     });
   });
 
@@ -6222,9 +6293,7 @@ function renderArshjulMonthDetail() {
       }
 
       arshjulSelectedMonth = newMonth;
-      await loadArshjulItemsFromSupabase();
-      renderArshjulWheel();
-      renderArshjulMonthDetail();
+      await refreshArshjulData();
     });
   });
 
@@ -6232,9 +6301,67 @@ function renderArshjulMonthDetail() {
     button.addEventListener("click", async event => {
       event.stopPropagation();
       await supabaseClient.from("kbfb_arshjul_items").delete().eq("id", button.dataset.arshjulDeleteId);
-      await loadArshjulItemsFromSupabase();
-      renderArshjulWheel();
-      renderArshjulMonthDetail();
+      await refreshArshjulData();
+    });
+  });
+
+  listEl.querySelectorAll("[data-arshjul-subitems-id]").forEach(details => {
+    details.addEventListener("toggle", () => {
+      const id = details.dataset.arshjulSubitemsId;
+      if (details.open) arshjulOpenSubitemIds.add(id);
+      else arshjulOpenSubitemIds.delete(id);
+    });
+  });
+
+  listEl.querySelectorAll("[data-arshjul-subitem-toggle-id]").forEach(checkbox => {
+    checkbox.addEventListener("change", async () => {
+      const id = checkbox.dataset.arshjulSubitemToggleId;
+
+      const { error } = await supabaseClient
+        .from("kbfb_arshjul_subitems")
+        .update({ completed: checkbox.checked })
+        .eq("id", id);
+
+      if (error) {
+        console.error("Kunne ikke oppdatere sjekkpunkt:", error);
+        checkbox.checked = !checkbox.checked;
+        return;
+      }
+
+      await refreshArshjulData();
+    });
+  });
+
+  listEl.querySelectorAll("[data-arshjul-subitem-delete-id]").forEach(button => {
+    button.addEventListener("click", async event => {
+      event.preventDefault();
+      await supabaseClient.from("kbfb_arshjul_subitems").delete().eq("id", button.dataset.arshjulSubitemDeleteId);
+      await refreshArshjulData();
+    });
+  });
+
+  listEl.querySelectorAll("[data-arshjul-subitem-form-id]").forEach(form => {
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const input = form.querySelector("input[type=text]");
+      const text = input.value.trim();
+      if (!text) return;
+
+      const itemId = form.dataset.arshjulSubitemFormId;
+      arshjulOpenSubitemIds.add(String(itemId));
+
+      const { error } = await supabaseClient.from("kbfb_arshjul_subitems").insert([{
+        arshjul_item_id: itemId,
+        text
+      }]);
+
+      if (error) {
+        console.error("Kunne ikke legge til sjekkpunkt:", error);
+        alert("Kunne ikke lagre sjekkpunktet. Prøv igjen.");
+        return;
+      }
+
+      await refreshArshjulData();
     });
   });
 
@@ -6275,9 +6402,7 @@ async function initializeArshjul() {
     button.addEventListener("click", () => selectArshjulVariant(button.dataset.variant));
   });
 
-  await loadArshjulItemsFromSupabase();
-  renderArshjulWheel();
-  renderArshjulMonthDetail();
+  await refreshArshjulData();
 
   const addForm = document.getElementById("arshjulItemForm");
   if (addForm) {
@@ -6305,9 +6430,7 @@ async function initializeArshjul() {
       document.getElementById("arshjulItemMonth").value = String(month);
       arshjulSelectedMonth = month;
 
-      await loadArshjulItemsFromSupabase();
-      renderArshjulWheel();
-      renderArshjulMonthDetail();
+      await refreshArshjulData();
     });
   }
 }
