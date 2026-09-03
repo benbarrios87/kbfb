@@ -6203,7 +6203,7 @@ function renderArshjulMonthDetail() {
         ${isAdmin
           ? `<input type="text" class="arshjul-notat-input" data-arshjul-notat-id="${item.id}" value="${escapeHtml(item.notat || "")}" placeholder="Notat (valgfritt)" />`
           : (item.notat ? `<span class="muted">📝 ${escapeHtml(item.notat)}</span>` : "")}
-        ${(isAdmin || subitems.length) ? `
+        ${(subitems.length || isOpen) ? `
           <details class="arshjul-subitems" data-arshjul-subitems-id="${item.id}" ${isOpen ? "open" : ""}>
             <summary><span class="details-toggle-icon">▸</span> Sjekkliste${subitems.length ? ` (${doneCount}/${subitems.length})` : ""}</summary>
             <div class="arshjul-subitem-list">
@@ -6222,7 +6222,7 @@ function renderArshjulMonthDetail() {
               </form>
             ` : ""}
           </details>
-        ` : ""}
+        ` : (isAdmin ? `<button class="arshjul-add-subitems-btn" type="button" data-arshjul-add-subitems-id="${item.id}">+ sjekkliste</button>` : "")}
         ${isAdmin ? `
           <div class="arshjul-item-controls">
             <select class="arshjul-move-select" data-arshjul-move-id="${item.id}">
@@ -6272,6 +6272,13 @@ function renderArshjulMonthDetail() {
       }
 
       await loadArshjulItemsFromSupabase();
+    });
+  });
+
+  listEl.querySelectorAll("[data-arshjul-add-subitems-id]").forEach(button => {
+    button.addEventListener("click", () => {
+      arshjulOpenSubitemIds.add(String(button.dataset.arshjulAddSubitemsId));
+      renderArshjulMonthDetail();
     });
   });
 

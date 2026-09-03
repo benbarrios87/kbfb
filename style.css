@@ -1010,6 +1010,23 @@ details[open].card summary .details-toggle-icon {
   margin-top: 6px;
 }
 
+.arshjul-add-subitems-btn {
+  display: inline-block;
+  margin-top: 6px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.82em;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.arshjul-add-subitems-btn:hover {
+  color: var(--green-dark);
+  text-decoration: underline;
+}
+
 .arshjul-subitems {
   margin-top: 8px;
   border: 1px solid var(--line);
