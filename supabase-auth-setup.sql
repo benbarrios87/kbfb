@@ -1040,3 +1040,11 @@ CREATE POLICY "kbfb_arshjul_admin_write" ON public.kbfb_arshjul_items
   FOR ALL TO authenticated
   USING (public.kbfb_is_admin())
   WITH CHECK (public.kbfb_is_admin());
+
+-- =========================================================
+-- STEP 33: kbfb_arshjul_items.completed - click an item to mark it
+--   gjennomført (greys it out with a strikethrough). Also added: move
+--   an item to a different month via a dropdown, without delete+redo.
+-- =========================================================
+
+ALTER TABLE public.kbfb_arshjul_items ADD COLUMN IF NOT EXISTS completed boolean NOT NULL DEFAULT false;

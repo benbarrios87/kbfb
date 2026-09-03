@@ -965,6 +965,36 @@ details[open].card summary .details-toggle-icon {
   margin-top: 0;
 }
 
+.arshjul-item {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.arshjul-item-completed {
+  opacity: 0.55;
+}
+
+.arshjul-item-completed strong {
+  text-decoration: line-through;
+}
+
+.arshjul-item-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.arshjul-move-select {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 7px 10px;
+  font: inherit;
+  font-weight: 700;
+  background: white;
+  cursor: pointer;
+}
+
 .hms-tile-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

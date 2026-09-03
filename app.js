@@ -6158,21 +6158,79 @@ function renderArshjulMonthDetail() {
   titleEl.textContent = `${NORWEGIAN_MONTHS[arshjulSelectedMonth - 1]} - ${arshjulSelectedVariant}`;
 
   const items = itemsForArshjulMonth(arshjulSelectedVariant, arshjulSelectedMonth);
+  const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
 
   listEl.innerHTML = items.length
     ? items.map(item => `
-      <div class="summary-item">
-        <strong>${escapeHtml(item.title)}</strong>
+      <div class="summary-item arshjul-item${item.completed ? " arshjul-item-completed" : ""}" data-arshjul-toggle-id="${item.id}">
+        <strong>${item.completed ? "✓ " : ""}${escapeHtml(item.title)}</strong>
         ${item.description ? `<span>${escapeHtml(item.description)}</span>` : ""}
-        ${typeof currentEmployee !== "undefined" && currentEmployee?.is_admin
-          ? `<button class="kitchen-delete" data-arshjul-delete-id="${item.id}" style="margin-top: 4px; width: fit-content;">Slett</button>`
-          : ""}
+        ${isAdmin ? `
+          <div class="arshjul-item-controls">
+            <select class="arshjul-move-select" data-arshjul-move-id="${item.id}">
+              ${NORWEGIAN_MONTHS.map((name, idx) => `<option value="${idx + 1}" ${idx + 1 === item.month ? "selected" : ""}>${name}</option>`).join("")}
+            </select>
+            <button class="kitchen-delete" type="button" data-arshjul-delete-id="${item.id}">Slett</button>
+          </div>
+        ` : ""}
       </div>
     `).join("")
     : `<p class="muted">Ingenting lagt inn for denne måneden ennå.</p>`;
 
+  // Trykk på selve punktet for å markere gjennomført/ikke - men ikke når
+  // klikket faktisk var på flytt-nedtrekket eller slett-knappen inni det.
+  listEl.querySelectorAll("[data-arshjul-toggle-id]").forEach(card => {
+    card.addEventListener("click", async event => {
+      if (event.target.closest("select, button")) return;
+      if (!isAdmin) return;
+
+      const id = card.dataset.arshjulToggleId;
+      const item = arshjulItemsCache.find(candidate => String(candidate.id) === String(id));
+      if (!item) return;
+
+      const { error } = await supabaseClient
+        .from("kbfb_arshjul_items")
+        .update({ completed: !item.completed })
+        .eq("id", id);
+
+      if (error) {
+        console.error("Kunne ikke oppdatere årshjul-punkt:", error);
+        return;
+      }
+
+      await loadArshjulItemsFromSupabase();
+      renderArshjulWheel();
+      renderArshjulMonthDetail();
+    });
+  });
+
+  listEl.querySelectorAll("[data-arshjul-move-id]").forEach(select => {
+    select.addEventListener("click", event => event.stopPropagation());
+    select.addEventListener("change", async () => {
+      const id = select.dataset.arshjulMoveId;
+      const newMonth = Number(select.value);
+
+      const { error } = await supabaseClient
+        .from("kbfb_arshjul_items")
+        .update({ month: newMonth })
+        .eq("id", id);
+
+      if (error) {
+        console.error("Kunne ikke flytte årshjul-punkt:", error);
+        alert("Kunne ikke flytte punktet. Prøv igjen.");
+        return;
+      }
+
+      arshjulSelectedMonth = newMonth;
+      await loadArshjulItemsFromSupabase();
+      renderArshjulWheel();
+      renderArshjulMonthDetail();
+    });
+  });
+
   listEl.querySelectorAll("[data-arshjul-delete-id]").forEach(button => {
-    button.addEventListener("click", async () => {
+    button.addEventListener("click", async event => {
+      event.stopPropagation();
       await supabaseClient.from("kbfb_arshjul_items").delete().eq("id", button.dataset.arshjulDeleteId);
       await loadArshjulItemsFromSupabase();
       renderArshjulWheel();
