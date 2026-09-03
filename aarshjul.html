@@ -32,7 +32,7 @@
         <a href="bestillinger.html">🛒 Bestillinger</a>
        <a data-hide-from-vikar href="kalender.html">📍 Hvor er Benjamin?</a>
         <a data-hide-from-vikar href="filarkiv.html">📁 Filarkiv</a>
-        <a class="active" data-hide-from-vikar href="aarshjul.html">🗓️ Årshjul (kommer)</a>
+        <a class="active" data-hide-from-vikar href="aarshjul.html">🗓️ Årshjul</a>
         <a data-hide-from-vikar href="turbank.html">🏕️ Turbank (kommer)</a>
         <a href="nokkeltall.html" data-admin-only>📊 Nøkkeltall</a>
         <a href="admin.html" data-admin-only>⚙️ Admin</a>
@@ -57,19 +57,47 @@
     <main class="main">
       <section class="forest-hero compact">
         <div>
-          <p class="eyebrow">Kommer etter hvert</p>
+          <p class="eyebrow">Året rundt</p>
           <h1>Årshjul</h1>
-          <p class="muted">Denne siden er ikke bygget ennå.</p>
+          <p class="muted">Hva som skjer når, gjennom hele barnehageåret - én variant per rolle.</p>
         </div>
-        <div class="hero-badge">🚧 Under arbeid</div>
+        <div class="hero-badge">🗓️ Årshjul</div>
       </section>
 
-      <section class="card">
-        <h2>🗓️ Årshjul kommer etter hvert</h2>
-        <p class="muted">
-          I mellomtiden finner du de viktige datoene under "Datoer" i menyen - det er der de faktisk
-          føres inn og vises i dag.
-        </p>
+      <div class="view-toggle" id="arshjulVariantToggle">
+        <button type="button" class="primary-btn" data-variant="Leder">👔 Leder</button>
+        <button type="button" class="secondary-btn" data-variant="Pedagogisk leder">🎨 Pedagogisk leder</button>
+        <button type="button" class="secondary-btn" data-variant="Assistent">🧩 Assistent</button>
+      </div>
+
+      <section class="card arshjul-layout">
+        <div id="arshjulWheel" class="arshjul-wheel"></div>
+
+        <div class="arshjul-detail">
+          <h2 id="arshjulMonthTitle">Velg en måned</h2>
+          <div id="arshjulMonthItems" class="summary-list">
+            <p class="muted">Trykk på en måned i hjulet for å se hva som skjer da.</p>
+          </div>
+
+          <div id="arshjulAddForm" data-admin-only style="display: none; margin-top: 18px;">
+            <h3>+ Legg til punkt</h3>
+            <form id="arshjulItemForm" class="form-grid">
+              <label>
+                Måned
+                <select id="arshjulItemMonth" required></select>
+              </label>
+              <label class="wide-field">
+                Tittel
+                <input id="arshjulItemTitle" type="text" placeholder="F.eks. Foreldresamtaler" required />
+              </label>
+              <label class="wide-field">
+                Beskrivelse (valgfritt)
+                <textarea id="arshjulItemDescription" rows="2" placeholder="Utdypende info, valgfritt"></textarea>
+              </label>
+              <button class="primary-btn form-button" type="submit">Legg til</button>
+            </form>
+          </div>
+        </div>
       </section>
     </main>
   </div>

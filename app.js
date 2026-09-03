@@ -6042,3 +6042,216 @@ async function initializeSupplies() {
 }
 
 initializeSupplies();
+
+/* ---------- ÅRSHJUL ----------
+   A circular SVG wheel, one per rolle-variant (Leder / Pedagogisk leder /
+   Assistent) - admin fills in innhold via the form, everyone else just
+   browses. "Rammen" (the wheel itself) works with zero items in it; each
+   month wedge just shows empty until something's added. */
+
+const NORWEGIAN_MONTHS = [
+  "Januar", "Februar", "Mars", "April", "Mai", "Juni",
+  "Juli", "August", "September", "Oktober", "November", "Desember"
+];
+
+// Soft seasonal colors, reusing the same palette as personal vaktplan
+// colors elsewhere in the app - winter/spring/summer/høst.
+const ARSHJUL_MONTH_COLORS = [
+  "#bfdbfe", "#bfdbfe", // jan, feb - vinter (blå)
+  "#bbf7d0", "#bbf7d0", "#bbf7d0", // mar-mai - vår (grønn)
+  "#fde68a", "#fde68a", "#fde68a", // jun-aug - sommer (gul)
+  "#fed7aa", "#fed7aa", "#fed7aa", // sep-nov - høst (oransje)
+  "#bfdbfe" // des - vinter (blå)
+];
+
+let arshjulItemsCache = [];
+let arshjulSelectedVariant = "Leder";
+let arshjulSelectedMonth = null;
+
+function arshjulPolarPoint(cx, cy, r, angleDeg) {
+  const rad = (angleDeg * Math.PI) / 180;
+  return { x: cx + r * Math.sin(rad), y: cy - r * Math.cos(rad) };
+}
+
+function arshjulWedgePath(cx, cy, r, startAngle, endAngle) {
+  const p1 = arshjulPolarPoint(cx, cy, r, startAngle);
+  const p2 = arshjulPolarPoint(cx, cy, r, endAngle);
+  const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+  return `M ${cx},${cy} L ${p1.x},${p1.y} A ${r},${r} 0 ${largeArc} 1 ${p2.x},${p2.y} Z`;
+}
+
+async function loadArshjulItemsFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_arshjul_items")
+    .select("*")
+    .order("month");
+
+  if (error) {
+    console.error("Kunne ikke hente årshjul:", error);
+    return [];
+  }
+
+  arshjulItemsCache = data || [];
+  return arshjulItemsCache;
+}
+
+function itemsForArshjulMonth(variant, month) {
+  return arshjulItemsCache.filter(item => item.variant === variant && item.month === month);
+}
+
+function renderArshjulWheel() {
+  const container = document.getElementById("arshjulWheel");
+  if (!container) return;
+
+  const size = 320;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = 140;
+
+  const wedges = NORWEGIAN_MONTHS.map((name, index) => {
+    const month = index + 1;
+    const startAngle = index * 30;
+    const endAngle = startAngle + 30;
+    const midAngle = startAngle + 15;
+    const labelPoint = arshjulPolarPoint(cx, cy, r * 0.68, midAngle);
+    const hasItems = itemsForArshjulMonth(arshjulSelectedVariant, month).length > 0;
+    const isSelected = arshjulSelectedMonth === month;
+
+    return `
+      <path
+        d="${arshjulWedgePath(cx, cy, r, startAngle, endAngle)}"
+        fill="${ARSHJUL_MONTH_COLORS[index]}"
+        class="arshjul-wedge${isSelected ? " selected" : ""}"
+        data-month="${month}"
+        stroke="#fffdf7"
+        stroke-width="2"
+      ></path>
+      <text x="${labelPoint.x}" y="${labelPoint.y}" class="arshjul-month-label" text-anchor="middle" data-month="${month}">${name.slice(0, 3)}</text>
+      ${hasItems ? `<circle cx="${labelPoint.x}" cy="${labelPoint.y + 14}" r="4" class="arshjul-dot" data-month="${month}"></circle>` : ""}
+    `;
+  }).join("");
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${size} ${size}" class="arshjul-svg">
+      ${wedges}
+      <circle cx="${cx}" cy="${cy}" r="46" class="arshjul-center"></circle>
+      <text x="${cx}" y="${cy + 6}" text-anchor="middle" class="arshjul-center-label">${escapeHtml(arshjulSelectedVariant)}</text>
+    </svg>
+  `;
+
+  container.querySelectorAll("[data-month]").forEach(el => {
+    el.addEventListener("click", () => selectArshjulMonth(Number(el.dataset.month)));
+  });
+}
+
+function renderArshjulMonthDetail() {
+  const titleEl = document.getElementById("arshjulMonthTitle");
+  const listEl = document.getElementById("arshjulMonthItems");
+  if (!titleEl || !listEl) return;
+
+  if (!arshjulSelectedMonth) {
+    titleEl.textContent = "Velg en måned";
+    listEl.innerHTML = `<p class="muted">Trykk på en måned i hjulet for å se hva som skjer da.</p>`;
+    return;
+  }
+
+  titleEl.textContent = `${NORWEGIAN_MONTHS[arshjulSelectedMonth - 1]} - ${arshjulSelectedVariant}`;
+
+  const items = itemsForArshjulMonth(arshjulSelectedVariant, arshjulSelectedMonth);
+
+  listEl.innerHTML = items.length
+    ? items.map(item => `
+      <div class="summary-item">
+        <strong>${escapeHtml(item.title)}</strong>
+        ${item.description ? `<span>${escapeHtml(item.description)}</span>` : ""}
+        ${typeof currentEmployee !== "undefined" && currentEmployee?.is_admin
+          ? `<button class="kitchen-delete" data-arshjul-delete-id="${item.id}" style="margin-top: 4px; width: fit-content;">Slett</button>`
+          : ""}
+      </div>
+    `).join("")
+    : `<p class="muted">Ingenting lagt inn for denne måneden ennå.</p>`;
+
+  listEl.querySelectorAll("[data-arshjul-delete-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      await supabaseClient.from("kbfb_arshjul_items").delete().eq("id", button.dataset.arshjulDeleteId);
+      await loadArshjulItemsFromSupabase();
+      renderArshjulWheel();
+      renderArshjulMonthDetail();
+    });
+  });
+
+  const monthSelect = document.getElementById("arshjulItemMonth");
+  if (monthSelect) monthSelect.value = String(arshjulSelectedMonth);
+}
+
+function selectArshjulMonth(month) {
+  arshjulSelectedMonth = month;
+  renderArshjulWheel();
+  renderArshjulMonthDetail();
+}
+
+function selectArshjulVariant(variant) {
+  arshjulSelectedVariant = variant;
+
+  document.querySelectorAll("#arshjulVariantToggle button").forEach(button => {
+    const isActive = button.dataset.variant === variant;
+    button.className = isActive ? "primary-btn" : "secondary-btn";
+  });
+
+  renderArshjulWheel();
+  renderArshjulMonthDetail();
+}
+
+async function initializeArshjul() {
+  const wheelEl = document.getElementById("arshjulWheel");
+  if (!wheelEl) return;
+
+  const monthSelect = document.getElementById("arshjulItemMonth");
+  if (monthSelect && !monthSelect.options.length) {
+    monthSelect.innerHTML = NORWEGIAN_MONTHS.map((name, index) =>
+      `<option value="${index + 1}">${name}</option>`
+    ).join("");
+  }
+
+  document.querySelectorAll("#arshjulVariantToggle button").forEach(button => {
+    button.addEventListener("click", () => selectArshjulVariant(button.dataset.variant));
+  });
+
+  await loadArshjulItemsFromSupabase();
+  renderArshjulWheel();
+  renderArshjulMonthDetail();
+
+  const addForm = document.getElementById("arshjulItemForm");
+  if (addForm) {
+    addForm.addEventListener("submit", async event => {
+      event.preventDefault();
+
+      const month = Number(document.getElementById("arshjulItemMonth").value);
+      const title = document.getElementById("arshjulItemTitle").value.trim();
+      const description = document.getElementById("arshjulItemDescription").value.trim() || null;
+
+      const { error } = await supabaseClient.from("kbfb_arshjul_items").insert([{
+        variant: arshjulSelectedVariant,
+        month,
+        title,
+        description
+      }]);
+
+      if (error) {
+        console.error("Kunne ikke legge til årshjul-punkt:", error);
+        alert("Kunne ikke lagre. Prøv igjen.");
+        return;
+      }
+
+      addForm.reset();
+      document.getElementById("arshjulItemMonth").value = String(month);
+      arshjulSelectedMonth = month;
+
+      await loadArshjulItemsFromSupabase();
+      renderArshjulWheel();
+      renderArshjulMonthDetail();
+    });
+  }
+}
+
+initializeArshjul();

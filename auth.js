@@ -139,6 +139,13 @@ async function requireAuth() {
     loadChecklistsFromSupabase();
   }
 
+  // Re-render once we know for sure whether this person is admin (controls
+  // the Slett button on each årshjul item) - initializeArshjul() itself
+  // already ran once with an unknown/guest-looking currentEmployee.
+  if (typeof renderArshjulMonthDetail === "function") {
+    renderArshjulMonthDetail();
+  }
+
   if (typeof loadSharedPhotos === "function") {
     loadSharedPhotos();
   }

@@ -1010,3 +1010,33 @@ CREATE POLICY "kbfb_checklist_completions_admin_write" ON public.kbfb_checklist_
   FOR ALL TO authenticated
   USING (public.kbfb_is_admin())
   WITH CHECK (public.kbfb_is_admin());
+
+-- =========================================================
+-- STEP 32: kbfb_arshjul_items (Årshjul - real content, replacing the
+--   old placeholder page). One wheel per rolle-variant (Leder,
+--   Pedagogisk leder, Assistent), each item pinned to a month (1-12).
+--   Visible to everyone (not admin-only like Avvik/HMS) since staff
+--   need to see their own variant - only writing is admin-only.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_arshjul_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  variant text NOT NULL CHECK (variant IN ('Leder', 'Pedagogisk leder', 'Assistent')),
+  month int NOT NULL CHECK (month BETWEEN 1 AND 12),
+  title text NOT NULL,
+  description text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_arshjul_items ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_arshjul_select_authenticated" ON public.kbfb_arshjul_items;
+CREATE POLICY "kbfb_arshjul_select_authenticated" ON public.kbfb_arshjul_items
+  FOR SELECT TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "kbfb_arshjul_admin_write" ON public.kbfb_arshjul_items;
+CREATE POLICY "kbfb_arshjul_admin_write" ON public.kbfb_arshjul_items
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());

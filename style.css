@@ -896,6 +896,75 @@ details[open].card summary .details-toggle-icon {
   font-weight: 700;
 }
 
+.arshjul-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 850px) {
+  .arshjul-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.arshjul-wheel {
+  display: flex;
+  justify-content: center;
+}
+
+.arshjul-svg {
+  width: 100%;
+  max-width: 340px;
+}
+
+.arshjul-wedge {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  opacity: 0.88;
+}
+
+.arshjul-wedge:hover {
+  opacity: 1;
+}
+
+.arshjul-wedge.selected {
+  opacity: 1;
+  stroke: var(--green-dark);
+  stroke-width: 3;
+}
+
+.arshjul-month-label {
+  font-size: 11px;
+  font-weight: 800;
+  fill: #203225;
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+.arshjul-dot {
+  fill: var(--green-dark);
+  pointer-events: none;
+}
+
+.arshjul-center {
+  fill: var(--paper, #fffdf7);
+  stroke: rgba(47, 107, 63, 0.25);
+  stroke-width: 2;
+}
+
+.arshjul-center-label {
+  font-size: 13px;
+  font-weight: 900;
+  fill: var(--green-dark);
+  pointer-events: none;
+}
+
+.arshjul-detail h2 {
+  margin-top: 0;
+}
+
 .hms-tile-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
