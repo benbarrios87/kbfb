@@ -6424,35 +6424,12 @@ function renderRoutines() {
 
     listEl.innerHTML = items.length
       ? items.map(item => `
-        <div class="summary-item routine-item">
-          <strong>${escapeHtml(item.title)}</strong>
-          ${isAdmin
-            ? `<input type="text" class="arshjul-notat-input" data-routine-notat-id="${item.id}" value="${escapeHtml(item.notat || "")}" placeholder="Notat (valgfritt)" />`
-            : (item.notat ? `<span class="muted">📝 ${escapeHtml(item.notat)}</span>` : "")}
-          ${isAdmin ? `<button class="kitchen-delete" type="button" data-routine-delete-id="${item.id}">Slett</button>` : ""}
+        <div class="routine-item">
+          <span>${escapeHtml(item.title)}</span>
+          ${isAdmin ? `<button class="kitchen-delete" type="button" data-routine-delete-id="${item.id}">✕</button>` : ""}
         </div>
       `).join("")
       : `<p class="muted">Ingenting lagt inn ennå.</p>`;
-
-    listEl.querySelectorAll("[data-routine-notat-id]").forEach(input => {
-      input.addEventListener("change", async () => {
-        const id = input.dataset.routineNotatId;
-        const notat = input.value.trim() || null;
-
-        const { error } = await supabaseClient
-          .from("kbfb_arshjul_routines")
-          .update({ notat })
-          .eq("id", id);
-
-        if (error) {
-          console.error("Kunne ikke lagre notat:", error);
-          alert("Kunne ikke lagre notatet. Prøv igjen.");
-          return;
-        }
-
-        await loadRoutinesFromSupabase();
-      });
-    });
 
     listEl.querySelectorAll("[data-routine-delete-id]").forEach(button => {
       button.addEventListener("click", async () => {
@@ -6473,13 +6450,11 @@ function initializeRoutineForm() {
 
     const frequency = document.getElementById("routineFrequency").value;
     const title = document.getElementById("routineTitle").value.trim();
-    const notat = document.getElementById("routineNotat").value.trim() || null;
 
     const { error } = await supabaseClient.from("kbfb_arshjul_routines").insert([{
       variant: arshjulSelectedVariant,
       frequency,
-      title,
-      notat
+      title
     }]);
 
     if (error) {
