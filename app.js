@@ -6414,8 +6414,6 @@ async function loadRoutinesFromSupabase() {
 }
 
 function renderRoutines() {
-  const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
-
   ROUTINE_FREQUENCIES.forEach(frequency => {
     const listEl = document.getElementById(`routineList${frequency}`);
     if (!listEl) return;
@@ -6423,21 +6421,8 @@ function renderRoutines() {
     const items = routinesCache.filter(r => r.variant === arshjulSelectedVariant && r.frequency === frequency);
 
     listEl.innerHTML = items.length
-      ? items.map(item => `
-        <div class="routine-item">
-          <span>${escapeHtml(item.title)}</span>
-          ${isAdmin ? `<button class="kitchen-delete" type="button" data-routine-delete-id="${item.id}">✕</button>` : ""}
-        </div>
-      `).join("")
+      ? items.map(item => `<div class="routine-item"><span>${escapeHtml(item.title)}</span></div>`).join("")
       : `<p class="muted">Ingenting lagt inn ennå.</p>`;
-
-    listEl.querySelectorAll("[data-routine-delete-id]").forEach(button => {
-      button.addEventListener("click", async () => {
-        await supabaseClient.from("kbfb_arshjul_routines").delete().eq("id", button.dataset.routineDeleteId);
-        await loadRoutinesFromSupabase();
-        renderRoutines();
-      });
-    });
   });
 }
 
