@@ -6392,6 +6392,106 @@ function selectArshjulVariant(variant) {
 
   renderArshjulWheel();
   renderArshjulMonthDetail();
+  renderRoutines();
+}
+
+let routinesCache = [];
+const ROUTINE_FREQUENCIES = ["Daglig", "Ukentlig", "Månedlig"];
+
+async function loadRoutinesFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_arshjul_routines")
+    .select("*")
+    .order("created_at");
+
+  if (error) {
+    console.error("Kunne ikke hente rutiner:", error);
+    return [];
+  }
+
+  routinesCache = data || [];
+  return routinesCache;
+}
+
+function renderRoutines() {
+  const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
+
+  ROUTINE_FREQUENCIES.forEach(frequency => {
+    const listEl = document.getElementById(`routineList${frequency}`);
+    if (!listEl) return;
+
+    const items = routinesCache.filter(r => r.variant === arshjulSelectedVariant && r.frequency === frequency);
+
+    listEl.innerHTML = items.length
+      ? items.map(item => `
+        <div class="summary-item routine-item">
+          <strong>${escapeHtml(item.title)}</strong>
+          ${isAdmin
+            ? `<input type="text" class="arshjul-notat-input" data-routine-notat-id="${item.id}" value="${escapeHtml(item.notat || "")}" placeholder="Notat (valgfritt)" />`
+            : (item.notat ? `<span class="muted">📝 ${escapeHtml(item.notat)}</span>` : "")}
+          ${isAdmin ? `<button class="kitchen-delete" type="button" data-routine-delete-id="${item.id}">Slett</button>` : ""}
+        </div>
+      `).join("")
+      : `<p class="muted">Ingenting lagt inn ennå.</p>`;
+
+    listEl.querySelectorAll("[data-routine-notat-id]").forEach(input => {
+      input.addEventListener("change", async () => {
+        const id = input.dataset.routineNotatId;
+        const notat = input.value.trim() || null;
+
+        const { error } = await supabaseClient
+          .from("kbfb_arshjul_routines")
+          .update({ notat })
+          .eq("id", id);
+
+        if (error) {
+          console.error("Kunne ikke lagre notat:", error);
+          alert("Kunne ikke lagre notatet. Prøv igjen.");
+          return;
+        }
+
+        await loadRoutinesFromSupabase();
+      });
+    });
+
+    listEl.querySelectorAll("[data-routine-delete-id]").forEach(button => {
+      button.addEventListener("click", async () => {
+        await supabaseClient.from("kbfb_arshjul_routines").delete().eq("id", button.dataset.routineDeleteId);
+        await loadRoutinesFromSupabase();
+        renderRoutines();
+      });
+    });
+  });
+}
+
+function initializeRoutineForm() {
+  const form = document.getElementById("routineForm");
+  if (!form) return;
+
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const frequency = document.getElementById("routineFrequency").value;
+    const title = document.getElementById("routineTitle").value.trim();
+    const notat = document.getElementById("routineNotat").value.trim() || null;
+
+    const { error } = await supabaseClient.from("kbfb_arshjul_routines").insert([{
+      variant: arshjulSelectedVariant,
+      frequency,
+      title,
+      notat
+    }]);
+
+    if (error) {
+      console.error("Kunne ikke legge til rutine:", error);
+      alert("Kunne ikke lagre. Prøv igjen.");
+      return;
+    }
+
+    form.reset();
+    await loadRoutinesFromSupabase();
+    renderRoutines();
+  });
 }
 
 async function initializeArshjul() {
@@ -6410,6 +6510,10 @@ async function initializeArshjul() {
   });
 
   await refreshArshjulData();
+
+  await loadRoutinesFromSupabase();
+  renderRoutines();
+  initializeRoutineForm();
 
   const addForm = document.getElementById("arshjulItemForm");
   if (addForm) {

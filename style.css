@@ -1010,6 +1010,46 @@ details[open].card summary .details-toggle-icon {
   margin-top: 6px;
 }
 
+.routine-groups {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 12px;
+}
+
+@media (max-width: 900px) {
+  .routine-groups {
+    grid-template-columns: 1fr;
+  }
+}
+
+.routine-group {
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+}
+
+.routine-group:nth-child(1) {
+  background: #fde68a;
+}
+
+.routine-group:nth-child(2) {
+  background: #bfdbfe;
+}
+
+.routine-group:nth-child(3) {
+  background: #bbf7d0;
+}
+
+.routine-group h3 {
+  margin-top: 0;
+}
+
+.routine-item {
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+}
+
 .arshjul-add-subitems-btn {
   display: inline-block;
   margin-top: 6px;

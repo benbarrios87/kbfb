@@ -1085,3 +1085,32 @@ CREATE POLICY "kbfb_arshjul_subitems_admin_write" ON public.kbfb_arshjul_subitem
   FOR ALL TO authenticated
   USING (public.kbfb_is_admin())
   WITH CHECK (public.kbfb_is_admin());
+
+-- =========================================================
+-- STEP 36: kbfb_arshjul_routines - daglige/ukentlige/månedlige
+--   rutineoppgaver, separate from the month-pinned Årshjul wheel
+--   (these repeat on a cadence, not once a year). Same variant
+--   concept and same RLS shape as kbfb_arshjul_items.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_arshjul_routines (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  variant text NOT NULL CHECK (variant IN ('Leder', 'Pedagogisk leder', 'Assistent')),
+  frequency text NOT NULL CHECK (frequency IN ('Daglig', 'Ukentlig', 'Månedlig')),
+  title text NOT NULL,
+  notat text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_arshjul_routines ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_arshjul_routines_select_authenticated" ON public.kbfb_arshjul_routines;
+CREATE POLICY "kbfb_arshjul_routines_select_authenticated" ON public.kbfb_arshjul_routines
+  FOR SELECT TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "kbfb_arshjul_routines_admin_write" ON public.kbfb_arshjul_routines;
+CREATE POLICY "kbfb_arshjul_routines_admin_write" ON public.kbfb_arshjul_routines
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());

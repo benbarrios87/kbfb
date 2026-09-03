@@ -99,6 +99,54 @@
           </div>
         </div>
       </section>
+
+      <details class="card" open>
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
+            <p class="eyebrow">Faste rutiner</p>
+            <h2>Daglig, ukentlig, månedlig</h2>
+          </div>
+        </summary>
+
+        <div class="routine-groups">
+          <div class="routine-group">
+            <h3>☀️ Daglig</h3>
+            <div id="routineListDaglig" class="summary-list"></div>
+          </div>
+          <div class="routine-group">
+            <h3>📆 Ukentlig</h3>
+            <div id="routineListUkentlig" class="summary-list"></div>
+          </div>
+          <div class="routine-group">
+            <h3>🗓️ Månedlig</h3>
+            <div id="routineListMånedlig" class="summary-list"></div>
+          </div>
+        </div>
+
+        <div data-admin-only style="display: none; margin-top: 18px;">
+          <h3>+ Legg til rutine</h3>
+          <form id="routineForm" class="form-grid">
+            <label>
+              Frekvens
+              <select id="routineFrequency" required>
+                <option value="Daglig">Daglig</option>
+                <option value="Ukentlig">Ukentlig</option>
+                <option value="Månedlig">Månedlig</option>
+              </select>
+            </label>
+            <label class="wide-field">
+              Tittel
+              <input id="routineTitle" type="text" placeholder="F.eks. Sjekke Altinn" required />
+            </label>
+            <label class="wide-field">
+              Notat (valgfritt)
+              <input id="routineNotat" type="text" placeholder="Utdypende info, valgfritt" />
+            </label>
+            <button class="primary-btn form-button" type="submit">Legg til</button>
+          </form>
+        </div>
+      </details>
     </main>
   </div>
 
