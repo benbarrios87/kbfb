@@ -933,6 +933,73 @@ CREATE POLICY "kbfb_arshjul_routines_role_write" ON public.kbfb_arshjul_routines
   WITH CHECK (public.kbfb_can_edit_arshjul_variant(variant));
 
 -- =========================================================
+-- STEP 38: Årsplan - one shared "levende dokument" for the whole
+--   barnehage (not per wheel-variant). Leder + pedagogene (Pedagog/
+--   Pedleder/Avdelingsleder) can edit; everyone else reads only.
+--   original_text = last "godkjent" wording, current_text = live
+--   editable wording - the app shows a section in red whenever the
+--   two differ, and "Godkjenn revisjon" copies current -> original
+--   for every section while logging a full snapshot for history.
+-- =========================================================
+
+CREATE OR REPLACE FUNCTION public.kbfb_can_edit_arsplan()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    public.kbfb_is_admin()
+    OR public.kbfb_current_employee_role() ILIKE '%pedagog%'
+    OR public.kbfb_current_employee_role() ILIKE '%pedleder%'
+    OR public.kbfb_current_employee_role() ILIKE '%avdelingsleder%';
+$$;
+
+CREATE TABLE IF NOT EXISTS public.kbfb_arsplan_sections (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  sort_order int NOT NULL DEFAULT 0,
+  heading text NOT NULL,
+  original_text text NOT NULL DEFAULT '',
+  current_text text NOT NULL DEFAULT '',
+  updated_by text,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_arsplan_sections ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_arsplan_sections_select_authenticated" ON public.kbfb_arsplan_sections;
+CREATE POLICY "kbfb_arsplan_sections_select_authenticated" ON public.kbfb_arsplan_sections
+  FOR SELECT TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "kbfb_arsplan_sections_write" ON public.kbfb_arsplan_sections;
+CREATE POLICY "kbfb_arsplan_sections_write" ON public.kbfb_arsplan_sections
+  FOR ALL TO authenticated
+  USING (public.kbfb_can_edit_arsplan())
+  WITH CHECK (public.kbfb_can_edit_arsplan());
+
+CREATE TABLE IF NOT EXISTS public.kbfb_arsplan_versions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  approved_by text,
+  approved_at timestamptz NOT NULL DEFAULT now(),
+  snapshot jsonb NOT NULL
+);
+
+ALTER TABLE public.kbfb_arsplan_versions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_arsplan_versions_select_authenticated" ON public.kbfb_arsplan_versions;
+CREATE POLICY "kbfb_arsplan_versions_select_authenticated" ON public.kbfb_arsplan_versions
+  FOR SELECT TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "kbfb_arsplan_versions_insert" ON public.kbfb_arsplan_versions;
+CREATE POLICY "kbfb_arsplan_versions_insert" ON public.kbfb_arsplan_versions
+  FOR INSERT TO authenticated
+  WITH CHECK (public.kbfb_can_edit_arsplan());
+
+-- =========================================================
 -- STEP 27: kbfb_shift_swap_requests - let the sender clear out their
 --   own finished (accepted/declined) requests from "Sendte forespørsler"
 --   on vakter.html. Still pending ones can't be self-deleted this way -

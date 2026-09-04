@@ -6071,6 +6071,19 @@ let arshjulSelectedMonth = null;
 let arshjulOpenSubitemIds = new Set();
 let arshjulOpenNotatIds = new Set();
 
+// Pedagog / Pedleder / Avdelingsleder are all the same tier in this
+// barnehage (a department lead is also the pedagogical leader).
+function employeeIsPedagogiskLederTier() {
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return false;
+  const role = (currentEmployee.role || "").toLowerCase();
+  return role.includes("pedagog") || role.includes("pedleder") || role.includes("avdelingsleder");
+}
+
+function employeeIsAssistentTier() {
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return false;
+  return (currentEmployee.role || "").toLowerCase().includes("assistent");
+}
+
 // Leder (admin) can edit every variant. Pedagogisk leder can edit the
 // Pedagogisk leder + Assistent wheels/rutiner (not Leder). Assistent can
 // only edit their own Assistent wheel/rutiner. Vikar/Gjest/anyone else: none.
@@ -6078,13 +6091,17 @@ function canEditArshjulVariant(variant) {
   if (typeof currentEmployee === "undefined" || !currentEmployee) return false;
   if (currentEmployee.is_admin) return true;
 
-  const role = (currentEmployee.role || "").toLowerCase();
-  const isPedagogiskLeder = role.includes("pedagog") || role.includes("pedleder") || role.includes("avdelingsleder");
-  const isAssistent = role.includes("assistent");
-
-  if (variant === "Pedagogisk leder") return isPedagogiskLeder;
-  if (variant === "Assistent") return isPedagogiskLeder || isAssistent;
+  if (variant === "Pedagogisk leder") return employeeIsPedagogiskLederTier();
+  if (variant === "Assistent") return employeeIsPedagogiskLederTier() || employeeIsAssistentTier();
   return false;
+}
+
+// Årsplan is one shared document for the whole barnehage (not per
+// wheel-variant) - Leder og pedagogene (Pedagog/Pedleder/Avdelingsleder)
+// can edit it, everyone else can only read it.
+function canEditArsplan() {
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return false;
+  return !!currentEmployee.is_admin || employeeIsPedagogiskLederTier();
 }
 
 function arshjulPolarPoint(cx, cy, r, angleDeg) {
@@ -6580,3 +6597,222 @@ async function initializeArshjul() {
 }
 
 initializeArshjul();
+
+let arsplanSectionsCache = [];
+
+async function loadArsplanFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_arsplan_sections")
+    .select("*")
+    .order("sort_order");
+
+  if (error) {
+    console.error("Kunne ikke hente årsplan:", error);
+    return [];
+  }
+
+  arsplanSectionsCache = data || [];
+  return arsplanSectionsCache;
+}
+
+function renderArsplan() {
+  const listEl = document.getElementById("arsplanSections");
+  if (!listEl) return;
+
+  const canEdit = canEditArsplan();
+
+  listEl.innerHTML = arsplanSectionsCache.length
+    ? arsplanSectionsCache.map(section => {
+      const isRevised = section.current_text !== section.original_text;
+      return `
+        <div class="arsplan-section${isRevised ? " arsplan-section-revised" : ""}">
+          <div class="arsplan-section-head">
+            <h3>${escapeHtml(section.heading)}</h3>
+            ${isRevised ? `<span class="arsplan-revised-badge">Endret siden godkjenning</span>` : ""}
+            ${canEdit ? `<button class="kitchen-delete" type="button" data-arsplan-delete-id="${section.id}">Slett</button>` : ""}
+          </div>
+          ${canEdit
+            ? `<textarea class="arsplan-textarea${isRevised ? " arsplan-textarea-revised" : ""}" data-arsplan-text-id="${section.id}" rows="5">${escapeHtml(section.current_text)}</textarea>`
+            : `<p class="${isRevised ? "arsplan-revised-text" : ""}">${escapeHtml(section.current_text).replace(/\n/g, "<br>")}</p>`}
+        </div>
+      `;
+    }).join("")
+    : `<p class="muted">Ingen seksjoner lagt inn ennå.</p>`;
+
+  listEl.querySelectorAll("[data-arsplan-text-id]").forEach(textarea => {
+    textarea.addEventListener("change", async () => {
+      const id = textarea.dataset.arsplanTextId;
+
+      const { error } = await supabaseClient
+        .from("kbfb_arsplan_sections")
+        .update({
+          current_text: textarea.value,
+          updated_by: currentEmployee?.name || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", id);
+
+      if (error) {
+        console.error("Kunne ikke lagre årsplan-seksjon:", error);
+        alert("Kunne ikke lagre. Prøv igjen.");
+        return;
+      }
+
+      await loadArsplanFromSupabase();
+      renderArsplan();
+    });
+  });
+
+  listEl.querySelectorAll("[data-arsplan-delete-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      if (!confirm("Slette denne seksjonen fra årsplanen?")) return;
+      await supabaseClient.from("kbfb_arsplan_sections").delete().eq("id", button.dataset.arsplanDeleteId);
+      await loadArsplanFromSupabase();
+      renderArsplan();
+    });
+  });
+
+  const addSectionEl = document.getElementById("arsplanAddSection");
+  if (addSectionEl) addSectionEl.style.display = canEdit ? "" : "none";
+
+  const approveBtn = document.getElementById("arsplanApproveBtn");
+  if (approveBtn) approveBtn.style.display = canEdit && arsplanSectionsCache.length ? "" : "none";
+}
+
+async function approveArsplanRevision() {
+  if (!canEditArsplan() || !arsplanSectionsCache.length) return;
+  if (!confirm("Godkjenne denne revisjonen? Alle endringer blir låst inn som den nye, gjeldende utgaven av årsplanen.")) return;
+
+  const snapshot = arsplanSectionsCache.map(s => ({ heading: s.heading, text: s.current_text }));
+
+  const { error: versionError } = await supabaseClient.from("kbfb_arsplan_versions").insert([{
+    approved_by: currentEmployee?.name || null,
+    snapshot
+  }]);
+
+  if (versionError) {
+    console.error("Kunne ikke lagre årsplan-versjon:", versionError);
+    alert("Kunne ikke godkjenne. Prøv igjen.");
+    return;
+  }
+
+  for (const section of arsplanSectionsCache) {
+    await supabaseClient
+      .from("kbfb_arsplan_sections")
+      .update({ original_text: section.current_text })
+      .eq("id", section.id);
+  }
+
+  await loadArsplanFromSupabase();
+  renderArsplan();
+  alert("Revisjonen er godkjent - dette er nå den gjeldende årsplanen.");
+}
+
+function arsplanPrintableHtml() {
+  const bodyHtml = arsplanSectionsCache.map(section => `
+    <h2>${escapeHtml(section.heading)}</h2>
+    <p>${escapeHtml(section.current_text).replace(/\n/g, "<br>")}</p>
+  `).join("");
+
+  return `<!DOCTYPE html>
+    <html lang="no">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Årsplan - KBFB</title>
+      <style>
+        body { font-family: Georgia, serif; max-width: 800px; margin: 40px auto; line-height: 1.5; color: #234d31; }
+        h1 { text-align: center; }
+        h2 { margin-top: 32px; border-bottom: 2px solid #234d31; padding-bottom: 4px; }
+      </style>
+    </head>
+    <body>
+      <h1>Årsplan - Kirkerudbakken Friluftsbarnehage</h1>
+      ${bodyHtml}
+    </body>
+    </html>`;
+}
+
+function exportArsplanPdf() {
+  if (!arsplanSectionsCache.length) {
+    alert("Ingen seksjoner å eksportere ennå.");
+    return;
+  }
+
+  const win = window.open("", "_blank");
+  if (!win) {
+    alert("Nettleseren blokkerte popup-vinduet. Tillat popup for denne siden og prøv igjen.");
+    return;
+  }
+
+  win.document.write(arsplanPrintableHtml());
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 300);
+}
+
+function exportArsplanWord() {
+  if (!arsplanSectionsCache.length) {
+    alert("Ingen seksjoner å eksportere ennå.");
+    return;
+  }
+
+  const blob = new Blob(["﻿", arsplanPrintableHtml()], { type: "application/msword" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "arsplan.doc";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+async function initializeArsplan() {
+  const container = document.getElementById("arsplanSections");
+  if (!container) return;
+
+  await loadArsplanFromSupabase();
+  renderArsplan();
+
+  const form = document.getElementById("arsplanSectionForm");
+  if (form) {
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+
+      const heading = document.getElementById("arsplanNewHeading").value.trim();
+      const text = document.getElementById("arsplanNewText").value.trim();
+      const sortOrder = arsplanSectionsCache.length
+        ? Math.max(...arsplanSectionsCache.map(s => s.sort_order || 0)) + 1
+        : 0;
+
+      const { error } = await supabaseClient.from("kbfb_arsplan_sections").insert([{
+        heading,
+        original_text: text,
+        current_text: text,
+        sort_order: sortOrder,
+        updated_by: currentEmployee?.name || null
+      }]);
+
+      if (error) {
+        console.error("Kunne ikke legge til seksjon:", error);
+        alert("Kunne ikke lagre. Prøv igjen.");
+        return;
+      }
+
+      form.reset();
+      await loadArsplanFromSupabase();
+      renderArsplan();
+    });
+  }
+
+  const approveBtn = document.getElementById("arsplanApproveBtn");
+  if (approveBtn) approveBtn.addEventListener("click", approveArsplanRevision);
+
+  const printBtn = document.getElementById("arsplanPrintBtn");
+  if (printBtn) printBtn.addEventListener("click", exportArsplanPdf);
+
+  const wordBtn = document.getElementById("arsplanWordBtn");
+  if (wordBtn) wordBtn.addEventListener("click", exportArsplanWord);
+}
+
+initializeArsplan();

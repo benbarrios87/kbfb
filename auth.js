@@ -146,6 +146,14 @@ async function requireAuth() {
     renderArshjulMonthDetail();
   }
 
+  if (typeof renderRoutines === "function") {
+    renderRoutines();
+  }
+
+  if (typeof renderArsplan === "function") {
+    renderArsplan();
+  }
+
   if (typeof loadSharedPhotos === "function") {
     loadSharedPhotos();
   }

@@ -1071,6 +1071,64 @@ details[open].card summary .details-toggle-icon {
   gap: 10px;
 }
 
+.arsplan-toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0 18px;
+}
+
+.arsplan-sections {
+  display: grid;
+  gap: 16px;
+}
+
+.arsplan-section {
+  background: var(--sand);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.arsplan-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.arsplan-section-head h3 {
+  margin: 0;
+  flex: 1;
+}
+
+.arsplan-revised-badge {
+  font-size: 0.78em;
+  font-weight: 700;
+  color: #b91c1c;
+  background: #fee2e2;
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.arsplan-textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  background: white;
+  resize: vertical;
+}
+
+.arsplan-textarea-revised {
+  color: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.arsplan-revised-text {
+  color: #b91c1c;
+}
+
 .routine-groups {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
