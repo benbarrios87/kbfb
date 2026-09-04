@@ -4263,7 +4263,10 @@ function renderDepartmentAbsenceOverview() {
   const listEl = document.getElementById("departmentAbsenceOverviewList");
   if (!card || !listEl) return;
 
-  if (!canReviewAnyAbsence()) {
+  // Admin-only doesn't need this card - the general Oversikt above
+  // already lets Benjamin pick any employee from the dropdown. This card
+  // is specifically for Avdelingsleder, who has no equivalent tool.
+  if (typeof currentEmployee === "undefined" || currentEmployee?.role !== "Avdelingsleder") {
     card.style.display = "none";
     return;
   }
