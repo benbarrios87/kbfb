@@ -1075,39 +1075,82 @@ details[open].card summary .details-toggle-icon {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  margin: 12px 0 18px;
+  margin: 0 0 24px;
 }
 
 .arsplan-sections {
-  display: grid;
-  gap: 16px;
+  max-width: 780px;
+  margin: 0 auto;
 }
 
 .arsplan-section {
-  background: var(--sand);
-  border-radius: 16px;
-  padding: 16px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.arsplan-section:first-child {
+  padding-top: 0;
+}
+
+.arsplan-section:last-child {
+  border-bottom: none;
 }
 
 .arsplan-section-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
-.arsplan-section-head h3 {
+.arsplan-section-head h2 {
   margin: 0;
   flex: 1;
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--green-dark);
+  font-size: 1.25rem;
 }
 
 .arsplan-revised-badge {
-  font-size: 0.78em;
+  font-size: 0.75em;
   font-weight: 700;
   color: #b91c1c;
   background: #fee2e2;
   border-radius: 999px;
   padding: 3px 10px;
+  white-space: nowrap;
+}
+
+.arsplan-inline-btn {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.82em;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.arsplan-inline-btn:hover {
+  color: var(--green-dark);
+  text-decoration: underline;
+}
+
+.arsplan-body {
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1.7;
+  color: #2c2c2c;
+}
+
+.arsplan-body-revised {
+  color: #b91c1c;
+}
+
+.arsplan-section-editing {
+  background: var(--sand);
+  border-radius: 16px;
+  padding: 18px;
+  border-bottom: none;
 }
 
 .arsplan-textarea {
@@ -1116,17 +1159,16 @@ details[open].card summary .details-toggle-icon {
   border-radius: 12px;
   padding: 10px 12px;
   font: inherit;
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1.6;
   background: white;
   resize: vertical;
 }
 
-.arsplan-textarea-revised {
-  color: #b91c1c;
-  border-color: #b91c1c;
-}
-
-.arsplan-revised-text {
-  color: #b91c1c;
+.arsplan-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .routine-groups {

@@ -6599,6 +6599,7 @@ async function initializeArshjul() {
 initializeArshjul();
 
 let arsplanSectionsCache = [];
+let arsplanEditingIds = new Set();
 
 async function loadArsplanFromSupabase() {
   const { data, error } = await supabaseClient
@@ -6624,24 +6625,56 @@ function renderArsplan() {
   listEl.innerHTML = arsplanSectionsCache.length
     ? arsplanSectionsCache.map(section => {
       const isRevised = section.current_text !== section.original_text;
+      const isEditing = canEdit && arsplanEditingIds.has(String(section.id));
+
+      if (isEditing) {
+        return `
+          <article class="arsplan-section arsplan-section-editing">
+            <div class="arsplan-section-head">
+              <h2>${escapeHtml(section.heading)}</h2>
+              ${isRevised ? `<span class="arsplan-revised-badge">Endret siden godkjenning</span>` : ""}
+            </div>
+            <textarea class="arsplan-textarea" data-arsplan-text-id="${section.id}" rows="8">${escapeHtml(section.current_text)}</textarea>
+            <div class="arsplan-edit-actions">
+              <button class="primary-btn" type="button" data-arsplan-save-id="${section.id}">Lagre</button>
+              <button class="secondary-btn" type="button" data-arsplan-cancel-id="${section.id}">Avbryt</button>
+              <button class="kitchen-delete" type="button" data-arsplan-delete-id="${section.id}">Slett seksjon</button>
+            </div>
+          </article>
+        `;
+      }
+
       return `
-        <div class="arsplan-section${isRevised ? " arsplan-section-revised" : ""}">
+        <article class="arsplan-section">
           <div class="arsplan-section-head">
-            <h3>${escapeHtml(section.heading)}</h3>
+            <h2>${escapeHtml(section.heading)}</h2>
             ${isRevised ? `<span class="arsplan-revised-badge">Endret siden godkjenning</span>` : ""}
-            ${canEdit ? `<button class="kitchen-delete" type="button" data-arsplan-delete-id="${section.id}">Slett</button>` : ""}
+            ${canEdit ? `<button class="arsplan-inline-btn" type="button" data-arsplan-edit-id="${section.id}">Rediger</button>` : ""}
           </div>
-          ${canEdit
-            ? `<textarea class="arsplan-textarea${isRevised ? " arsplan-textarea-revised" : ""}" data-arsplan-text-id="${section.id}" rows="5">${escapeHtml(section.current_text)}</textarea>`
-            : `<p class="${isRevised ? "arsplan-revised-text" : ""}">${escapeHtml(section.current_text).replace(/\n/g, "<br>")}</p>`}
-        </div>
+          <div class="arsplan-body${isRevised ? " arsplan-body-revised" : ""}">${escapeHtml(section.current_text).replace(/\n/g, "<br>")}</div>
+        </article>
       `;
     }).join("")
     : `<p class="muted">Ingen seksjoner lagt inn ennå.</p>`;
 
-  listEl.querySelectorAll("[data-arsplan-text-id]").forEach(textarea => {
-    textarea.addEventListener("change", async () => {
-      const id = textarea.dataset.arsplanTextId;
+  listEl.querySelectorAll("[data-arsplan-edit-id]").forEach(button => {
+    button.addEventListener("click", () => {
+      arsplanEditingIds.add(String(button.dataset.arsplanEditId));
+      renderArsplan();
+    });
+  });
+
+  listEl.querySelectorAll("[data-arsplan-cancel-id]").forEach(button => {
+    button.addEventListener("click", () => {
+      arsplanEditingIds.delete(String(button.dataset.arsplanCancelId));
+      renderArsplan();
+    });
+  });
+
+  listEl.querySelectorAll("[data-arsplan-save-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.arsplanSaveId;
+      const textarea = listEl.querySelector(`[data-arsplan-text-id="${id}"]`);
 
       const { error } = await supabaseClient
         .from("kbfb_arsplan_sections")
@@ -6658,6 +6691,7 @@ function renderArsplan() {
         return;
       }
 
+      arsplanEditingIds.delete(String(id));
       await loadArsplanFromSupabase();
       renderArsplan();
     });
@@ -6666,7 +6700,9 @@ function renderArsplan() {
   listEl.querySelectorAll("[data-arsplan-delete-id]").forEach(button => {
     button.addEventListener("click", async () => {
       if (!confirm("Slette denne seksjonen fra årsplanen?")) return;
-      await supabaseClient.from("kbfb_arsplan_sections").delete().eq("id", button.dataset.arsplanDeleteId);
+      const id = button.dataset.arsplanDeleteId;
+      await supabaseClient.from("kbfb_arsplan_sections").delete().eq("id", id);
+      arsplanEditingIds.delete(String(id));
       await loadArsplanFromSupabase();
       renderArsplan();
     });
