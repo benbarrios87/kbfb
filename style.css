@@ -544,11 +544,15 @@ details[open].arsplan-section summary .details-toggle-icon {
 }
 
 .dept-week-pill {
+  display: inline-block;
   font-size: 0.85rem;
+  font-weight: 800;
   padding: 4px 12px;
-  vertical-align: middle;
-  margin-left: 6px;
+  margin: 0 0 12px;
   white-space: nowrap;
+  background: rgba(47, 107, 63, 0.12);
+  color: var(--green-dark);
+  border-radius: 999px;
 }
 
 .department-header span,
