@@ -6229,6 +6229,7 @@ function renderArshjulMonthDetail() {
         ` : (isAdmin ? `<button class="arshjul-inline-btn" type="button" data-arshjul-add-subitems-id="${item.id}">+ sjekkliste</button>` : "")}
         ${isAdmin ? `
           <div class="arshjul-item-controls">
+            <span class="arshjul-move-label">Flytt til:</span>
             <select class="arshjul-move-select" data-arshjul-move-id="${item.id}">
               ${NORWEGIAN_MONTHS.map((name, idx) => `<option value="${idx + 1}" ${idx + 1 === item.month ? "selected" : ""}>${name}</option>`).join("")}
             </select>

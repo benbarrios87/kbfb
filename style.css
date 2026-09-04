@@ -1048,6 +1048,12 @@ details[open].card summary .details-toggle-icon {
   margin-top: 4px;
 }
 
+.arshjul-move-label {
+  font-size: 0.78em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .arshjul-item-controls .arshjul-move-select {
   padding: 4px 8px;
   font-size: 0.82em;
