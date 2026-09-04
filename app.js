@@ -7596,9 +7596,14 @@ function exportKjorebokWord() {
   URL.revokeObjectURL(url);
 }
 
-// Ett ark per ansatt (samme gruppering som PDF/Word), med samme
-// oppsett som papirskjemaet - satsen sitter allerede "bakt inn" i
-// Sum kr-kolonnen siden den er beregnet fra den lagrede satsen per rad.
+// Ett ark per ansatt (samme gruppering som PDF/Word). Kolonne K/L viser
+// satsen som gjaldt DA HVER RAD ble ført (kan i teorien variere rad for
+// rad hvis satsen ble endret underveis i perioden som eksporteres), og
+// Sum kr/Sum-raden er ekte Excel-formler (samme logikk som KBFBs egen
+// "Kjørebok 2026.xlsx": km * bilsats, pluss km * passasjersats * antall
+// passasjerer når det var passasjerer med) - ikke bare ferdigregnede
+// tall, slik at noen kan rette et km-tall i selve Excel-filen og få
+// riktig sum uten å måtte tilbake til appen.
 function exportKjorebokExcel() {
   if (typeof XLSX === "undefined") {
     alert("Excel-eksport kunne ikke lastes (sjekk internettforbindelsen) - prøv igjen, eller bruk PDF/Word i mellomtiden.");
@@ -7616,40 +7621,73 @@ function exportKjorebokExcel() {
 
   const wb = XLSX.utils.book_new();
 
-  groups.forEach(({ name, entries, totalKm, totalSum, totalParking, totalOther, grandTotal }) => {
-    const rows = [
+  groups.forEach(({ name, entries, totalKm, totalParking, totalOther }) => {
+    const headerRows = [
       ["KJØREBOK"],
       ["Barnehage", "Kirkerudbakken Friluftsbarnehage"],
       ["Navn", name],
       ["Periode", periodLabel],
       [],
-      ["Dato", "Kjøring til - fra", "Antall km", "Ant. pass.", "Sum kr", "Parkering / Bompenger", "Andre utlegg", "Formålet med turen", "Passasjernavn", "Bil nr."]
+      ["Dato", "Kjøring til - fra", "Antall km", "Ant. pass.", "Sum kr", "Parkering / Bompenger", "Andre utlegg", "Formålet med turen", "Passasjernavn", "Bil nr.", "Bilsats (kr/km)", "Passasjersats (kr/km)"]
     ];
 
-    entries.forEach(entry => {
-      rows.push([
-        formatNorwegianDate(entry.date),
-        entry.route || "",
-        Number(entry.km) || 0,
-        Number(entry.passengers) || 0,
-        calculateKjorebokSum(entry.km, entry.passengers, entry.bil_sats, entry.passasjer_sats),
-        Number(entry.parking) || 0,
-        Number(entry.other_expenses) || 0,
-        entry.purpose || "",
-        entry.passenger_name || "",
-        entry.car_number || ""
-      ]);
-    });
+    const firstDataRow = headerRows.length + 1; // 1-indeksert Excel-radnummer
+    const lastDataRow = firstDataRow + entries.length - 1;
+    const sumRow = lastDataRow + 2; // én tom rad mellom data og sum
 
+    const dataRows = entries.map(entry => [
+      formatNorwegianDate(entry.date),
+      entry.route || "",
+      Number(entry.km) || 0,
+      Number(entry.passengers) || 0,
+      calculateKjorebokSum(entry.km, entry.passengers, entry.bil_sats, entry.passasjer_sats),
+      Number(entry.parking) || 0,
+      Number(entry.other_expenses) || 0,
+      entry.purpose || "",
+      entry.passenger_name || "",
+      entry.car_number || "",
+      Number(entry.bil_sats) || 0,
+      Number(entry.passasjer_sats) || 0
+    ]);
+
+    const rows = [...headerRows, ...dataRows];
     rows.push([]);
-    rows.push(["Sum", "", totalKm, "", totalSum, totalParking, totalOther, `Totalt: ${grandTotal.toFixed(2)} kr`]);
+    // E/I får 0 som plassholder (ikke tom streng) - garanterer at cellen
+    // faktisk opprettes, ellers henger ikke formelen jeg setter under seg
+    // fast på noe (aoa_to_sheet dropper tomme celler helt).
+    rows.push(["Sum", "", totalKm, "", 0, totalParking, totalOther, "Totalt (kr):", 0]);
     rows.push([]);
     rows.push(["Dato og underskrift", "", "", "", "Dato og underskrift Attestant"]);
     rows.push([]);
     rows.push(["Privatkjøring skal ikke tas med på listen. Eventuelle utgifter til parkering, bompenger m.m. inngår ikke i den angitte km-satsen. Slike utgifter må dokumenteres med egne bilag."]);
+    rows.push(["Bilagene kan med fordel stiftes sammen på kjøreboka."]);
+    rows.push(["Fra 01.01.17 er bilgodtgjørelse over 3,50 øre pr kjørte km skattepliktig."]);
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws["!cols"] = [{ wch: 12 }, { wch: 28 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 18 }, { wch: 14 }, { wch: 26 }, { wch: 20 }, { wch: 12 }];
+
+    const setFormula = (ref, formula) => {
+      if (ws[ref]) ws[ref].f = formula;
+    };
+
+    // Sum kr per rad - samme IF-logikk som originalfilens ekte celleformel.
+    for (let i = 0; i < entries.length; i++) {
+      const r = firstDataRow + i;
+      setFormula(`E${r}`, `IF(D${r}>0,(C${r}*K${r})+((C${r}*L${r})*D${r}),(C${r}*K${r}))`);
+    }
+
+    if (entries.length > 0) {
+      setFormula(`C${sumRow}`, `SUM(C${firstDataRow}:C${lastDataRow})`);
+      setFormula(`E${sumRow}`, `SUM(E${firstDataRow}:E${lastDataRow})`);
+      setFormula(`F${sumRow}`, `SUM(F${firstDataRow}:F${lastDataRow})`);
+      setFormula(`G${sumRow}`, `SUM(G${firstDataRow}:G${lastDataRow})`);
+      setFormula(`I${sumRow}`, `E${sumRow}+F${sumRow}+G${sumRow}`);
+    }
+
+    ws["!cols"] = [
+      { wch: 12 }, { wch: 28 }, { wch: 10 }, { wch: 10 }, { wch: 10 },
+      { wch: 18 }, { wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 12 },
+      { wch: 14 }, { wch: 16 }
+    ];
 
     // Arknavn kan ikke være over 31 tegn eller inneholde [ ] : * ? / \
     const safeSheetName = (name || "Ansatt").replace(/[\[\]:*?/\\]/g, "").slice(0, 31) || "Ansatt";
