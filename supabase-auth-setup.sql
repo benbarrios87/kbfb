@@ -869,6 +869,61 @@ CREATE POLICY "kbfb_push_subs_delete_own" ON public.kbfb_push_subscriptions
   USING (employee_name = public.kbfb_current_employee_name());
 
 -- =========================================================
+-- STEP 37: Årshjul write access moves from admin-only to per-variant.
+--   Leder (admin) can edit every variant. Pedagogisk leder (role
+--   contains "pedagog", e.g. "Pedagog") can edit the Pedagogisk leder
+--   AND Assistent wheels/rutiner. Assistent can only edit the
+--   Assistent wheel/rutiner. Everyone else (Vikar, Gjest, ...): none.
+--   Replaces the STEP 32/35/36 admin_write policies on all three
+--   Årshjul tables.
+-- =========================================================
+
+CREATE OR REPLACE FUNCTION public.kbfb_can_edit_arshjul_variant(target_variant text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    public.kbfb_is_admin()
+    OR (target_variant = 'Pedagogisk leder' AND public.kbfb_current_employee_role() ILIKE '%pedagog%')
+    OR (target_variant = 'Assistent' AND (
+      public.kbfb_current_employee_role() ILIKE '%pedagog%'
+      OR public.kbfb_current_employee_role() ILIKE '%assistent%'
+    ));
+$$;
+
+DROP POLICY IF EXISTS "kbfb_arshjul_admin_write" ON public.kbfb_arshjul_items;
+DROP POLICY IF EXISTS "kbfb_arshjul_items_role_write" ON public.kbfb_arshjul_items;
+CREATE POLICY "kbfb_arshjul_items_role_write" ON public.kbfb_arshjul_items
+  FOR ALL TO authenticated
+  USING (public.kbfb_can_edit_arshjul_variant(variant))
+  WITH CHECK (public.kbfb_can_edit_arshjul_variant(variant));
+
+DROP POLICY IF EXISTS "kbfb_arshjul_subitems_admin_write" ON public.kbfb_arshjul_subitems;
+DROP POLICY IF EXISTS "kbfb_arshjul_subitems_role_write" ON public.kbfb_arshjul_subitems;
+CREATE POLICY "kbfb_arshjul_subitems_role_write" ON public.kbfb_arshjul_subitems
+  FOR ALL TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.kbfb_arshjul_items i
+    WHERE i.id = kbfb_arshjul_subitems.arshjul_item_id
+    AND public.kbfb_can_edit_arshjul_variant(i.variant)
+  ))
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM public.kbfb_arshjul_items i
+    WHERE i.id = kbfb_arshjul_subitems.arshjul_item_id
+    AND public.kbfb_can_edit_arshjul_variant(i.variant)
+  ));
+
+DROP POLICY IF EXISTS "kbfb_arshjul_routines_admin_write" ON public.kbfb_arshjul_routines;
+DROP POLICY IF EXISTS "kbfb_arshjul_routines_role_write" ON public.kbfb_arshjul_routines;
+CREATE POLICY "kbfb_arshjul_routines_role_write" ON public.kbfb_arshjul_routines
+  FOR ALL TO authenticated
+  USING (public.kbfb_can_edit_arshjul_variant(variant))
+  WITH CHECK (public.kbfb_can_edit_arshjul_variant(variant));
+
+-- =========================================================
 -- STEP 27: kbfb_shift_swap_requests - let the sender clear out their
 --   own finished (accepted/declined) requests from "Sendte forespørsler"
 --   on vakter.html. Still pending ones can't be self-deleted this way -

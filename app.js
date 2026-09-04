@@ -6071,6 +6071,22 @@ let arshjulSelectedMonth = null;
 let arshjulOpenSubitemIds = new Set();
 let arshjulOpenNotatIds = new Set();
 
+// Leder (admin) can edit every variant. Pedagogisk leder can edit the
+// Pedagogisk leder + Assistent wheels/rutiner (not Leder). Assistent can
+// only edit their own Assistent wheel/rutiner. Vikar/Gjest/anyone else: none.
+function canEditArshjulVariant(variant) {
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return false;
+  if (currentEmployee.is_admin) return true;
+
+  const role = (currentEmployee.role || "").toLowerCase();
+  const isPedagogiskLeder = role.includes("pedagog");
+  const isAssistent = role.includes("assistent");
+
+  if (variant === "Pedagogisk leder") return isPedagogiskLeder;
+  if (variant === "Assistent") return isPedagogiskLeder || isAssistent;
+  return false;
+}
+
 function arshjulPolarPoint(cx, cy, r, angleDeg) {
   const rad = (angleDeg * Math.PI) / 180;
   return { x: cx + r * Math.sin(rad), y: cy - r * Math.cos(rad) };
@@ -6180,13 +6196,15 @@ function renderArshjulMonthDetail() {
   if (!arshjulSelectedMonth) {
     titleEl.textContent = "Velg en måned";
     listEl.innerHTML = `<p class="muted">Trykk på en måned i hjulet for å se hva som skjer da.</p>`;
+    const addFormEl = document.getElementById("arshjulAddForm");
+    if (addFormEl) addFormEl.style.display = canEditArshjulVariant(arshjulSelectedVariant) ? "" : "none";
     return;
   }
 
   titleEl.textContent = `${NORWEGIAN_MONTHS[arshjulSelectedMonth - 1]} - ${arshjulSelectedVariant}`;
 
   const items = itemsForArshjulMonth(arshjulSelectedVariant, arshjulSelectedMonth);
-  const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
+  const canEdit = canEditArshjulVariant(arshjulSelectedVariant);
 
   listEl.innerHTML = items.length
     ? items.map(item => {
@@ -6198,11 +6216,11 @@ function renderArshjulMonthDetail() {
       return `
       <div class="summary-item arshjul-item${item.completed ? " arshjul-item-completed" : ""}">
         <label class="arshjul-item-check">
-          <input type="checkbox" data-arshjul-toggle-id="${item.id}" ${item.completed ? "checked" : ""} ${isAdmin ? "" : "disabled"} />
+          <input type="checkbox" data-arshjul-toggle-id="${item.id}" ${item.completed ? "checked" : ""} ${canEdit ? "" : "disabled"} />
           <strong>${escapeHtml(item.title)}</strong>
         </label>
         ${item.description ? `<span>${escapeHtml(item.description)}</span>` : ""}
-        ${isAdmin
+        ${canEdit
           ? (notatOpen
               ? `<input type="text" class="arshjul-notat-input" data-arshjul-notat-id="${item.id}" value="${escapeHtml(item.notat || "")}" placeholder="Notat (valgfritt)" />`
               : `<button class="arshjul-inline-btn" type="button" data-arshjul-add-notat-id="${item.id}">+ notat</button>`)
@@ -6213,21 +6231,21 @@ function renderArshjulMonthDetail() {
             <div class="arshjul-subitem-list">
               ${subitems.map(sub => `
                 <label class="arshjul-subitem${sub.completed ? " arshjul-subitem-completed" : ""}">
-                  <input type="checkbox" data-arshjul-subitem-toggle-id="${sub.id}" ${sub.completed ? "checked" : ""} ${isAdmin ? "" : "disabled"} />
+                  <input type="checkbox" data-arshjul-subitem-toggle-id="${sub.id}" ${sub.completed ? "checked" : ""} ${canEdit ? "" : "disabled"} />
                   <span>${escapeHtml(sub.text)}</span>
-                  ${isAdmin ? `<button class="kitchen-delete" type="button" data-arshjul-subitem-delete-id="${sub.id}">✕</button>` : ""}
+                  ${canEdit ? `<button class="kitchen-delete" type="button" data-arshjul-subitem-delete-id="${sub.id}">✕</button>` : ""}
                 </label>
               `).join("")}
             </div>
-            ${isAdmin ? `
+            ${canEdit ? `
               <form class="arshjul-subitem-form" data-arshjul-subitem-form-id="${item.id}">
                 <input type="text" placeholder="Nytt sjekkpunkt..." required />
                 <button type="submit" class="secondary-btn">Legg til</button>
               </form>
             ` : ""}
           </details>
-        ` : (isAdmin ? `<button class="arshjul-inline-btn" type="button" data-arshjul-add-subitems-id="${item.id}">+ sjekkliste</button>` : "")}
-        ${isAdmin ? `
+        ` : (canEdit ? `<button class="arshjul-inline-btn" type="button" data-arshjul-add-subitems-id="${item.id}">+ sjekkliste</button>` : "")}
+        ${canEdit ? `
           <div class="arshjul-item-controls">
             <span class="arshjul-move-label">Flytt til:</span>
             <select class="arshjul-move-select" data-arshjul-move-id="${item.id}">
@@ -6406,6 +6424,9 @@ function renderArshjulMonthDetail() {
 
   const monthSelect = document.getElementById("arshjulItemMonth");
   if (monthSelect) monthSelect.value = String(arshjulSelectedMonth);
+
+  const addFormEl = document.getElementById("arshjulAddForm");
+  if (addFormEl) addFormEl.style.display = canEdit ? "" : "none";
 }
 
 function selectArshjulMonth(month) {
@@ -6456,6 +6477,9 @@ function renderRoutines() {
       ? items.map(item => `<div class="routine-item"><span>${escapeHtml(item.title)}</span></div>`).join("")
       : `<p class="muted">Ingenting lagt inn ennå.</p>`;
   });
+
+  const addFormEl = document.getElementById("routineAddForm");
+  if (addFormEl) addFormEl.style.display = canEditArshjulVariant(arshjulSelectedVariant) ? "" : "none";
 }
 
 function initializeRoutineForm() {
