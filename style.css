@@ -1071,6 +1071,23 @@ details[open].card summary .details-toggle-icon {
   gap: 10px;
 }
 
+.dept-absence-card {
+  display: grid;
+  gap: 6px;
+}
+
+.dept-absence-stats {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 0.95em;
+}
+
+.dept-absence-date {
+  font-size: 0.9em;
+  color: var(--muted);
+}
+
 .arsplan-toolbar {
   display: flex;
   gap: 10px;

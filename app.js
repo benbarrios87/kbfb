@@ -4003,6 +4003,7 @@ function renderAbsences() {
   renderOvertimeSummary();
   renderHolidayRequestGroups();
   renderPendingApprovalCard();
+  renderDepartmentAbsenceOverview();
 
   if (!absenceTableBody || !absenceSummary) return;
 
@@ -4249,6 +4250,84 @@ function renderAbsenceSummary(records) {
       `;
     })
     .join("");
+}
+
+// Admin sees everyone, Avdelingsleder sees only their own department -
+// absencesCache is already scoped correctly by RLS (kbfb_absences_select_
+// own_admin_or_department), so no extra client-side department filter is
+// needed here. Ferie/avspasering totals are scoped to the current calendar
+// year (matches how ferie quotas reset yearly); "planlagte datoer" pulls
+// from the full cache so a booking spanning new year's still shows.
+function renderDepartmentAbsenceOverview() {
+  const card = document.getElementById("departmentAbsenceOverviewCard");
+  const listEl = document.getElementById("departmentAbsenceOverviewList");
+  if (!card || !listEl) return;
+
+  if (!canReviewAnyAbsence()) {
+    card.style.display = "none";
+    return;
+  }
+  card.style.display = "";
+
+  const currentYear = new Date().getFullYear();
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const upcomingTypes = ["Ferie", "Avspasering brukt", "Ønsker å avspasere"];
+
+  const grouped = {};
+  const ensureEntry = name => {
+    if (!grouped[name]) grouped[name] = { ferie: 0, avsOpptjent: 0, avsBrukt: 0, upcoming: [] };
+    return grouped[name];
+  };
+
+  absencesCache.forEach(record => {
+    const inCurrentYear = record.start_date && Number(record.start_date.slice(0, 4)) === currentYear;
+    const days = countWeekdays(record.start_date, record.end_date);
+    const hours = Number(record.hours || 0);
+
+    if (inCurrentYear) {
+      if (record.type === "Ferie") ensureEntry(record.name).ferie += days;
+      if (record.type === "Avspasering opptjent") ensureEntry(record.name).avsOpptjent += hours;
+      if (record.type === "Avspasering brukt" || record.type === "Ønsker å avspasere") {
+        ensureEntry(record.name).avsBrukt += hours || (days * 7.5);
+      }
+    }
+
+    if (upcomingTypes.includes(record.type) && record.end_date && record.end_date >= todayKey) {
+      ensureEntry(record.name).upcoming.push(record);
+    }
+  });
+
+  const names = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
+
+  listEl.innerHTML = names.length
+    ? names.map(name => {
+      const t = grouped[name];
+      const ferieTotal = getVacationDaysFor(name);
+      const ferieIgjen = ferieTotal - t.ferie;
+      const avsSaldo = t.avsOpptjent - t.avsBrukt;
+      const employee = employeesCache.find(e => e.name === name);
+
+      const upcomingHtml = t.upcoming
+        .sort((a, b) => a.start_date.localeCompare(b.start_date))
+        .map(r => `
+          <div class="dept-absence-date">
+            ${r.type === "Ferie" ? "🌴" : "🕐"} ${formatDateRange(r.start_date, r.end_date)}
+            ${r.status === "Ønsket" ? `<span class="muted">(venter godkjenning)</span>` : ""}
+          </div>
+        `).join("");
+
+      return `
+        <div class="summary-item dept-absence-card">
+          <strong>${escapeHtml(name)}</strong>${employee?.department ? ` <span class="muted">${escapeHtml(employee.department)}</span>` : ""}
+          <div class="dept-absence-stats">
+            <span>🌴 Ferie igjen: <strong>${ferieIgjen}</strong>/${ferieTotal} dager</span>
+            <span>🕐 Avspasering igjen: <strong>${avsSaldo.toFixed(1)}</strong> t</span>
+          </div>
+          ${upcomingHtml || `<p class="muted">Ingen planlagte datoer.</p>`}
+        </div>
+      `;
+    }).join("")
+    : `<p class="muted">Ingen ansatte å vise ennå.</p>`;
 }
 
 const noApprovalNeededTypes = [
