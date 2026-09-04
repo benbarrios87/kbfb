@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kjørebok | KBFB Personal</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="images/icon-192.png" type="image/png" />
+  <meta name="theme-color" content="#234d31" />
+  <link rel="apple-touch-icon" href="images/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="KBFB" />
+</head>
+
+<body>
+  <div class="layout">
+    <aside class="sidebar nature-sidebar">
+      <div class="brand">
+        <div class="brand-icon">🌲</div>
+        <h2>KBFB</h2>
+        <p>Personalrommet</p>
+      </div>
+
+      <nav>
+        <a href="dashboard.html">🏠 Hjem</a>
+        <a href="vakter.html">📅 Vakter<span class="nav-badge" style="display:none;"></span></a>
+        <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
+        <a data-hide-from-vikar href="datoer.html">📆 Datoer</a>
+        <a href="vikarer.html">🕒 Vikarer</a>
+        <a data-hide-from-vikar data-hide-from-guest href="ferieogavspasering.html">🌴 Ferie/avsp/overtid</a>
+        <a class="active" data-hide-from-vikar data-hide-from-guest href="kjorebok.html">🚗 Kjørebok</a>
+        <a href="bestillinger.html">🛒 Bestillinger</a>
+       <a data-hide-from-vikar href="kalender.html">📍 Hvor er Benjamin?</a>
+        <a data-hide-from-vikar href="filarkiv.html">📁 Filarkiv</a>
+        <a data-hide-from-vikar href="aarshjul.html">🗓️ Årshjul</a>
+        <a data-hide-from-vikar href="arsplan.html">📘 Årsplan</a>
+        <a data-hide-from-vikar href="turbank.html">🏕️ Turbank (kommer)</a>
+        <a href="nokkeltall.html" data-admin-only>📊 Nøkkeltall</a>
+        <a href="admin.html" data-admin-only>⚙️ Admin</a>
+        <a data-admin-only href="hms.html">🏥 HMS</a>
+      </nav>
+
+      <div class="sidebar-feedback" data-hide-from-guest>
+        <p>💬 Innspill?</p>
+        <form id="feedbackForm">
+          <textarea id="feedbackText" rows="2" placeholder="Skriv her..." required></textarea>
+          <button type="submit">Send</button>
+        </form>
+        <p id="feedbackStatus"></p>
+      </div>
+
+      <div class="sidebar-footer">
+        <span class="user-badge" id="userBadge"></span>
+        <button class="logout-btn" id="logoutBtn">Logg ut</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="forest-hero compact">
+        <div>
+          <p class="eyebrow">Kjøregodtgjørelse</p>
+          <h1>Kjørebok</h1>
+          <p class="muted">Før opp kjøring i egen bil - eksporter når den er klar for signering og lønn.</p>
+        </div>
+        <div class="hero-badge">🚗 Kjørebok</div>
+      </section>
+
+      <section class="card" id="kjorebokFormSection" data-hide-from-guest>
+        <h2>Legg inn kjøring</h2>
+
+        <form id="kjorebokForm" class="form-grid">
+          <label>
+            Ansatt
+            <select id="kjorebokName" required>
+              <option value="">Velg ansatt</option>
+            </select>
+          </label>
+
+          <label>
+            Dato
+            <input id="kjorebokDate" type="date" required />
+          </label>
+
+          <label class="wide-field">
+            Kjøring til - fra
+            <input id="kjorebokRoute" type="text" placeholder="F.eks. Barnehage - Rykkin bibliotek" />
+          </label>
+
+          <label>
+            Antall km
+            <input id="kjorebokKm" type="number" min="0" step="0.1" required />
+          </label>
+
+          <label>
+            Antall passasjerer
+            <input id="kjorebokPassengers" type="number" min="0" step="1" value="0" />
+          </label>
+
+          <label>
+            Parkering / Bompenger
+            <input id="kjorebokParking" type="number" min="0" step="0.01" value="0" />
+          </label>
+
+          <label>
+            Andre utlegg
+            <input id="kjorebokOther" type="number" min="0" step="0.01" value="0" />
+          </label>
+
+          <label>
+            Bil nr.
+            <input id="kjorebokCarNumber" type="text" placeholder="F.eks. AB12345" />
+          </label>
+
+          <label class="wide-field">
+            Formålet med turen / passasjernavn
+            <input id="kjorebokPurpose" type="text" placeholder="F.eks. Levere post, hente Ola og Kari" />
+          </label>
+
+          <button class="primary-btn form-button" type="submit">Lagre kjøring</button>
+        </form>
+        <p id="kjorebokFormStatus" class="muted" style="margin-top: 10px;"></p>
+      </section>
+
+      <section class="card">
+        <h2>Oversikt</h2>
+
+        <div class="filters">
+          <label class="compact-filter">
+            Vis ansatt
+            <select id="kjorebokFilter">
+              <option value="all">Alle</option>
+            </select>
+          </label>
+
+          <label class="compact-filter">
+            Måned
+            <select id="kjorebokMonthFilter"></select>
+          </label>
+        </div>
+
+        <div class="arsplan-toolbar" style="margin: 12px 0;">
+          <button type="button" class="secondary-btn" id="kjorebokPrintBtn">🖨️ Last ned PDF</button>
+          <button type="button" class="secondary-btn" id="kjorebokWordBtn">📄 Last ned Word</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="shift-table" id="kjorebokTable">
+            <thead>
+              <tr>
+                <th>Dato</th>
+                <th>Kjøring til - fra</th>
+                <th>Km</th>
+                <th>Pass.</th>
+                <th>Sum kr</th>
+                <th>Parkering/Bom</th>
+                <th>Andre utlegg</th>
+                <th>Formål / passasjer</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="kjorebokTableBody"></tbody>
+            <tfoot id="kjorebokTableFoot"></tfoot>
+          </table>
+        </div>
+      </section>
+
+      <details class="card" data-admin-only>
+        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Satser</h2></summary>
+        <p class="muted">Endres normalt én gang i året når statens satser for kjøregodtgjørelse oppdateres. Allerede lagrede kjøreturer beholder satsen de ble ført med.</p>
+        <div class="form-grid">
+          <label>
+            Bil / El-bil - kr per km
+            <input id="kjorebokRateBil" type="number" min="0" step="0.01" />
+          </label>
+          <label>
+            Passasjer - kr per km per passasjer
+            <input id="kjorebokRatePassasjer" type="number" min="0" step="0.01" />
+          </label>
+        </div>
+        <button class="primary-btn" id="kjorebokSaveRates" type="button" style="margin-top: 10px;">Lagre satser</button>
+        <p id="kjorebokRatesStatus" class="muted" style="margin-top: 8px;"></p>
+      </details>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+  <script src="pwa.js"></script>
+</body>
+</html>

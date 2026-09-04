@@ -7171,3 +7171,469 @@ async function initializeArsplan() {
 }
 
 initializeArsplan();
+
+/* ---------- KJØREBOK - SUPABASE ---------- */
+
+let kjorebokEntriesCache = [];
+let kjorebokRatesCache = { id: null, bil_sats: 5, passasjer_sats: 1 };
+
+const kjorebokForm = document.getElementById("kjorebokForm");
+const kjorebokName = document.getElementById("kjorebokName");
+const kjorebokDate = document.getElementById("kjorebokDate");
+const kjorebokRoute = document.getElementById("kjorebokRoute");
+const kjorebokKm = document.getElementById("kjorebokKm");
+const kjorebokPassengers = document.getElementById("kjorebokPassengers");
+const kjorebokParking = document.getElementById("kjorebokParking");
+const kjorebokOther = document.getElementById("kjorebokOther");
+const kjorebokCarNumber = document.getElementById("kjorebokCarNumber");
+const kjorebokPurpose = document.getElementById("kjorebokPurpose");
+const kjorebokFilter = document.getElementById("kjorebokFilter");
+const kjorebokMonthFilter = document.getElementById("kjorebokMonthFilter");
+const kjorebokTableBody = document.getElementById("kjorebokTableBody");
+const kjorebokTableFoot = document.getElementById("kjorebokTableFoot");
+
+async function loadKjorebokRatesFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_kjorebok_rates")
+    .select("*")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Kunne ikke hente kjørebok-satser:", error);
+    return kjorebokRatesCache;
+  }
+
+  if (data) kjorebokRatesCache = data;
+  return kjorebokRatesCache;
+}
+
+async function saveKjorebokRatesToSupabase(bilSats, passasjerSats) {
+  if (!kjorebokRatesCache.id) {
+    const { error } = await supabaseClient
+      .from("kbfb_kjorebok_rates")
+      .insert([{ bil_sats: bilSats, passasjer_sats: passasjerSats }]);
+
+    if (error) {
+      console.error("Kunne ikke lagre satser:", error);
+      return false;
+    }
+    return true;
+  }
+
+  const { error } = await supabaseClient
+    .from("kbfb_kjorebok_rates")
+    .update({ bil_sats: bilSats, passasjer_sats: passasjerSats, updated_at: new Date().toISOString() })
+    .eq("id", kjorebokRatesCache.id);
+
+  if (error) {
+    console.error("Kunne ikke lagre satser:", error);
+    return false;
+  }
+  return true;
+}
+
+async function loadKjorebokEntriesFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_kjorebok_entries")
+    .select("*")
+    .order("date", { ascending: false });
+
+  if (error) {
+    console.error("Kunne ikke hente kjørebok:", error);
+    return [];
+  }
+
+  kjorebokEntriesCache = data || [];
+  return kjorebokEntriesCache;
+}
+
+async function saveKjorebokEntryToSupabase(record) {
+  const { error } = await supabaseClient
+    .from("kbfb_kjorebok_entries")
+    .insert([record]);
+
+  if (error) {
+    console.error("Kunne ikke lagre kjøring:", error);
+    return false;
+  }
+  return true;
+}
+
+async function deleteKjorebokEntryFromSupabase(id) {
+  const { error } = await supabaseClient
+    .from("kbfb_kjorebok_entries")
+    .delete()
+    .eq("id", id);
+
+  if (error) console.error("Kunne ikke slette kjøring:", error);
+}
+
+// Samme formel som KBFBs egen "Kjørebok 2026.xlsx" (bekreftet fra de
+// faktiske celleformlene i filen, ikke gjettet fra kolonneoppsettet):
+// km * bilsats, pluss - bare hvis det var passasjerer med - km *
+// passasjersats * antall passasjerer. Satsene lagres PER RAD (snapshot
+// fra da den ble ført), så en satsendring neste år ikke endrer beløpet
+// på kjøreturer som allerede er ført og ev. sendt til lønn.
+function calculateKjorebokSum(km, passengers, bilSats, passasjerSats) {
+  const kmNum = Number(km) || 0;
+  const base = kmNum * (Number(bilSats) || 0);
+  const passengerAmount = (Number(passengers) || 0) > 0
+    ? kmNum * (Number(passasjerSats) || 0) * Number(passengers)
+    : 0;
+  return base + passengerAmount;
+}
+
+function populateKjorebokMonthFilter() {
+  if (!kjorebokMonthFilter) return;
+
+  const currentValue = kjorebokMonthFilter.value || getCurrentMonthKey();
+
+  const months = [...new Set(
+    kjorebokEntriesCache
+      .filter(entry => entry.date)
+      .map(entry => entry.date.slice(0, 7))
+  )].sort((a, b) => b.localeCompare(a));
+
+  if (!months.includes(getCurrentMonthKey())) {
+    months.unshift(getCurrentMonthKey());
+  }
+
+  kjorebokMonthFilter.innerHTML =
+    `<option value="all">Alle måneder</option>` +
+    months.map(month => `<option value="${month}">${formatMonth(month)}</option>`).join("");
+
+  kjorebokMonthFilter.value = months.includes(currentValue) || currentValue === "all"
+    ? currentValue
+    : getCurrentMonthKey();
+}
+
+function lockKjorebokFormToSelf() {
+  if (!kjorebokName || typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  if (!currentEmployee.is_admin) {
+    kjorebokName.value = currentEmployee.name;
+    kjorebokName.disabled = true;
+  } else {
+    kjorebokName.disabled = false;
+  }
+}
+
+function lockKjorebokFilterToSelf() {
+  if (!kjorebokFilter || typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  if (currentEmployee.is_admin) {
+    kjorebokFilter.disabled = false;
+    kjorebokFilter.value = currentEmployee.name;
+  } else {
+    kjorebokFilter.innerHTML = `<option value="${escapeHtml(currentEmployee.name)}">${escapeHtml(currentEmployee.name)}</option>`;
+    kjorebokFilter.value = currentEmployee.name;
+    kjorebokFilter.disabled = true;
+  }
+}
+
+function getFilteredKjorebokEntries() {
+  const selectedName = kjorebokFilter?.value || "all";
+  const selectedMonth = kjorebokMonthFilter?.value || "all";
+
+  return kjorebokEntriesCache.filter(entry => {
+    const matchesName = selectedName === "all" || entry.name === selectedName;
+    const matchesMonth = selectedMonth === "all" || (entry.date && entry.date.slice(0, 7) === selectedMonth);
+    return matchesName && matchesMonth;
+  });
+}
+
+function renderKjorebok() {
+  if (!kjorebokTableBody) return;
+
+  populateKjorebokMonthFilter();
+
+  const records = getFilteredKjorebokEntries();
+  const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
+
+  if (!records.length) {
+    kjorebokTableBody.innerHTML = `<tr><td colspan="9" class="muted">Ingen kjøreturer ført ennå.</td></tr>`;
+    if (kjorebokTableFoot) kjorebokTableFoot.innerHTML = "";
+    return;
+  }
+
+  const sorted = [...records].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+
+  kjorebokTableBody.innerHTML = sorted.map(entry => {
+    const sum = calculateKjorebokSum(entry.km, entry.passengers, entry.bil_sats, entry.passasjer_sats);
+    const canModify = isAdmin || entry.name === currentEmployee?.name;
+
+    return `
+    <tr>
+      <td>${formatNorwegianDate(entry.date)}</td>
+      <td>${escapeHtml(entry.route || "")}</td>
+      <td>${entry.km}</td>
+      <td>${entry.passengers || 0}</td>
+      <td>${sum.toFixed(2)}</td>
+      <td>${Number(entry.parking || 0).toFixed(2)}</td>
+      <td>${Number(entry.other_expenses || 0).toFixed(2)}</td>
+      <td>${escapeHtml(entry.purpose || "")}${entry.car_number ? ` (Bil: ${escapeHtml(entry.car_number)})` : ""}</td>
+      <td>${canModify ? `<button class="kitchen-delete" data-kjorebok-id="${entry.id}">Slett</button>` : ""}</td>
+    </tr>
+  `;
+  }).join("");
+
+  const totalKm = sorted.reduce((sum, e) => sum + (Number(e.km) || 0), 0);
+  const totalSum = sorted.reduce((sum, e) => sum + calculateKjorebokSum(e.km, e.passengers, e.bil_sats, e.passasjer_sats), 0);
+  const totalParking = sorted.reduce((sum, e) => sum + (Number(e.parking) || 0), 0);
+  const totalOther = sorted.reduce((sum, e) => sum + (Number(e.other_expenses) || 0), 0);
+  const grandTotal = totalSum + totalParking + totalOther;
+
+  if (kjorebokTableFoot) {
+    kjorebokTableFoot.innerHTML = `
+      <tr class="headcount-row">
+        <td><strong>Sum</strong></td>
+        <td></td>
+        <td><strong>${totalKm.toFixed(1)}</strong></td>
+        <td></td>
+        <td><strong>${totalSum.toFixed(2)}</strong></td>
+        <td><strong>${totalParking.toFixed(2)}</strong></td>
+        <td><strong>${totalOther.toFixed(2)}</strong></td>
+        <td colspan="2"><strong>Totalt: ${grandTotal.toFixed(2)} kr</strong></td>
+      </tr>
+    `;
+  }
+
+  kjorebokTableBody.querySelectorAll("[data-kjorebok-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      if (!confirm("Slette denne kjøreturen?")) return;
+      await deleteKjorebokEntryFromSupabase(button.dataset.kjorebokId);
+      await loadKjorebokEntriesFromSupabase();
+      renderKjorebok();
+    });
+  });
+}
+
+// Bygger en signeringsklar versjon av det som er filtrert akkurat nå
+// (valgt ansatt + måned), gruppert per ansatt - matcher oppsettet i
+// KBFBs eget "Kjørebok"-skjema (satser, sum-rad, to signaturfelt,
+// samme faste fotnoter om privatkjøring/utlegg).
+function kjorebokPrintableHtml() {
+  const records = getFilteredKjorebokEntries();
+  const grouped = {};
+
+  records.forEach(entry => {
+    if (!grouped[entry.name]) grouped[entry.name] = [];
+    grouped[entry.name].push(entry);
+  });
+
+  const names = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
+
+  const selectedMonth = kjorebokMonthFilter?.value || "all";
+  const periodLabel = selectedMonth === "all" ? "Alle måneder" : formatMonth(selectedMonth);
+
+  const sectionsHtml = names.length
+    ? names.map(name => {
+      const entries = [...grouped[name]].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+
+      const rowsHtml = entries.map(entry => {
+        const sum = calculateKjorebokSum(entry.km, entry.passengers, entry.bil_sats, entry.passasjer_sats);
+        return `
+          <tr>
+            <td>${formatNorwegianDate(entry.date)}</td>
+            <td>${escapeHtml(entry.route || "")}</td>
+            <td>${entry.km}</td>
+            <td>${entry.passengers || 0}</td>
+            <td>${sum.toFixed(2)}</td>
+            <td>${Number(entry.parking || 0).toFixed(2)}</td>
+            <td>${Number(entry.other_expenses || 0).toFixed(2)}</td>
+            <td>${escapeHtml(entry.purpose || "")}${entry.car_number ? ` (Bil: ${escapeHtml(entry.car_number)})` : ""}</td>
+          </tr>
+        `;
+      }).join("");
+
+      const totalKm = entries.reduce((sum, e) => sum + (Number(e.km) || 0), 0);
+      const totalSum = entries.reduce((sum, e) => sum + calculateKjorebokSum(e.km, e.passengers, e.bil_sats, e.passasjer_sats), 0);
+      const totalParking = entries.reduce((sum, e) => sum + (Number(e.parking) || 0), 0);
+      const totalOther = entries.reduce((sum, e) => sum + (Number(e.other_expenses) || 0), 0);
+      const grandTotal = totalSum + totalParking + totalOther;
+
+      return `
+        <div class="kjorebok-print-section">
+          <h2>${escapeHtml(name)}</h2>
+          <p class="kjorebok-print-meta">Periode: ${escapeHtml(periodLabel)}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Dato</th><th>Kjøring til - fra</th><th>Km</th><th>Pass.</th>
+                <th>Sum kr</th><th>Parkering/Bom</th><th>Andre utlegg</th><th>Formål / passasjer</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+            <tfoot>
+              <tr>
+                <td><strong>Sum</strong></td><td></td>
+                <td><strong>${totalKm.toFixed(1)}</strong></td><td></td>
+                <td><strong>${totalSum.toFixed(2)}</strong></td>
+                <td><strong>${totalParking.toFixed(2)}</strong></td>
+                <td><strong>${totalOther.toFixed(2)}</strong></td>
+                <td><strong>Totalt: ${grandTotal.toFixed(2)} kr</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+          <div class="kjorebok-print-signatures">
+            <div>Dato og underskrift</div>
+            <div>Dato og underskrift Attestant</div>
+          </div>
+        </div>
+      `;
+    }).join("<div class='kjorebok-print-pagebreak'></div>")
+    : `<p>Ingen kjøreturer å eksportere for dette utvalget.</p>`;
+
+  return `<!DOCTYPE html>
+    <html lang="no">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Kjørebok - KBFB</title>
+      <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 30px auto; color: #222; }
+        h1 { text-align: center; }
+        h2 { margin-top: 28px; border-bottom: 2px solid #234d31; padding-bottom: 4px; }
+        .kjorebok-print-meta { color: #555; margin: 0 0 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+        thead th { background: #f0f0f0; }
+        tfoot td { background: #f7f7f7; }
+        .kjorebok-print-signatures { display: flex; justify-content: space-between; margin-top: 40px; }
+        .kjorebok-print-signatures div { border-top: 1px solid #333; padding-top: 6px; width: 45%; }
+        .kjorebok-print-pagebreak { page-break-after: always; }
+        .kjorebok-print-footnotes { margin-top: 40px; font-size: 0.8rem; color: #555; }
+      </style>
+    </head>
+    <body>
+      <h1>Kjørebok - Kirkerudbakken Friluftsbarnehage</h1>
+      ${sectionsHtml}
+      <div class="kjorebok-print-footnotes">
+        <p>Privatkjøring skal ikke tas med på listen. Eventuelle utgifter til parkering, bompenger m.m. inngår ikke i den angitte km-satsen. Slike utgifter må dokumenteres med egne bilag.</p>
+        <p>Bilagene kan med fordel stiftes sammen på kjøreboka.</p>
+      </div>
+    </body>
+    </html>`;
+}
+
+function exportKjorebokPdf() {
+  const win = window.open("", "_blank");
+  if (!win) {
+    alert("Nettleseren blokkerte popup-vinduet. Tillat popup for denne siden og prøv igjen.");
+    return;
+  }
+
+  win.document.write(kjorebokPrintableHtml());
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 300);
+}
+
+function exportKjorebokWord() {
+  const blob = new Blob(["﻿", kjorebokPrintableHtml()], { type: "application/msword" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "kjorebok.doc";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+async function initializeKjorebok() {
+  if (!kjorebokForm && !kjorebokTableBody) return;
+
+  await loadEmployeesFromSupabase();
+  await loadKjorebokRatesFromSupabase();
+  await loadKjorebokEntriesFromSupabase();
+
+  populateEmployeeSelect("kjorebokName");
+  populateEmployeeSelect("kjorebokFilter", { includeBlank: false, includeAll: true });
+
+  lockKjorebokFormToSelf();
+  lockKjorebokFilterToSelf();
+
+  if (kjorebokDate) kjorebokDate.value = toDateKey(new Date());
+
+  const rateBilInput = document.getElementById("kjorebokRateBil");
+  const ratePassasjerInput = document.getElementById("kjorebokRatePassasjer");
+  if (rateBilInput) rateBilInput.value = kjorebokRatesCache.bil_sats;
+  if (ratePassasjerInput) ratePassasjerInput.value = kjorebokRatesCache.passasjer_sats;
+
+  renderKjorebok();
+
+  if (kjorebokFilter) kjorebokFilter.addEventListener("change", renderKjorebok);
+  if (kjorebokMonthFilter) kjorebokMonthFilter.addEventListener("change", renderKjorebok);
+
+  if (kjorebokForm) {
+    kjorebokForm.addEventListener("submit", async event => {
+      event.preventDefault();
+
+      const record = {
+        name: kjorebokName.value,
+        date: kjorebokDate.value,
+        route: kjorebokRoute.value.trim(),
+        km: Number(kjorebokKm.value) || 0,
+        passengers: Number(kjorebokPassengers.value) || 0,
+        parking: Number(kjorebokParking.value) || 0,
+        other_expenses: Number(kjorebokOther.value) || 0,
+        purpose: kjorebokPurpose.value.trim(),
+        car_number: kjorebokCarNumber.value.trim(),
+        bil_sats: kjorebokRatesCache.bil_sats,
+        passasjer_sats: kjorebokRatesCache.passasjer_sats
+      };
+
+      const statusEl = document.getElementById("kjorebokFormStatus");
+
+      const saved = await saveKjorebokEntryToSupabase(record);
+      if (!saved) {
+        if (statusEl) statusEl.textContent = "";
+        alert("Kunne ikke lagre kjøring. Prøv igjen.");
+        return;
+      }
+
+      await loadKjorebokEntriesFromSupabase();
+
+      const currentName = kjorebokName.value;
+      kjorebokForm.reset();
+      kjorebokName.value = currentName;
+      lockKjorebokFormToSelf();
+      if (kjorebokDate) kjorebokDate.value = toDateKey(new Date());
+      if (kjorebokPassengers) kjorebokPassengers.value = 0;
+      if (kjorebokParking) kjorebokParking.value = 0;
+      if (kjorebokOther) kjorebokOther.value = 0;
+
+      renderKjorebok();
+
+      if (statusEl) statusEl.textContent = "✓ Lagret! Se den i Oversikt under.";
+    });
+  }
+
+  const saveRatesBtn = document.getElementById("kjorebokSaveRates");
+  if (saveRatesBtn) {
+    saveRatesBtn.addEventListener("click", async () => {
+      const bilSats = Number(rateBilInput?.value) || 0;
+      const passasjerSats = Number(ratePassasjerInput?.value) || 0;
+      const ratesStatus = document.getElementById("kjorebokRatesStatus");
+
+      const ok = await saveKjorebokRatesToSupabase(bilSats, passasjerSats);
+      if (!ok) {
+        if (ratesStatus) ratesStatus.textContent = "Kunne ikke lagre satser.";
+        return;
+      }
+
+      await loadKjorebokRatesFromSupabase();
+      if (ratesStatus) ratesStatus.textContent = "✓ Satser lagret. Gjelder for nye kjøreturer fra nå av.";
+    });
+  }
+
+  const printBtn = document.getElementById("kjorebokPrintBtn");
+  if (printBtn) printBtn.addEventListener("click", exportKjorebokPdf);
+
+  const wordBtn = document.getElementById("kjorebokWordBtn");
+  if (wordBtn) wordBtn.addEventListener("click", exportKjorebokWord);
+}
+
+initializeKjorebok();

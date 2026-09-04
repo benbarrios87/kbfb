@@ -1292,3 +1292,84 @@ CREATE POLICY "kbfb_absences_update_own_unlocked" ON public.kbfb_absences
 
 ALTER TABLE public.kbfb_absences
   ADD COLUMN IF NOT EXISTS linked_id uuid REFERENCES public.kbfb_absences(id) ON DELETE SET NULL;
+
+-- =========================================================
+-- STEP 39: kbfb_kjorebok_rates + kbfb_kjorebok_entries (kjøregodtgjørelse)
+--   Digital kjørebok replacing the paper/Excel "Kjørebok" form. Rates
+--   change year to year, so they live in a small admin-editable settings
+--   row (kbfb_kjorebok_rates) instead of being hardcoded - same pattern
+--   as the feriedager-kvote editor on ferieogavspasering.html. Each
+--   entry snapshots the rate that was active when it was logged
+--   (bil_sats/passasjer_sats columns on the entry itself), so bumping
+--   the rate for a new year doesn't silently change the kr-beløp on
+--   already-logged entries from an earlier year - these get signed and
+--   sent to lønn, so past entries must stay exactly as submitted.
+--   Sum kr formula (verified against KBFB's own real "Kjørebok
+--   2026.xlsx", not guessed): km * bilsats, plus - only if passengers
+--   were carried - km * passasjersats * antall passasjerer. Same
+--   formula the real spreadsheet uses (confirmed from its actual
+--   cell formulas, not just the visible column layout).
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_kjorebok_rates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  bil_sats numeric NOT NULL DEFAULT 5.00,
+  passasjer_sats numeric NOT NULL DEFAULT 1.00,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+INSERT INTO public.kbfb_kjorebok_rates (bil_sats, passasjer_sats)
+SELECT 5.00, 1.00
+WHERE NOT EXISTS (SELECT 1 FROM public.kbfb_kjorebok_rates);
+
+ALTER TABLE public.kbfb_kjorebok_rates ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_kjorebok_rates_select_authenticated" ON public.kbfb_kjorebok_rates;
+CREATE POLICY "kbfb_kjorebok_rates_select_authenticated" ON public.kbfb_kjorebok_rates
+  FOR SELECT TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "kbfb_kjorebok_rates_admin_write" ON public.kbfb_kjorebok_rates;
+CREATE POLICY "kbfb_kjorebok_rates_admin_write" ON public.kbfb_kjorebok_rates
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());
+
+CREATE TABLE IF NOT EXISTS public.kbfb_kjorebok_entries (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  date date NOT NULL,
+  route text,
+  km numeric NOT NULL DEFAULT 0,
+  passengers int NOT NULL DEFAULT 0,
+  parking numeric NOT NULL DEFAULT 0,
+  other_expenses numeric NOT NULL DEFAULT 0,
+  purpose text,
+  car_number text,
+  bil_sats numeric NOT NULL,
+  passasjer_sats numeric NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_kjorebok_entries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_kjorebok_entries_select_own_or_admin" ON public.kbfb_kjorebok_entries;
+CREATE POLICY "kbfb_kjorebok_entries_select_own_or_admin" ON public.kbfb_kjorebok_entries
+  FOR SELECT TO authenticated
+  USING (name = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
+
+DROP POLICY IF EXISTS "kbfb_kjorebok_entries_insert_own_or_admin" ON public.kbfb_kjorebok_entries;
+CREATE POLICY "kbfb_kjorebok_entries_insert_own_or_admin" ON public.kbfb_kjorebok_entries
+  FOR INSERT TO authenticated
+  WITH CHECK (name = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
+
+DROP POLICY IF EXISTS "kbfb_kjorebok_entries_update_own_or_admin" ON public.kbfb_kjorebok_entries;
+CREATE POLICY "kbfb_kjorebok_entries_update_own_or_admin" ON public.kbfb_kjorebok_entries
+  FOR UPDATE TO authenticated
+  USING (name = public.kbfb_current_employee_name() OR public.kbfb_is_admin())
+  WITH CHECK (name = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
+
+DROP POLICY IF EXISTS "kbfb_kjorebok_entries_delete_own_or_admin" ON public.kbfb_kjorebok_entries;
+CREATE POLICY "kbfb_kjorebok_entries_delete_own_or_admin" ON public.kbfb_kjorebok_entries
+  FOR DELETE TO authenticated
+  USING (name = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
