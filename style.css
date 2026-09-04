@@ -1060,9 +1060,15 @@ details[open].card summary .details-toggle-icon {
   border-radius: 10px;
 }
 
-.arshjul-item-controls .kitchen-delete {
+.arshjul-item-controls .kitchen-delete,
+.arshjul-item-controls .arshjul-edit-btn {
   padding: 3px 8px;
   font-size: 0.82em;
+}
+
+.form-button-row {
+  display: flex;
+  gap: 10px;
 }
 
 .routine-groups {

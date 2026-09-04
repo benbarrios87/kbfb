@@ -6233,6 +6233,7 @@ function renderArshjulMonthDetail() {
             <select class="arshjul-move-select" data-arshjul-move-id="${item.id}">
               ${NORWEGIAN_MONTHS.map((name, idx) => `<option value="${idx + 1}" ${idx + 1 === item.month ? "selected" : ""}>${name}</option>`).join("")}
             </select>
+            <button class="secondary-btn arshjul-edit-btn" type="button" data-arshjul-edit-id="${item.id}">Rediger</button>
             <button class="kitchen-delete" type="button" data-arshjul-delete-id="${item.id}">Slett</button>
           </div>
         ` : ""}
@@ -6277,6 +6278,25 @@ function renderArshjulMonthDetail() {
       }
 
       await loadArshjulItemsFromSupabase();
+    });
+  });
+
+  listEl.querySelectorAll("[data-arshjul-edit-id]").forEach(button => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.arshjulEditId;
+      const item = arshjulItemsCache.find(candidate => String(candidate.id) === String(id));
+      if (!item) return;
+
+      document.getElementById("arshjulEditId").value = item.id;
+      document.getElementById("arshjulItemMonth").value = String(item.month);
+      document.getElementById("arshjulItemTitle").value = item.title;
+      document.getElementById("arshjulItemDescription").value = item.description || "";
+
+      document.getElementById("arshjulFormHeading").textContent = "Rediger punkt";
+      document.getElementById("arshjulFormSubmit").textContent = "Lagre endring";
+      document.getElementById("arshjulFormCancel").style.display = "";
+
+      document.getElementById("arshjulAddForm").scrollIntoView({ behavior: "smooth", block: "start" });
     });
   });
 
@@ -6488,28 +6508,45 @@ async function initializeArshjul() {
   initializeRoutineForm();
 
   const addForm = document.getElementById("arshjulItemForm");
+  const cancelBtn = document.getElementById("arshjulFormCancel");
+
+  function resetArshjulFormToAddMode() {
+    addForm.reset();
+    document.getElementById("arshjulEditId").value = "";
+    document.getElementById("arshjulFormHeading").textContent = "+ Legg til punkt";
+    document.getElementById("arshjulFormSubmit").textContent = "Legg til";
+    cancelBtn.style.display = "none";
+  }
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener("click", resetArshjulFormToAddMode);
+  }
+
   if (addForm) {
     addForm.addEventListener("submit", async event => {
       event.preventDefault();
 
+      const editId = document.getElementById("arshjulEditId").value;
       const month = Number(document.getElementById("arshjulItemMonth").value);
       const title = document.getElementById("arshjulItemTitle").value.trim();
       const description = document.getElementById("arshjulItemDescription").value.trim() || null;
 
-      const { error } = await supabaseClient.from("kbfb_arshjul_items").insert([{
-        variant: arshjulSelectedVariant,
-        month,
-        title,
-        description
-      }]);
+      const { error } = editId
+        ? await supabaseClient.from("kbfb_arshjul_items").update({ month, title, description }).eq("id", editId)
+        : await supabaseClient.from("kbfb_arshjul_items").insert([{
+            variant: arshjulSelectedVariant,
+            month,
+            title,
+            description
+          }]);
 
       if (error) {
-        console.error("Kunne ikke legge til årshjul-punkt:", error);
+        console.error("Kunne ikke lagre årshjul-punkt:", error);
         alert("Kunne ikke lagre. Prøv igjen.");
         return;
       }
 
-      addForm.reset();
+      resetArshjulFormToAddMode();
       document.getElementById("arshjulItemMonth").value = String(month);
       arshjulSelectedMonth = month;
 

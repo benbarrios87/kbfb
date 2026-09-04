@@ -80,8 +80,9 @@
           </div>
 
           <div id="arshjulAddForm" data-admin-only style="display: none; margin-top: 18px;">
-            <h3>+ Legg til punkt</h3>
+            <h3 id="arshjulFormHeading">+ Legg til punkt</h3>
             <form id="arshjulItemForm" class="form-grid">
+              <input type="hidden" id="arshjulEditId" value="" />
               <label>
                 Måned
                 <select id="arshjulItemMonth" required></select>
@@ -94,7 +95,10 @@
                 Beskrivelse (valgfritt)
                 <textarea id="arshjulItemDescription" rows="2" placeholder="Utdypende info, valgfritt"></textarea>
               </label>
-              <button class="primary-btn form-button" type="submit">Legg til</button>
+              <div class="form-button-row">
+                <button class="primary-btn form-button" type="submit" id="arshjulFormSubmit">Legg til</button>
+                <button class="secondary-btn form-button" type="button" id="arshjulFormCancel" style="display: none;">Avbryt</button>
+              </div>
             </form>
           </div>
         </div>
