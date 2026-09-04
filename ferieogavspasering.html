@@ -65,17 +65,18 @@
         <div class="hero-badge">🌴 Personlig oversikt</div>
       </section>
 
-      <section class="card" id="pendingApprovalCard" style="display: none;">
-        <div class="section-heading">
+      <details class="card" id="pendingApprovalCard" style="display: none;">
+        <summary class="section-heading">
           <div>
+            <span class="details-toggle-icon">▸</span>
             <p class="eyebrow">Krever handling</p>
             <h2>✅ Til godkjenning</h2>
           </div>
-        </div>
+        </summary>
         <div id="pendingApprovalList" class="summary-list">
           <p class="muted">Ingen ventende søknader.</p>
         </div>
-      </section>
+      </details>
 
       <section class="card" id="myUpcomingDaysCard" style="display: none;">
         <div class="section-heading">
@@ -107,10 +108,15 @@
         <summary class="section-heading">
           <div>
             <span class="details-toggle-icon">▸</span>
-            <p class="eyebrow" id="overtimeSummaryMonth">Denne måneden</p>
+            <p class="eyebrow">Overtid</p>
             <h2>⏱️ Overtid</h2>
           </div>
         </summary>
+
+        <label class="compact-filter">
+          Måned
+          <select id="overtimeMonthFilter"></select>
+        </label>
 
         <div id="overtimeSummary" class="summary-list">
           <p class="muted">Ingen overtid registrert denne måneden.</p>

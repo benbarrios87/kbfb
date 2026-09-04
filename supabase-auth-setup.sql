@@ -1276,3 +1276,19 @@ CREATE POLICY "kbfb_absences_update_own_unlocked" ON public.kbfb_absences
   FOR UPDATE TO authenticated
   USING (name = public.kbfb_current_employee_name() AND status IN ('Registrert', 'Ønsket'))
   WITH CHECK (name = public.kbfb_current_employee_name() AND status IN ('Registrert', 'Ønsket'));
+
+-- =========================================================
+-- STEP 38: kbfb_absences.linked_id - pairs an Overtid row with the
+--   "Avspasering opptjent" row app.js auto-creates alongside it (same
+--   hours, so overtid worked = comp time earned). Linked both ways so
+--   app.js can find the counterpart from either row without a second
+--   lookup table. Editing one now mirrors hours/dates onto the other
+--   (see the absenceForm submit handler) so correcting a wrong overtid
+--   entry doesn't leave the comp-time ledger out of sync - the actual
+--   gap the user hit when they first asked to edit an overtid entry.
+--   ON DELETE SET NULL: deleting one side shouldn't be blocked by, or
+--   cascade into deleting, the other - it just becomes unlinked.
+-- =========================================================
+
+ALTER TABLE public.kbfb_absences
+  ADD COLUMN IF NOT EXISTS linked_id uuid REFERENCES public.kbfb_absences(id) ON DELETE SET NULL;

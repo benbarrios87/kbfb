@@ -468,16 +468,19 @@ select {
   backdrop-filter: blur(8px);
 }
 
-details.card summary {
+details.card summary,
+details.arsplan-section summary {
   cursor: pointer;
   list-style: none;
 }
 
-details.card summary::-webkit-details-marker {
+details.card summary::-webkit-details-marker,
+details.arsplan-section summary::-webkit-details-marker {
   display: none;
 }
 
-details.card summary::marker {
+details.card summary::marker,
+details.arsplan-section summary::marker {
   content: "";
 }
 
@@ -488,7 +491,8 @@ details.card summary::marker {
   transition: transform 0.15s ease;
 }
 
-details[open].card summary .details-toggle-icon {
+details[open].card summary .details-toggle-icon,
+details[open].arsplan-section summary .details-toggle-icon {
   transform: rotate(90deg);
 }
 

@@ -197,9 +197,12 @@ function populateEmployeeSelect(selectId, options = {}) {
     select.innerHTML += `<option value="">${blankText}</option>`;
   }
 
+  // role === "Gjest" is a shared-device login (kitchen iPad etc.), not a
+  // real staff member - never a valid pick for who took a vacation day.
+  const selectable = employeesCache.filter(employee => employee.role !== "Gjest");
   const list = departmentFilter
-    ? employeesCache.filter(employee => employee.department === departmentFilter)
-    : employeesCache;
+    ? selectable.filter(employee => employee.department === departmentFilter)
+    : selectable;
 
   list.forEach(employee => {
     select.innerHTML += `
@@ -3531,11 +3534,26 @@ const absenceSummary = document.getElementById("absenceSummary");
 const absenceTableBody = document.getElementById("absenceTableBody");
 const clearAbsences = document.getElementById("clearAbsences");
 const overtimeSummary = document.getElementById("overtimeSummary");
-const overtimeSummaryMonth = document.getElementById("overtimeSummaryMonth");
+const overtimeMonthFilter = document.getElementById("overtimeMonthFilter");
+if (overtimeMonthFilter) {
+  overtimeMonthFilter.addEventListener("change", renderOvertimeSummary);
+}
 
 let absencesCache = [];
 let employeeSettingsCache = [];
 let editingAbsenceId = null;
+let editingAbsenceRecord = null;
+
+// Overtid auto-creates a paired "Avspasering opptjent" row (same hours,
+// linked via linked_id both ways) so the comp-time ledger stays correct
+// without a separate manual entry - this finds that counterpart from
+// either side, so an edit to one can be mirrored onto the other.
+function findLinkedAbsence(record) {
+  if (!record) return null;
+  return absencesCache.find(r => r.id === record.linked_id)
+    || absencesCache.find(r => r.linked_id === record.id)
+    || null;
+}
 
 async function loadEmployeeSettingsFromSupabase() {
   const { data, error } = await supabaseClient
@@ -3611,7 +3629,7 @@ function renderVacationQuotaEditor() {
   const container = document.getElementById("vacationQuotaList");
   if (!container) return;
 
-  container.innerHTML = employeesCache.map(employee => `
+  container.innerHTML = employeesCache.filter(employee => employee.role !== "Gjest").map(employee => `
     <div class="summary-item">
       <strong>${escapeHtml(employee.name)}</strong>
       <span>
@@ -3657,16 +3675,23 @@ async function loadAbsencesFromSupabase() {
   return absencesCache;
 }
 
+// Returns the inserted row (so callers can link related entries by id,
+// e.g. Overtid <-> its auto-created Avspasering opptjent pair) or null
+// on failure - callers that only care about success can still just
+// check truthiness (`if (!saved)`).
 async function saveAbsenceToSupabase(record) {
-  const { error } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("kbfb_absences")
-    .insert([record]);
+    .insert([record])
+    .select()
+    .single();
 
   if (error) {
     console.error("Kunne ikke lagre fravær:", error);
+    return null;
   }
 
-  return !error;
+  return data;
 }
 
 async function updateAbsenceRecordInSupabase(id, record) {
@@ -3801,25 +3826,47 @@ function getFilteredAbsences() {
   });
 }
 
+// Payroll needs to look at whatever month it's currently running (often
+// the month before "now", or any earlier one) - not just "this month" -
+// so this mirrors populateSubMonthFilter/renderSubSummary's month-picker
+// pattern instead of hardcoding to the current calendar month.
+function populateOvertimeMonthFilter() {
+  if (!overtimeMonthFilter) return;
+
+  const currentValue = overtimeMonthFilter.value || getCurrentMonthKey();
+
+  const months = [...new Set(
+    absencesCache
+      .filter(record => record.type === "Overtid" && record.start_date)
+      .map(record => record.start_date.slice(0, 7))
+  )].sort((a, b) => b.localeCompare(a));
+
+  if (!months.includes(getCurrentMonthKey())) {
+    months.unshift(getCurrentMonthKey());
+  }
+
+  overtimeMonthFilter.innerHTML = months.map(month => `
+    <option value="${month}">${formatMonth(month)}</option>
+  `).join("");
+
+  overtimeMonthFilter.value = months.includes(currentValue)
+    ? currentValue
+    : getCurrentMonthKey();
+}
+
 function renderOvertimeSummary() {
   if (!overtimeSummary) return;
 
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
+  populateOvertimeMonthFilter();
 
-  if (overtimeSummaryMonth) {
-    overtimeSummaryMonth.textContent = now.toLocaleDateString("no-NO", { month: "long", year: "numeric" });
-  }
+  const selectedMonth = overtimeMonthFilter?.value || getCurrentMonthKey();
 
-  const overtimeRecords = absencesCache.filter(record => {
-    if (record.type !== "Overtid") return false;
-    const recordDate = new Date(record.start_date + "T12:00:00");
-    return recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear;
-  });
+  const overtimeRecords = absencesCache.filter(record =>
+    record.type === "Overtid" && record.start_date && record.start_date.slice(0, 7) === selectedMonth
+  );
 
   if (!overtimeRecords.length) {
-    overtimeSummary.innerHTML = `<p class="muted">Ingen overtid registrert denne måneden.</p>`;
+    overtimeSummary.innerHTML = `<p class="muted">Ingen overtid registrert i ${formatMonth(selectedMonth)}.</p>`;
     return;
   }
 
@@ -3831,14 +3878,23 @@ function renderOvertimeSummary() {
     grouped[record.name].entries.push(record);
   });
 
-  overtimeSummary.innerHTML = Object.entries(grouped).map(([name, info]) => `
-    <div class="summary-item">
-      <strong>${escapeHtml(name)} · ${info.hours} t</strong>
-      <span>${info.entries
-        .map(entry => `${formatDateRange(entry.start_date, entry.end_date)}${entry.note ? ` · ${escapeHtml(entry.note)}` : ""}`)
-        .join(" · ")}</span>
+  const totalHours = Object.values(grouped).reduce((sum, item) => sum + item.hours, 0);
+
+  overtimeSummary.innerHTML = `
+    <div class="compact-item">
+      <strong>${formatMonth(selectedMonth)}</strong>
+      <span>Totalt ${Math.round(totalHours * 100) / 100} timer</span>
     </div>
-  `).join("");
+
+    ${Object.entries(grouped).map(([name, info]) => `
+      <div class="summary-item">
+        <strong>${escapeHtml(name)} · ${Math.round(info.hours * 100) / 100} t</strong>
+        <span>${info.entries
+          .map(entry => `${formatDateRange(entry.start_date, entry.end_date)}${entry.note ? ` · ${escapeHtml(entry.note)}` : ""}`)
+          .join(" · ")}</span>
+      </div>
+    `).join("")}
+  `;
 }
 
 // Anonymous Gregorian algorithm (Computus) - Easter moves every year, so
@@ -4508,6 +4564,7 @@ const absenceFormCancelEdit = document.getElementById("absenceFormCancelEdit");
 // Registrert/Ønsket, or admin), matching the RLS update policy.
 function startEditingAbsence(record) {
   editingAbsenceId = record.id;
+  editingAbsenceRecord = record;
 
   if (absenceName) absenceName.value = record.name;
   if (absenceType) absenceType.value = record.type;
@@ -4526,6 +4583,7 @@ function startEditingAbsence(record) {
 
 function stopEditingAbsence() {
   editingAbsenceId = null;
+  editingAbsenceRecord = null;
   absenceForm?.reset();
   lockAbsenceNameToSelf();
   updateAbsenceStatusVisibility();
@@ -4558,6 +4616,11 @@ if (absenceForm) {
     const absenceFormStatus = document.getElementById("absenceFormStatus");
     const isEditing = !!editingAbsenceId;
 
+    // Look this up before saving - it only needs the linked id, which
+    // doesn't change across an edit, and absencesCache still has it from
+    // before the form was opened.
+    const linkedBeforeEdit = isEditing ? findLinkedAbsence(editingAbsenceRecord) : null;
+
     const saved = isEditing
       ? await updateAbsenceRecordInSupabase(editingAbsenceId, record)
       : await saveAbsenceToSupabase(record);
@@ -4568,23 +4631,50 @@ if (absenceForm) {
       return;
     }
 
-    // Overtid-pairing (auto-oppretter en "Avspasering opptjent"-rad) og
-    // avdelingsleder-varsling skjer kun ved ny føring - ved redigering
-    // finnes paret/varselet allerede fra første gang, og skal ikke dupliseres.
+    // Overtid-pairing (auto-oppretter en "Avspasering opptjent"-rad, linket
+    // begge veier via linked_id) og avdelingsleder-varsling skjer kun ved
+    // ny føring - ved redigering finnes paret/varselet allerede.
     if (!isEditing && record.type === "Overtid" && record.hours) {
-      await saveAbsenceToSupabase({
+      const paired = await saveAbsenceToSupabase({
         name: record.name,
         type: "Avspasering opptjent",
         start_date: record.start_date,
         end_date: record.end_date,
         hours: record.hours,
         status: record.status,
-        note: record.note ? `Fra overtid: ${record.note}` : "Automatisk opptjent fra overtid"
+        note: record.note ? `Fra overtid: ${record.note}` : "Automatisk opptjent fra overtid",
+        linked_id: saved.id
       });
+
+      if (paired) {
+        await updateAbsenceRecordInSupabase(saved.id, { linked_id: paired.id });
+      }
     }
 
     if (!isEditing && record.type === "Ønsker å avspasere") {
       notifyDepartmentLeadersOfAbsenceRequest(record);
+    }
+
+    // Redigering av en Overtid/Avspasering-føring som har en tilhørende
+    // "motpart" (paret via linked_id) må også oppdatere motparten, ellers
+    // havner timeregnskapet i utakt - f.eks. hvis en feilregistrert
+    // overtidsføring rettes fra 3t til 5t, må den auto-opprettede
+    // "Avspasering opptjent"-raden også bli 5t. Notatet regenereres kun når
+    // man redigerer fra Overtid-siden (det er den siden malen "Fra overtid: ..."
+    // hører til); redigerer man motparten direkte, styres notatet av skjemaet
+    // som normalt siden det allerede er lagret på riktig rad.
+    if (isEditing && linkedBeforeEdit) {
+      const linkedUpdate = {
+        hours: record.hours,
+        start_date: record.start_date,
+        end_date: record.end_date
+      };
+
+      if (record.type === "Overtid") {
+        linkedUpdate.note = record.note ? `Fra overtid: ${record.note}` : "Automatisk opptjent fra overtid";
+      }
+
+      await updateAbsenceRecordInSupabase(linkedBeforeEdit.id, linkedUpdate);
     }
 
     await loadAbsencesFromSupabase();
@@ -4618,8 +4708,13 @@ function lockAbsenceNameToSelf() {
 function lockAbsenceFilterToSelf() {
   if (!absenceFilter || typeof currentEmployee === "undefined" || !currentEmployee) return;
 
+  // Defaults to your own name rather than "Alle" - Oversikt showing
+  // everyone's stats stacked up by default was more than needed most of
+  // the time; "Alle" is still one click away in the dropdown for when
+  // it's actually wanted.
   if (currentEmployee.is_admin) {
     absenceFilter.disabled = false;
+    absenceFilter.value = currentEmployee.name;
   } else if (currentEmployee.role === "Avdelingsleder") {
     // Sees their own department's overview, not locked to just themselves -
     // matches what the database actually allows them to read.
@@ -4629,6 +4724,7 @@ function lockAbsenceFilterToSelf() {
       departmentFilter: currentEmployee.department
     });
     absenceFilter.disabled = false;
+    absenceFilter.value = currentEmployee.name;
   } else {
     absenceFilter.innerHTML = `<option value="${escapeHtml(currentEmployee.name)}">${escapeHtml(currentEmployee.name)}</option>`;
     absenceFilter.value = currentEmployee.name;
@@ -6864,20 +6960,24 @@ function renderArsplan() {
       }
 
       return `
-        <article class="arsplan-section">
-          <div class="arsplan-section-head">
+        <details class="arsplan-section">
+          <summary class="arsplan-section-head">
+            <span class="details-toggle-icon">▸</span>
             <h2>${escapeHtml(section.heading)}</h2>
             ${isRevised ? `<span class="arsplan-revised-badge">Endret siden godkjenning</span>` : ""}
             ${canEdit ? `<button class="arsplan-inline-btn" type="button" data-arsplan-edit-id="${section.id}">Rediger</button>` : ""}
-          </div>
+          </summary>
           <div class="arsplan-body${isRevised ? " arsplan-body-revised" : ""}">${escapeHtml(section.current_text).replace(/\n/g, "<br>")}</div>
-        </article>
+        </details>
       `;
     }).join("")
     : `<p class="muted">Ingen seksjoner lagt inn ennå.</p>`;
 
   listEl.querySelectorAll("[data-arsplan-edit-id]").forEach(button => {
-    button.addEventListener("click", () => {
+    // Rediger sits inside <summary> now that sections are collapsible -
+    // stop the click from also toggling open/closed on its way there.
+    button.addEventListener("click", event => {
+      event.stopPropagation();
       arsplanEditingIds.add(String(button.dataset.arsplanEditId));
       renderArsplan();
     });
