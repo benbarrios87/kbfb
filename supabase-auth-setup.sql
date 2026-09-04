@@ -1373,3 +1373,28 @@ DROP POLICY IF EXISTS "kbfb_kjorebok_entries_delete_own_or_admin" ON public.kbfb
 CREATE POLICY "kbfb_kjorebok_entries_delete_own_or_admin" ON public.kbfb_kjorebok_entries
   FOR DELETE TO authenticated
   USING (name = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
+
+-- =========================================================
+-- STEP 40: kbfb_employees.drives_car - not everyone drives for the
+--   barnehage, so the "Ansatt"/"Vis ansatt" pickers on kjorebok.html
+--   shouldn't offer people who never log a kjøretur. Defaults true
+--   (opt-out, not opt-in) so newly added staff show up by default;
+--   Irina, Nika and Lola are set false here per explicit request.
+--   Editable per-employee going forward from admin.html's ansatt-tabell
+--   (new "Kjører bil" checkbox column, same admin-field pattern as
+--   is_admin/active).
+-- =========================================================
+
+ALTER TABLE public.kbfb_employees ADD COLUMN IF NOT EXISTS drives_car boolean NOT NULL DEFAULT true;
+
+UPDATE public.kbfb_employees SET drives_car = false WHERE name IN ('Irina', 'Nika', 'Lola');
+
+-- =========================================================
+-- STEP 41: kbfb_kjorebok_entries.passenger_name - regnskapsfører
+--   krever passasjernavn (fornavn holder) dokumentert når det var
+--   passasjerer med på turen, ikke bare antallet. Egen kolonne i
+--   stedet for å presse det inn i "purpose" - appen krever nå dette
+--   feltet utfylt når antall passasjerer > 0 (se kjorebokForm submit).
+-- =========================================================
+
+ALTER TABLE public.kbfb_kjorebok_entries ADD COLUMN IF NOT EXISTS passenger_name text;

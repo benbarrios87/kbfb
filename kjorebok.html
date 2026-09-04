@@ -97,6 +97,11 @@
             <input id="kjorebokPassengers" type="number" min="0" step="1" value="0" />
           </label>
 
+          <label class="wide-field" id="kjorebokPassengerNameField" style="display: none;">
+            Passasjernavn <span class="muted">(fornavn holder - påkrevd av regnskapsfører når det er passasjerer med)</span>
+            <input id="kjorebokPassengerName" type="text" placeholder="F.eks. Ola, Kari" />
+          </label>
+
           <label>
             Parkering / Bompenger
             <input id="kjorebokParking" type="number" min="0" step="0.01" value="0" />
@@ -113,8 +118,8 @@
           </label>
 
           <label class="wide-field">
-            Formålet med turen / passasjernavn
-            <input id="kjorebokPurpose" type="text" placeholder="F.eks. Levere post, hente Ola og Kari" />
+            Formålet med turen
+            <input id="kjorebokPurpose" type="text" placeholder="F.eks. Levere post, hente barn" />
           </label>
 
           <button class="primary-btn form-button" type="submit">Lagre kjøring</button>
@@ -142,6 +147,7 @@
         <div class="arsplan-toolbar" style="margin: 12px 0;">
           <button type="button" class="secondary-btn" id="kjorebokPrintBtn">🖨️ Last ned PDF</button>
           <button type="button" class="secondary-btn" id="kjorebokWordBtn">📄 Last ned Word</button>
+          <button type="button" class="secondary-btn" id="kjorebokExcelBtn">📊 Last ned Excel</button>
         </div>
 
         <div class="table-wrap">
@@ -185,6 +191,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="supabase.js"></script>
   <script src="auth.js"></script>
   <script src="app.js"></script>
