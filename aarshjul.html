@@ -33,6 +33,7 @@
        <a data-hide-from-vikar href="kalender.html">📍 Hvor er Benjamin?</a>
         <a data-hide-from-vikar href="filarkiv.html">📁 Filarkiv</a>
         <a class="active" data-hide-from-vikar href="aarshjul.html">🗓️ Årshjul</a>
+        <a data-hide-from-vikar href="arsplan.html">📘 Årsplan</a>
         <a data-hide-from-vikar href="turbank.html">🏕️ Turbank (kommer)</a>
         <a href="nokkeltall.html" data-admin-only>📊 Nøkkeltall</a>
         <a href="admin.html" data-admin-only>⚙️ Admin</a>
@@ -144,41 +145,6 @@
               <input id="routineTitle" type="text" placeholder="F.eks. Sjekke Altinn" required />
             </label>
             <button class="primary-btn form-button" type="submit">Legg til</button>
-          </form>
-        </div>
-      </details>
-
-      <details class="card" id="arsplanCard">
-        <summary class="section-heading">
-          <div>
-            <span class="details-toggle-icon">▸</span>
-            <p class="eyebrow">Levende dokument</p>
-            <h2>Årsplan</h2>
-          </div>
-        </summary>
-
-        <p class="muted">Endringer siden siste godkjenning vises i rødt. Når dere er fornøyde med revisjonen, trykk "Godkjenn revisjon" for å gjøre den til den nye, gjeldende utgaven.</p>
-
-        <div class="arsplan-toolbar">
-          <button type="button" class="secondary-btn" id="arsplanPrintBtn">🖨️ Last ned PDF</button>
-          <button type="button" class="secondary-btn" id="arsplanWordBtn">📄 Last ned Word</button>
-          <button type="button" class="primary-btn" id="arsplanApproveBtn" style="display: none;">✔ Godkjenn revisjon</button>
-        </div>
-
-        <div id="arsplanSections" class="arsplan-sections"></div>
-
-        <div id="arsplanAddSection" style="display: none; margin-top: 18px;">
-          <h3>+ Legg til seksjon</h3>
-          <form id="arsplanSectionForm" class="form-grid">
-            <label class="wide-field">
-              Overskrift
-              <input id="arsplanNewHeading" type="text" placeholder="F.eks. Barnehagens verdigrunnlag" required />
-            </label>
-            <label class="wide-field">
-              Tekst
-              <textarea id="arsplanNewText" rows="4" placeholder="Innhold..."></textarea>
-            </label>
-            <button class="primary-btn form-button" type="submit">Legg til seksjon</button>
           </form>
         </div>
       </details>

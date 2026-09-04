@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Filarkiv | KBFB Personal</title>
+  <title>Årsplan | KBFB Personal</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="images/icon-192.png" type="image/png" />
@@ -31,9 +31,9 @@
         <a data-hide-from-vikar data-hide-from-guest href="ferieogavspasering.html">🌴 Ferie/avsp/overtid</a>
         <a href="bestillinger.html">🛒 Bestillinger</a>
        <a data-hide-from-vikar href="kalender.html">📍 Hvor er Benjamin?</a>
-        <a class="active" data-hide-from-vikar href="filarkiv.html">📁 Filarkiv</a>
+        <a data-hide-from-vikar href="filarkiv.html">📁 Filarkiv</a>
         <a data-hide-from-vikar href="aarshjul.html">🗓️ Årshjul</a>
-        <a data-hide-from-vikar href="arsplan.html">📘 Årsplan</a>
+        <a class="active" data-hide-from-vikar href="arsplan.html">📘 Årsplan</a>
         <a data-hide-from-vikar href="turbank.html">🏕️ Turbank (kommer)</a>
         <a href="nokkeltall.html" data-admin-only>📊 Nøkkeltall</a>
         <a href="admin.html" data-admin-only>⚙️ Admin</a>
@@ -58,33 +58,36 @@
     <main class="main">
       <section class="forest-hero compact">
         <div>
-          <p class="eyebrow">Filarkiv</p>
-          <h1>Delte dokumenter</h1>
-          <p class="muted">Felles dokumenter og filer for personalet.</p>
+          <p class="eyebrow">Levende dokument</p>
+          <h1>Årsplan</h1>
+          <p class="muted">Endringer siden siste godkjenning vises i rødt. Når dere er fornøyde med revisjonen, trykk "Godkjenn revisjon" for å gjøre den til den nye, gjeldende utgaven.</p>
         </div>
-        <div class="hero-badge">📁 Filarkiv</div>
+        <div class="hero-badge">📘 Årsplan</div>
       </section>
 
       <section class="card">
-        <h2>Dokumenter</h2>
-
-        <div class="document-list">
-          <a class="document-card" href="aktivitetsdager.html">
-            <span class="document-card-icon">📅</span>
-            <span class="document-card-body">
-              <strong>Aktivitetsdager 2026–2027</strong>
-              <span class="muted">Ansvarsfordeling for årets aktivitetsdager</span>
-            </span>
-            <span class="document-card-arrow">→</span>
-          </a>
+        <div class="arsplan-toolbar">
+          <button type="button" class="secondary-btn" id="arsplanPrintBtn">🖨️ Last ned PDF</button>
+          <button type="button" class="secondary-btn" id="arsplanWordBtn">📄 Last ned Word</button>
+          <button type="button" class="primary-btn" id="arsplanApproveBtn" style="display: none;">✔ Godkjenn revisjon</button>
         </div>
-      </section>
 
-      <section class="card">
-        <h2>📁 Mer kommer etter hvert</h2>
-        <p class="muted">
-          Flere dokumenter legges til her etter hvert. Si ifra til Benjamin hvis noe haster.
-        </p>
+        <div id="arsplanSections" class="arsplan-sections"></div>
+
+        <div id="arsplanAddSection" style="display: none; margin-top: 18px;">
+          <h3>+ Legg til seksjon</h3>
+          <form id="arsplanSectionForm" class="form-grid">
+            <label class="wide-field">
+              Overskrift
+              <input id="arsplanNewHeading" type="text" placeholder="F.eks. Barnehagens verdigrunnlag" required />
+            </label>
+            <label class="wide-field">
+              Tekst
+              <textarea id="arsplanNewText" rows="4" placeholder="Innhold..."></textarea>
+            </label>
+            <button class="primary-btn form-button" type="submit">Legg til seksjon</button>
+          </form>
+        </div>
       </section>
     </main>
   </div>
