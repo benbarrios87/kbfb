@@ -6079,7 +6079,7 @@ function canEditArshjulVariant(variant) {
   if (currentEmployee.is_admin) return true;
 
   const role = (currentEmployee.role || "").toLowerCase();
-  const isPedagogiskLeder = role.includes("pedagog");
+  const isPedagogiskLeder = role.includes("pedagog") || role.includes("pedleder") || role.includes("avdelingsleder");
   const isAssistent = role.includes("assistent");
 
   if (variant === "Pedagogisk leder") return isPedagogiskLeder;

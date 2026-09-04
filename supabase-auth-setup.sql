@@ -878,6 +878,9 @@ CREATE POLICY "kbfb_push_subs_delete_own" ON public.kbfb_push_subscriptions
 --   Årshjul tables.
 -- =========================================================
 
+-- Pedagog / Pedleder / Avdelingsleder are all the same tier in this
+-- barnehage (a department lead is also the pedagogical leader) - all
+-- three role spellings count as "Pedagogisk leder" for edit rights.
 CREATE OR REPLACE FUNCTION public.kbfb_can_edit_arshjul_variant(target_variant text)
 RETURNS boolean
 LANGUAGE sql
@@ -887,9 +890,15 @@ SET search_path = public
 AS $$
   SELECT
     public.kbfb_is_admin()
-    OR (target_variant = 'Pedagogisk leder' AND public.kbfb_current_employee_role() ILIKE '%pedagog%')
+    OR (target_variant = 'Pedagogisk leder' AND (
+      public.kbfb_current_employee_role() ILIKE '%pedagog%'
+      OR public.kbfb_current_employee_role() ILIKE '%pedleder%'
+      OR public.kbfb_current_employee_role() ILIKE '%avdelingsleder%'
+    ))
     OR (target_variant = 'Assistent' AND (
       public.kbfb_current_employee_role() ILIKE '%pedagog%'
+      OR public.kbfb_current_employee_role() ILIKE '%pedleder%'
+      OR public.kbfb_current_employee_role() ILIKE '%avdelingsleder%'
       OR public.kbfb_current_employee_role() ILIKE '%assistent%'
     ));
 $$;
