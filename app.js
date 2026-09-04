@@ -6154,9 +6154,9 @@ function renderArshjulWheel() {
 
   const wedges = NORWEGIAN_MONTHS.map((name, index) => {
     const month = index + 1;
-    const startAngle = index * 30;
-    const endAngle = startAngle + 30;
-    const midAngle = startAngle + 15;
+    const midAngle = index * 30;
+    const startAngle = midAngle - 15;
+    const endAngle = midAngle + 15;
     const labelPoint = arshjulPolarPoint(cx, cy, r * 0.68, midAngle);
     const hasItems = itemsForArshjulMonth(arshjulSelectedVariant, month).length > 0;
     const isSelected = arshjulSelectedMonth === month;
