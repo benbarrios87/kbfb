@@ -1245,3 +1245,34 @@ CREATE POLICY "kbfb_arshjul_routines_admin_write" ON public.kbfb_arshjul_routine
   FOR ALL TO authenticated
   USING (public.kbfb_is_admin())
   WITH CHECK (public.kbfb_is_admin());
+
+-- =========================================================
+-- STEP 37: kbfb_absences - let an employee EDIT (not just delete) their
+--   own entry, and widen both to also cover "Registrert" entries, not
+--   just "Ønsket". Fixes a real gap: types like Overtid always save as
+--   status = 'Registrert' (see noApprovalNeededTypes in app.js) and never
+--   go through Godkjenn/Avslå, so an employee who logged the wrong hours
+--   on their own overtid had no way to fix it - not delete (STEP 28 only
+--   covered 'Ønsket') and not update (UPDATE was admin/avdelingsleder-only,
+--   for Godkjenn/Avslå purposes, see STEP 20/30).
+--   Once a request is Godkjent/Avslått it's still locked for the owner -
+--   Godkjent may already have been written into vaktplanen (see
+--   applyApprovedAbsenceToShifts in app.js), so only admin can touch it
+--   past that point. WITH CHECK on the new UPDATE policy keeps status
+--   pinned to Registrert/Ønsket even after the edit, so an owner can't use
+--   this to self-approve/self-reject their own request.
+-- =========================================================
+
+DROP POLICY IF EXISTS "kbfb_absences_delete_own_pending_or_admin" ON public.kbfb_absences;
+CREATE POLICY "kbfb_absences_delete_own_pending_or_admin" ON public.kbfb_absences
+  FOR DELETE TO authenticated
+  USING (
+    public.kbfb_is_admin()
+    OR (name = public.kbfb_current_employee_name() AND status IN ('Registrert', 'Ønsket'))
+  );
+
+DROP POLICY IF EXISTS "kbfb_absences_update_own_unlocked" ON public.kbfb_absences;
+CREATE POLICY "kbfb_absences_update_own_unlocked" ON public.kbfb_absences
+  FOR UPDATE TO authenticated
+  USING (name = public.kbfb_current_employee_name() AND status IN ('Registrert', 'Ønsket'))
+  WITH CHECK (name = public.kbfb_current_employee_name() AND status IN ('Registrert', 'Ønsket'));

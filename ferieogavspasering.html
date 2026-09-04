@@ -77,6 +77,18 @@
         </div>
       </section>
 
+      <section class="card" id="myUpcomingDaysCard" style="display: none;">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Din oversikt</p>
+            <h2>📆 Mine kommende dager</h2>
+          </div>
+        </div>
+        <div id="myUpcomingDaysList" class="summary-list">
+          <p class="muted">Ingen kommende ferie eller avspasering registrert.</p>
+        </div>
+      </section>
+
       <details class="card" id="departmentAbsenceOverviewCard" style="display: none;" open>
         <summary class="section-heading">
           <div>
@@ -202,7 +214,8 @@
               <input id="absenceNote" type="text" placeholder="F.eks. tannlege, fri fredag, jobbet ekstra på møte" />
             </label>
 
-            <button class="primary-btn form-button" type="submit">Lagre føring</button>
+            <button class="primary-btn form-button" type="submit" id="absenceFormSubmitBtn">Lagre føring</button>
+            <button class="secondary-btn form-button" type="button" id="absenceFormCancelEdit" style="display: none;">Avbryt redigering</button>
           </form>
           <p id="absenceFormStatus" class="muted" style="margin-top: 10px;"></p>
         </article>

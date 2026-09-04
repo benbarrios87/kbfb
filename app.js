@@ -3535,6 +3535,7 @@ const overtimeSummaryMonth = document.getElementById("overtimeSummaryMonth");
 
 let absencesCache = [];
 let employeeSettingsCache = [];
+let editingAbsenceId = null;
 
 async function loadEmployeeSettingsFromSupabase() {
   const { data, error } = await supabaseClient
@@ -3668,6 +3669,19 @@ async function saveAbsenceToSupabase(record) {
   return !error;
 }
 
+async function updateAbsenceRecordInSupabase(id, record) {
+  const { error } = await supabaseClient
+    .from("kbfb_absences")
+    .update(record)
+    .eq("id", id);
+
+  if (error) {
+    console.error("Kunne ikke oppdatere fravær:", error);
+  }
+
+  return !error;
+}
+
 async function deleteAbsenceFromSupabase(id) {
   const { error } = await supabaseClient
     .from("kbfb_absences")
@@ -3691,7 +3705,9 @@ async function updateAbsenceStatusInSupabase(id, status) {
 const shiftTypesFromAbsence = {
   "Ferie": "F",
   "Tjenestefri": "TJ",
-  "Permisjon": "PERM",
+  "Permisjon med lønn": "PERM",
+  "Permisjon uten lønn": "PERM",
+  "Velferdspermisjon": "PERM",
   "Ønsker å avspasere": "AVS"
 };
 
@@ -3999,7 +4015,67 @@ async function notifyDepartmentLeadersOfAbsenceRequest(record) {
   );
 }
 
+// Types that represent an actual day (or days) away, as opposed to an
+// hours-ledger entry (Overtid, Avspasering brukt/opptjent) or a same-day
+// sick-log (Egenmelding/Sykemelding/Omsorgsdager) - those aren't "days
+// off coming up" in the sense staff asked to see an overview of.
+const upcomingDayOffTypes = [
+  "Ferie", "Tjenestefri", "Ønsker å avspasere",
+  "Permisjon med lønn", "Permisjon uten lønn", "Velferdspermisjon"
+];
+
+// Staff asked to be able to see their own upcoming ferie/avspasering at a
+// glance, without digging through the full Føringer-log or Ansattoversikt
+// (both of which show everyone, filtered/sorted for admin's needs, not "what's
+// coming up for me"). Shows the logged-in person's own future-dated entries
+// of the types above, earliest first, including still-pending ("Ønsket") ones
+// so they can see what they've applied for - but not rejected ones.
+function renderMyUpcomingDays() {
+  const card = document.getElementById("myUpcomingDaysCard");
+  const list = document.getElementById("myUpcomingDaysList");
+  if (!card || !list) return;
+
+  if (typeof currentEmployee === "undefined" || !currentEmployee) {
+    card.style.display = "none";
+    return;
+  }
+
+  const todayKey = toDateKey(new Date());
+
+  const upcoming = (absencesCache || []).filter(record =>
+    record.name === currentEmployee.name &&
+    upcomingDayOffTypes.includes(record.type) &&
+    record.status !== "Avslått" &&
+    (record.end_date || record.start_date) >= todayKey
+  );
+
+  card.style.display = "";
+
+  if (!upcoming.length) {
+    list.innerHTML = `<p class="muted">Ingen kommende ferie eller avspasering registrert.</p>`;
+    return;
+  }
+
+  const sorted = [...upcoming].sort((a, b) => a.start_date.localeCompare(b.start_date));
+
+  const statusLabel = status => {
+    if (status === "Ønsket") return "⏳ Venter godkjenning";
+    if (status === "Avventer") return "⏳ Avventer";
+    if (status === "Godkjent") return "✓ Godkjent";
+    return escapeHtml(status || "Registrert");
+  };
+
+  list.innerHTML = sorted.map(record => `
+    <div class="summary-item">
+      <strong>${escapeHtml(record.type)}</strong>
+      <span>${formatDateRange(record.start_date, record.end_date)} · ${countWeekdays(record.start_date, record.end_date)} dag(er)</span>
+      <span class="muted">${statusLabel(record.status)}${record.note ? ` · ${escapeHtml(record.note)}` : ""}</span>
+    </div>
+  `).join("");
+}
+
 function renderAbsences() {
+  renderMyUpcomingDays();
   renderOvertimeSummary();
   renderHolidayRequestGroups();
   renderPendingApprovalCard();
@@ -4018,9 +4094,17 @@ function renderAbsences() {
   const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
 
   // Godkjenn/Avslå/Avventer lives in "Til godkjenning" above now - this
-  // log is read-only history, so it just shows the outcome + admin's
-  // comment (if any) plus a delete button where that's still allowed.
-  absenceTableBody.innerHTML = records.map(record => `
+  // log is read-only history, so it just shows the outcome plus
+  // edit/delete buttons where that's still allowed. Once a søknad is
+  // Godkjent/Avslått it's locked for the owner (Godkjent may already have
+  // written into vaktplanen) - only "Registrert" (self-logged, no
+  // approval flow, e.g. Overtid) or "Ønsket" (still pending) can be
+  // touched by their own owner; admin can always.
+  absenceTableBody.innerHTML = records.map(record => {
+    const canModify = isAdmin ||
+      (record.name === currentEmployee?.name && (record.status === "Ønsket" || record.status === "Registrert"));
+
+    return `
     <tr>
       <td>${escapeHtml(record.name)}</td>
       <td>${escapeHtml(record.type)}</td>
@@ -4030,12 +4114,12 @@ function renderAbsences() {
       <td>${escapeHtml(record.status) || "Registrert"}${record.admin_comment ? `<br><span class="muted">💬 ${escapeHtml(record.admin_comment)}</span>` : ""}</td>
       <td>${escapeHtml(record.note)}</td>
       <td>
-        ${isAdmin || (record.status === "Ønsket" && record.name === currentEmployee?.name)
-          ? `<button class="kitchen-delete" data-absence-id="${record.id}">Slett</button>`
-          : ""}
+        ${canModify ? `<button class="secondary-btn" data-edit-absence-id="${record.id}">Rediger</button>` : ""}
+        ${canModify ? `<button class="kitchen-delete" data-absence-id="${record.id}">Slett</button>` : ""}
       </td>
     </tr>
-  `).join("");
+  `;
+  }).join("");
 
   renderAbsenceSummary(records);
 
@@ -4044,6 +4128,13 @@ function renderAbsences() {
       await deleteAbsenceFromSupabase(button.dataset.absenceId);
       await loadAbsencesFromSupabase();
       renderAbsences();
+    });
+  });
+
+  document.querySelectorAll("[data-edit-absence-id]").forEach(button => {
+    button.addEventListener("click", () => {
+      const record = absencesCache.find(item => String(item.id) === String(button.dataset.editAbsenceId));
+      if (record) startEditingAbsence(record);
     });
   });
 
@@ -4408,6 +4499,45 @@ function parseHoursInput(raw) {
   return Number.isNaN(num) ? null : num;
 }
 
+const absenceFormSubmitBtn = document.getElementById("absenceFormSubmitBtn");
+const absenceFormCancelEdit = document.getElementById("absenceFormCancelEdit");
+
+// Pre-fills the form from an existing record and flips the form into
+// "update" mode - used by the Rediger button in the Føringer-log. Only
+// reachable for rows where canModify was true (owner while
+// Registrert/Ønsket, or admin), matching the RLS update policy.
+function startEditingAbsence(record) {
+  editingAbsenceId = record.id;
+
+  if (absenceName) absenceName.value = record.name;
+  if (absenceType) absenceType.value = record.type;
+  updateAbsenceStatusVisibility();
+  if (absenceStartDate) absenceStartDate.value = record.start_date || "";
+  if (absenceEndDate) absenceEndDate.value = record.end_date || "";
+  if (absenceHours) absenceHours.value = record.hours != null ? record.hours : "";
+  if (absenceStatus) absenceStatus.value = record.status || "Registrert";
+  if (absenceNote) absenceNote.value = record.note || "";
+
+  if (absenceFormSubmitBtn) absenceFormSubmitBtn.textContent = "Oppdater føring";
+  if (absenceFormCancelEdit) absenceFormCancelEdit.style.display = "";
+
+  absenceForm?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function stopEditingAbsence() {
+  editingAbsenceId = null;
+  absenceForm?.reset();
+  lockAbsenceNameToSelf();
+  updateAbsenceStatusVisibility();
+
+  if (absenceFormSubmitBtn) absenceFormSubmitBtn.textContent = "Lagre føring";
+  if (absenceFormCancelEdit) absenceFormCancelEdit.style.display = "none";
+}
+
+if (absenceFormCancelEdit) {
+  absenceFormCancelEdit.addEventListener("click", stopEditingAbsence);
+}
+
 if (absenceForm) {
   absenceForm.addEventListener("submit", async event => {
     event.preventDefault();
@@ -4426,15 +4556,22 @@ if (absenceForm) {
     };
 
     const absenceFormStatus = document.getElementById("absenceFormStatus");
+    const isEditing = !!editingAbsenceId;
 
-    const saved = await saveAbsenceToSupabase(record);
+    const saved = isEditing
+      ? await updateAbsenceRecordInSupabase(editingAbsenceId, record)
+      : await saveAbsenceToSupabase(record);
+
     if (!saved) {
       if (absenceFormStatus) absenceFormStatus.textContent = "";
       alert("Kunne ikke lagre fravær. Prøv igjen.");
       return;
     }
 
-    if (record.type === "Overtid" && record.hours) {
+    // Overtid-pairing (auto-oppretter en "Avspasering opptjent"-rad) og
+    // avdelingsleder-varsling skjer kun ved ny føring - ved redigering
+    // finnes paret/varselet allerede fra første gang, og skal ikke dupliseres.
+    if (!isEditing && record.type === "Overtid" && record.hours) {
       await saveAbsenceToSupabase({
         name: record.name,
         type: "Avspasering opptjent",
@@ -4446,22 +4583,22 @@ if (absenceForm) {
       });
     }
 
-    if (record.type === "Ønsker å avspasere") {
+    if (!isEditing && record.type === "Ønsker å avspasere") {
       notifyDepartmentLeadersOfAbsenceRequest(record);
     }
 
     await loadAbsencesFromSupabase();
 
-    absenceForm.reset();
-    lockAbsenceNameToSelf();
-    updateAbsenceStatusVisibility();
+    stopEditingAbsence();
 
     renderAbsences();
 
     // Føringer-loggen er lukket som standard (kollaps-visning) - uten
     // dette kan en vellykket lagring se ut som ingenting skjedde, siden
     // den nye raden havner i en boks som ikke er åpnet ennå.
-    if (absenceFormStatus) absenceFormStatus.textContent = "✓ Lagret! Se den i Føringer-loggen under (trykk for å åpne).";
+    if (absenceFormStatus) absenceFormStatus.textContent = isEditing
+      ? "✓ Oppdatert! Se den i Føringer-loggen under (trykk for å åpne)."
+      : "✓ Lagret! Se den i Føringer-loggen under (trykk for å åpne).";
     const foeringerDetails = document.getElementById("foeringerDetails");
     if (foeringerDetails) foeringerDetails.open = true;
   });
