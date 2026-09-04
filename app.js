@@ -6069,6 +6069,7 @@ let arshjulSubitemsCache = [];
 let arshjulSelectedVariant = "Leder";
 let arshjulSelectedMonth = null;
 let arshjulOpenSubitemIds = new Set();
+let arshjulOpenNotatIds = new Set();
 
 function arshjulPolarPoint(cx, cy, r, angleDeg) {
   const rad = (angleDeg * Math.PI) / 180;
@@ -6192,6 +6193,7 @@ function renderArshjulMonthDetail() {
       const subitems = subitemsForArshjulItem(item.id);
       const doneCount = subitems.filter(sub => sub.completed).length;
       const isOpen = arshjulOpenSubitemIds.has(String(item.id));
+      const notatOpen = !!item.notat || arshjulOpenNotatIds.has(String(item.id));
 
       return `
       <div class="summary-item arshjul-item${item.completed ? " arshjul-item-completed" : ""}">
@@ -6201,7 +6203,9 @@ function renderArshjulMonthDetail() {
         </label>
         ${item.description ? `<span>${escapeHtml(item.description)}</span>` : ""}
         ${isAdmin
-          ? `<input type="text" class="arshjul-notat-input" data-arshjul-notat-id="${item.id}" value="${escapeHtml(item.notat || "")}" placeholder="Notat (valgfritt)" />`
+          ? (notatOpen
+              ? `<input type="text" class="arshjul-notat-input" data-arshjul-notat-id="${item.id}" value="${escapeHtml(item.notat || "")}" placeholder="Notat (valgfritt)" />`
+              : `<button class="arshjul-inline-btn" type="button" data-arshjul-add-notat-id="${item.id}">+ notat</button>`)
           : (item.notat ? `<span class="muted">📝 ${escapeHtml(item.notat)}</span>` : "")}
         ${(subitems.length || isOpen) ? `
           <details class="arshjul-subitems" data-arshjul-subitems-id="${item.id}" ${isOpen ? "open" : ""}>
@@ -6222,7 +6226,7 @@ function renderArshjulMonthDetail() {
               </form>
             ` : ""}
           </details>
-        ` : (isAdmin ? `<button class="arshjul-add-subitems-btn" type="button" data-arshjul-add-subitems-id="${item.id}">+ sjekkliste</button>` : "")}
+        ` : (isAdmin ? `<button class="arshjul-inline-btn" type="button" data-arshjul-add-subitems-id="${item.id}">+ sjekkliste</button>` : "")}
         ${isAdmin ? `
           <div class="arshjul-item-controls">
             <select class="arshjul-move-select" data-arshjul-move-id="${item.id}">
@@ -6278,6 +6282,13 @@ function renderArshjulMonthDetail() {
   listEl.querySelectorAll("[data-arshjul-add-subitems-id]").forEach(button => {
     button.addEventListener("click", () => {
       arshjulOpenSubitemIds.add(String(button.dataset.arshjulAddSubitemsId));
+      renderArshjulMonthDetail();
+    });
+  });
+
+  listEl.querySelectorAll("[data-arshjul-add-notat-id]").forEach(button => {
+    button.addEventListener("click", () => {
+      arshjulOpenNotatIds.add(String(button.dataset.arshjulAddNotatId));
       renderArshjulMonthDetail();
     });
   });

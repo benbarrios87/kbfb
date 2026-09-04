@@ -965,8 +965,18 @@ details[open].card summary .details-toggle-icon {
   margin-top: 0;
 }
 
+.arshjul-detail .summary-list {
+  gap: 6px;
+}
+
 .arshjul-item {
   transition: opacity 0.15s ease;
+  padding: 8px 12px;
+  gap: 2px;
+}
+
+.arshjul-item strong {
+  font-size: 0.95rem;
 }
 
 .arshjul-item:nth-of-type(8n+1) { background: #fde68a; }
@@ -994,8 +1004,8 @@ details[open].card summary .details-toggle-icon {
 }
 
 .arshjul-item-check input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 15px;
+  height: 15px;
   accent-color: var(--green-dark);
   cursor: pointer;
   flex-shrink: 0;
@@ -1005,18 +1015,48 @@ details[open].card summary .details-toggle-icon {
   display: block;
   width: 100%;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 7px 10px;
+  border-radius: 10px;
+  padding: 4px 8px;
   font: inherit;
-  margin-top: 6px;
+  font-size: 0.85em;
+  margin-top: 2px;
   background: white;
+}
+
+.arshjul-inline-btn {
+  display: inline-block;
+  align-self: flex-start;
+  margin-top: 2px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.78em;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 1px 0;
+}
+
+.arshjul-inline-btn:hover {
+  color: var(--green-dark);
+  text-decoration: underline;
 }
 
 .arshjul-item-controls {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  margin-top: 6px;
+  margin-top: 4px;
+}
+
+.arshjul-item-controls .arshjul-move-select {
+  padding: 4px 8px;
+  font-size: 0.82em;
+  border-radius: 10px;
+}
+
+.arshjul-item-controls .kitchen-delete {
+  padding: 3px 8px;
+  font-size: 0.82em;
 }
 
 .routine-groups {
@@ -1057,34 +1097,17 @@ details[open].card summary .details-toggle-icon {
   border-bottom: none;
 }
 
-.arshjul-add-subitems-btn {
-  display: inline-block;
-  margin-top: 6px;
-  border: none;
-  background: none;
-  color: var(--muted);
-  font-size: 0.82em;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 2px 0;
-}
-
-.arshjul-add-subitems-btn:hover {
-  color: var(--green-dark);
-  text-decoration: underline;
-}
-
 .arshjul-subitems {
-  margin-top: 8px;
+  margin-top: 4px;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 8px 10px;
+  border-radius: 10px;
+  padding: 6px 8px;
 }
 
 .arshjul-subitems summary {
   cursor: pointer;
   font-weight: 700;
-  font-size: 0.92em;
+  font-size: 0.85em;
 }
 
 .arshjul-subitem-list {
@@ -1099,6 +1122,7 @@ details[open].card summary .details-toggle-icon {
   align-items: center;
   gap: 8px;
   cursor: pointer;
+  font-size: 0.85em;
 }
 
 .arshjul-subitem input[type="checkbox"] {
