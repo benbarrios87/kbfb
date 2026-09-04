@@ -1084,17 +1084,20 @@ details[open].card summary .details-toggle-icon {
 }
 
 .arsplan-section {
-  padding: 22px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 20px 22px;
+  border-radius: 14px;
+  border-left: 5px solid transparent;
+  margin-bottom: 14px;
 }
 
-.arsplan-section:first-child {
-  padding-top: 0;
-}
-
-.arsplan-section:last-child {
-  border-bottom: none;
-}
+.arsplan-section:nth-of-type(8n+1) { background: #fefaed; border-left-color: #eab308; }
+.arsplan-section:nth-of-type(8n+2) { background: #fef4ec; border-left-color: #f97316; }
+.arsplan-section:nth-of-type(8n+3) { background: #fdf2f5; border-left-color: #ec4899; }
+.arsplan-section:nth-of-type(8n+4) { background: #f8f2fc; border-left-color: #a855f7; }
+.arsplan-section:nth-of-type(8n+5) { background: #eef4fe; border-left-color: #3b82f6; }
+.arsplan-section:nth-of-type(8n+6) { background: #eafbfa; border-left-color: #06b6d4; }
+.arsplan-section:nth-of-type(8n+7) { background: #edfaf0; border-left-color: #22c55e; }
+.arsplan-section:nth-of-type(8n+8) { background: #f7fbe9; border-left-color: #84cc16; }
 
 .arsplan-section-head {
   display: flex;
@@ -1147,10 +1150,7 @@ details[open].card summary .details-toggle-icon {
 }
 
 .arsplan-section-editing {
-  background: var(--sand);
-  border-radius: 16px;
-  padding: 18px;
-  border-bottom: none;
+  background: white !important;
 }
 
 .arsplan-textarea {
