@@ -5226,6 +5226,62 @@ function renderAbsenceStatsTable(period) {
   }
 }
 
+// Avspasering opptjent/brukt always save with status "Registrert" (see
+// noApprovalNeededTypes - they skip the godkjenn/avslå flow entirely), so
+// unlike Ferie they must NOT be filtered by countedAbsenceStatuses or the
+// saldo would come out zero for everyone. Ferie still needs that filter -
+// an avslått ferieønske shouldn't count against the person's remaining days.
+function computeAvspaseringAndFerieBalance() {
+  const currentYear = new Date().getFullYear();
+  const balances = {};
+
+  const ensure = name => {
+    if (!balances[name]) balances[name] = { avsOpptjent: 0, avsBrukt: 0, ferieDays: 0 };
+    return balances[name];
+  };
+
+  absencesCache.forEach(absence => {
+    if (!absence.start_date || Number(absence.start_date.slice(0, 4)) !== currentYear) return;
+
+    if (absence.type === "Avspasering opptjent") {
+      ensure(absence.name).avsOpptjent += absence.hours || 0;
+    } else if (absence.type === "Avspasering brukt") {
+      ensure(absence.name).avsBrukt += absence.hours || 0;
+    } else if (absence.type === "Ferie" && countedAbsenceStatuses.includes(absence.status)) {
+      ensure(absence.name).ferieDays += daysBetweenInclusive(absence.start_date, absence.end_date);
+    }
+  });
+
+  return balances;
+}
+
+function renderAvspaseringAndFerieStats() {
+  const saldoContainer = document.getElementById("avspaseringSaldoChart");
+  if (!saldoContainer) return;
+
+  const balances = computeAvspaseringAndFerieBalance();
+
+  // Base the "ferie igjen" ranking on every fast ansatt, not just names
+  // already in absencesCache - someone who hasn't logged ANY ferie yet
+  // this year is exactly who this is supposed to surface, and they'd
+  // otherwise be invisible (no entry in balances at all).
+  const realEmployees = employeesCache.filter(e => e.role !== "Vikar" && e.role !== "Gjest");
+
+  const saldoRanked = Object.keys(balances)
+    .map(name => ({ label: name, value: Number((balances[name].avsOpptjent - balances[name].avsBrukt).toFixed(1)) }))
+    .filter(entry => entry.value !== 0)
+    .sort((a, b) => b.value - a.value);
+
+  renderMiniBarChart("avspaseringSaldoChart", saldoRanked, { color: "#4a3aa7", unit: " t", horizontal: true });
+
+  const ferieRanked = realEmployees
+    .map(e => ({ label: e.name, value: getVacationDaysFor(e.name) - (balances[e.name]?.ferieDays || 0) }))
+    .filter(entry => entry.value > 0)
+    .sort((a, b) => b.value - a.value);
+
+  renderMiniBarChart("ferieRemainingChart", ferieRanked, { color: "#eda100", unit: " d", horizontal: true });
+}
+
 let nokkeltallShiftsCache = [];
 
 // Loads every kbfb_shifts row with a week_start in the given range -
@@ -5520,8 +5576,10 @@ async function initializeNokkeltall() {
 
   await loadAbsencesFromSupabase();
   await loadEmployeesFromSupabase();
+  await loadEmployeeSettingsFromSupabase();
   renderAbsenceStatsTable("month");
   renderAbsenceStatsTable("year");
+  renderAvspaseringAndFerieStats();
   await loadStatCards();
 
   // At least 6 months back, and always back to 1. januar this year too -
