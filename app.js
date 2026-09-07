@@ -5334,6 +5334,56 @@ function renderMiniBarChart(containerId, items, { color = "#2f6b3f", unit = "", 
   `;
 }
 
+// "Flest vakter" - faste ansatte only (Vikar/Foreldreinnsats/Ekstra are
+// their own support rows, counted separately under Vikarbruk), and only
+// cells that are an actual worked shift - absence codes like F/AVS/TJ/
+// PERM/Plandag don't count as a vakt.
+function computeShiftCountByEmployee(shifts, periodStart, periodEnd) {
+  const supportRows = ["Vikar", "Foreldreinnsats", "Ekstra"];
+  const counts = {};
+
+  shifts.forEach(shift => {
+    if (supportRows.includes(shift.employee)) return;
+
+    const value = (shift.shift_value || "").trim();
+    if (!value || absenceShiftCodes.includes(value)) return;
+
+    const dateKey = toDateKey(addDays(new Date(shift.week_start + "T12:00:00"), shift.day_index));
+    if (dateKey < periodStart || dateKey > periodEnd) return;
+
+    counts[shift.employee] = (counts[shift.employee] || 0) + 1;
+  });
+
+  return counts;
+}
+
+function renderShiftCountStats(period) {
+  const body = document.getElementById("shiftCountTableBody");
+  if (!body) return;
+
+  const { start, end } = currentPeriodRange(period);
+  const counts = computeShiftCountByEmployee(nokkeltallShiftsCache, start, end);
+  const ranked = Object.entries(counts).sort(([, a], [, b]) => b - a);
+
+  body.innerHTML = ranked.length
+    ? ranked.map(([name, count]) => {
+        const employee = employeesCache.find(e => e.name === name);
+        return `
+          <tr>
+            <td><strong>${escapeHtml(name)}</strong></td>
+            <td>${escapeHtml(employee?.department || "–")}</td>
+            <td>${count}</td>
+          </tr>
+        `;
+      }).join("")
+    : `<tr><td colspan="3" class="muted">Ingen vakter registrert i perioden.</td></tr>`;
+
+  renderMiniBarChart("shiftCountChart", ranked.map(([name, count]) => ({
+    label: name,
+    value: count
+  })), { color: "#1baf7a", horizontal: true });
+}
+
 let vikarUsageByMonthCache = {};
 
 function renderVikarTables() {
@@ -5425,15 +5475,21 @@ async function initializeNokkeltall() {
   if (!container) return;
 
   await loadAbsencesFromSupabase();
+  await loadEmployeesFromSupabase();
   renderAbsenceStatsTable("month");
   renderAbsenceStatsTable("year");
   await loadStatCards();
 
-  // Last 6 months of shifts, so the vikarbruk trend has something to show.
+  // At least 6 months back, and always back to 1. januar this year too -
+  // "Hittil i år" needs the full year covered even when today is early in
+  // the second half, not just a rolling 6-month window.
   const sixMonthsAgo = getMonday(addDays(new Date(), -180));
-  await loadShiftsForNokkeltall(toDateKey(sixMonthsAgo), toDateKey(getMonday(new Date())));
+  const startOfYear = new Date(new Date().getFullYear(), 0, 1);
+  const loadFrom = startOfYear < sixMonthsAgo ? startOfYear : sixMonthsAgo;
+  await loadShiftsForNokkeltall(toDateKey(loadFrom), toDateKey(getMonday(new Date())));
   vikarUsageByMonthCache = computeVikarUsageByMonth(nokkeltallShiftsCache);
   renderVikarTables();
+  renderShiftCountStats("year");
 
   const periodToggle = document.getElementById("absenceStatsPeriodToggle");
   if (periodToggle) {
@@ -5442,6 +5498,17 @@ async function initializeNokkeltall() {
         periodToggle.querySelectorAll("button").forEach(b => b.className = "secondary-btn");
         button.className = "primary-btn";
         renderAbsenceStatsTable(button.dataset.period);
+      });
+    });
+  }
+
+  const shiftCountToggle = document.getElementById("shiftCountPeriodToggle");
+  if (shiftCountToggle) {
+    shiftCountToggle.querySelectorAll("button").forEach(button => {
+      button.addEventListener("click", () => {
+        shiftCountToggle.querySelectorAll("button").forEach(b => b.className = "secondary-btn");
+        button.className = "primary-btn";
+        renderShiftCountStats(button.dataset.period);
       });
     });
   }
