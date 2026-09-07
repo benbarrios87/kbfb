@@ -2857,20 +2857,7 @@ function monthHeading(dateString) {
 }
 
 
-function renderEvents() {
-  if (!dateList) return;
-
-  const category = dateCategoryFilter?.value || "all";
-
-  let events = getEvents()
-    .filter(event => category === "all" || event.category === category)
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-  if (!events.length) {
-    dateList.innerHTML = `<p class="muted">Ingen datoer lagt inn ennå.</p>`;
-    return;
-  }
-
+function renderEventGroups(events) {
   const grouped = {};
 
   events.forEach(event => {
@@ -2879,7 +2866,7 @@ function renderEvents() {
     grouped[month].push(event);
   });
 
-  dateList.innerHTML = Object.entries(grouped).map(([month, monthEvents]) => `
+  return Object.entries(grouped).map(([month, monthEvents]) => `
     <section class="month-group">
       <h3>${month}</h3>
 
@@ -2907,6 +2894,41 @@ function renderEvents() {
       </div>
     </section>
   `).join("");
+}
+
+function renderEvents() {
+  if (!dateList) return;
+
+  const category = dateCategoryFilter?.value || "all";
+  const todayKey = toDateKey(new Date());
+
+  let events = getEvents()
+    .filter(event => category === "all" || event.category === category)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  if (!events.length) {
+    dateList.innerHTML = `<p class="muted">Ingen datoer lagt inn ennå.</p>`;
+    return;
+  }
+
+  // Passerte datoer skal ikke rote til lista - de havner samlet i en
+  // lukket "Tidligere datoer" seksjon nederst, nyeste først, i stedet for
+  // å stå blandet inn mellom kommende datoer.
+  const upcoming = events.filter(event => event.date >= todayKey);
+  const past = events.filter(event => event.date < todayKey).reverse();
+
+  const upcomingHtml = upcoming.length
+    ? renderEventGroups(upcoming)
+    : `<p class="muted">Ingen kommende datoer.</p>`;
+
+  const pastHtml = past.length ? `
+    <details class="card past-dates-toggle">
+      <summary><span class="details-toggle-icon">▸</span> Tidligere datoer (${past.length})</summary>
+      ${renderEventGroups(past)}
+    </details>
+  ` : "";
+
+  dateList.innerHTML = upcomingHtml + pastHtml;
 
   document.querySelectorAll("[data-edit-date]").forEach(button => {
     button.addEventListener("click", () => {
