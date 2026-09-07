@@ -1276,6 +1276,44 @@ async function saveShiftToSupabase(shift) {
   }
 }
 
+// Marking a vaktcelle "SYK" auto-logs it as Egenmelding on Ferie/
+// avspasering too, so sykefravær doesn't quietly go uncounted just
+// because nobody remembered the separate step. Checks for an existing
+// Egenmelding/Sykemelding row for that name+date first - re-selecting
+// SYK (or the cell re-rendering) must not create duplicates. Only ever
+// creates Egenmelding; if it turns into a longer, doctor-noted fravær,
+// that's an edit on the Ferie/avspasering-siden afterward, same as any
+// other correction there.
+async function ensureSickAbsenceForShift(name, dateKey) {
+  const { data: existing, error: selectError } = await supabaseClient
+    .from("kbfb_absences")
+    .select("id")
+    .eq("name", name)
+    .eq("start_date", dateKey)
+    .in("type", ["Egenmelding", "Sykemelding"])
+    .limit(1);
+
+  if (selectError) {
+    console.error("Kunne ikke sjekke eksisterende fravær:", selectError);
+    return;
+  }
+
+  if (existing && existing.length) return;
+
+  const { error: insertError } = await supabaseClient.from("kbfb_absences").insert([{
+    name,
+    type: "Egenmelding",
+    start_date: dateKey,
+    end_date: dateKey,
+    status: "Registrert",
+    note: "Registrert automatisk fra vaktplanen"
+  }]);
+
+  if (insertError) {
+    console.error("Kunne ikke opprette egenmelding fra vaktplanen:", insertError);
+  }
+}
+
 /* ---------- VAKTLISTE MED DROPDOWN ---------- */
 
 const employeeFilter = document.getElementById("employeeFilter");
@@ -1296,7 +1334,7 @@ const monthViewContent = document.getElementById("monthViewContent");
 let viewedWeekStart = getMonday(new Date());
 const realCurrentWeekStart = getMonday(new Date());
 
-const shiftValues = ["", "TV", "TM", "MV", "SV", "F", "AVS", "TJ", "PERM", "PLANDAG", "MØTE", "ANNET"];
+const shiftValues = ["", "TV", "TM", "MV", "SV", "F", "AVS", "TJ", "PERM", "PLANDAG", "SYK", "MØTE", "ANNET"];
 
 function getCurrentWeekKey() {
   return toDateKey(viewedWeekStart);
@@ -1309,7 +1347,7 @@ function getShiftSelectClass(value) {
   if (value === "SM") return "sm";
   if (value === "SV") return "sv";
   if (value === "PT") return "pt";
-  if (value === "F" || value === "AVS" || value === "TJ" || value === "PERM" || value === "PLANDAG") return "free";
+  if (value === "F" || value === "AVS" || value === "TJ" || value === "PERM" || value === "PLANDAG" || value === "SYK") return "free";
   if (value === "KONTOR" || value === "MØTE") return "office";
   if (value === "ANNET") return "custom";
   return "";
@@ -1556,6 +1594,11 @@ function buildShiftDropdowns() {
           day_index: dayIndex,
           shift_value: select.value
         });
+
+        if (select.value === "SYK") {
+          const shiftDate = toDateKey(addDays(new Date(getCurrentWeekKey() + "T12:00:00"), dayIndex));
+          await ensureSickAbsenceForShift(row.dataset.employee, shiftDate);
+        }
       }
 
       await loadShiftsFromSupabase();
@@ -1740,7 +1783,7 @@ async function updateWeekView() {
   renderResponsibilityBanner(toDateKey(viewedWeekStart));
 }
 
-const absenceShiftCodes = ["F", "AVS", "TJ", "PERM", "PLANDAG"];
+const absenceShiftCodes = ["F", "AVS", "TJ", "PERM", "PLANDAG", "SYK"];
 
 function updateShiftHeadcounts() {
   document.querySelectorAll(".department-table").forEach(table => {

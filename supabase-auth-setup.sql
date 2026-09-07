@@ -1398,3 +1398,30 @@ UPDATE public.kbfb_employees SET drives_car = false WHERE name IN ('Irina', 'Nik
 -- =========================================================
 
 ALTER TABLE public.kbfb_kjorebok_entries ADD COLUMN IF NOT EXISTS passenger_name text;
+
+-- =========================================================
+-- STEP 42: Let Avdelingsleder insert an Egenmelding/Sykemelding row for
+--   someone in their own department - needed for the new "SYK" vaktcelle
+--   option (vakter.html), which auto-creates that row. The existing
+--   INSERT policy only allowed inserting your own name or admin, and
+--   Avdelingsleder can edit the vaktplan for their department (not just
+--   their own row), so marking a colleague SYK would otherwise fail RLS
+--   silently. Scoped narrowly to just these two sykdom types, not a
+--   blanket "insert absences for your department" policy.
+-- =========================================================
+
+DROP POLICY IF EXISTS "kbfb_absences_insert_own_or_admin" ON public.kbfb_absences;
+CREATE POLICY "kbfb_absences_insert_own_admin_or_avdelingsleder_sick" ON public.kbfb_absences
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    name = public.kbfb_current_employee_name()
+    OR public.kbfb_is_admin()
+    OR (
+      public.kbfb_current_employee_role() = 'Avdelingsleder'
+      AND type IN ('Egenmelding', 'Sykemelding')
+      AND name IN (
+        SELECT e.name FROM public.kbfb_employees e
+        WHERE e.department = public.kbfb_current_employee_department()
+      )
+    )
+  );
