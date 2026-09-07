@@ -2772,19 +2772,28 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .stat-card {
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid var(--line);
+  border-top: 4px solid transparent;
   border-radius: 24px;
   padding: 20px;
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   text-align: center;
+  transition: border-color 0.2s ease;
+}
+
+.stat-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+  margin-bottom: 2px;
 }
 
 .stat-value {
   font-size: 2.2rem;
   font-weight: 900;
   color: var(--green-dark);
+  font-variant-numeric: tabular-nums;
 }
 
 .stat-label {
@@ -2793,9 +2802,94 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   font-size: 0.85rem;
 }
 
+.stat-accent-blue { border-top-color: #2a78d6; }
+.stat-accent-aqua { border-top-color: #1baf7a; }
+.stat-accent-amber { border-top-color: #eda100; }
+.stat-accent-violet { border-top-color: #4a3aa7; }
+
+.stat-needs-attention {
+  border-top-color: #fab219;
+  background: #fffaf0;
+}
+
+.stat-needs-attention .stat-value {
+  color: #b8790a;
+}
+
 @media (max-width: 850px) {
   .stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.mini-chart-heading {
+  margin-bottom: 10px;
+}
+
+.mini-bar-chart {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.mini-bar-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 64px;
+  align-items: center;
+  gap: 10px;
+}
+
+.mini-bar-label {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-bar-track {
+  background: var(--green-soft);
+  border-radius: 999px;
+  height: 14px;
+  overflow: hidden;
+}
+
+.mini-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  min-width: 6px;
+}
+
+.mini-bar-value {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.mini-chart-svg {
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+  margin-bottom: 16px;
+}
+
+.mini-chart-axis-label {
+  font-size: 10px;
+  fill: var(--muted);
+  font-weight: 600;
+}
+
+.mini-chart-baseline {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+@media (max-width: 700px) {
+  .mini-bar-row {
+    grid-template-columns: 90px 1fr 52px;
   }
 }
 

@@ -5205,6 +5205,19 @@ function renderAbsenceStatsTable(period) {
       }).join("")
     : `<tr><td colspan="5" class="muted">Ingen registrert fravær i perioden.</td></tr>`;
 
+  // Rangert etter sum av sykefravær + ferie + permisjon (dager) - avsp.
+  // holdes utenfor siden den telles i timer, ikke dager, og ville forvrengt
+  // rangeringen hvis den ble blandet inn.
+  const ranked = names
+    .map(name => ({
+      label: name,
+      value: stats[name].sickDays + stats[name].vacationDays + stats[name].permisjonDays
+    }))
+    .filter(entry => entry.value > 0)
+    .sort((a, b) => b.value - a.value);
+
+  renderMiniBarChart("absenceRankingChart", ranked, { color: "#2f6b3f", unit: " d", horizontal: true });
+
   // Total sick days in the year-to-date view feeds the stat card up top.
   const statSickDaysYtd = document.getElementById("statSickDaysYtd");
   if (statSickDaysYtd && period === "year") {
@@ -5263,6 +5276,64 @@ function monthLabel(monthKey) {
   return new Date(year, month - 1, 1).toLocaleDateString("no-NO", { month: "long", year: "numeric" });
 }
 
+// Small dependency-free chart helper for Nøkkeltall - "horizontal" gives a
+// ranked list of bars (one hue, direct-labeled by name - identity carried
+// by the label, not by color, since every bar is the same series/metric).
+// Vertical (SVG) gives a time-series trend, same one-hue rule. Both ship a
+// native <title> hover tooltip - the simplest hover layer that always works.
+function renderMiniBarChart(containerId, items, { color = "#2f6b3f", unit = "", horizontal = false, maxBars = 8 } = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const data = items.slice(0, maxBars);
+  if (!data.length) {
+    container.innerHTML = `<p class="muted">Ingen data å vise ennå.</p>`;
+    return;
+  }
+
+  const maxValue = Math.max(...data.map(d => d.value), 1);
+
+  if (horizontal) {
+    container.innerHTML = `
+      <div class="mini-bar-chart">
+        ${data.map(d => `
+          <div class="mini-bar-row" title="${escapeHtml(d.label)}: ${d.value}${unit}">
+            <span class="mini-bar-label">${escapeHtml(d.label)}</span>
+            <div class="mini-bar-track">
+              <div class="mini-bar-fill" style="width:${Math.max((d.value / maxValue) * 100, 3)}%; background:${color};"></div>
+            </div>
+            <span class="mini-bar-value">${d.value}${unit}</span>
+          </div>
+        `).join("")}
+      </div>
+    `;
+    return;
+  }
+
+  const width = 600, height = 190, padding = 30;
+  const slot = (width - padding * 2) / data.length;
+  const barWidth = Math.max(slot - 14, 10);
+
+  const bars = data.map((d, i) => {
+    const barHeight = Math.max((d.value / maxValue) * (height - padding * 2), 2);
+    const x = padding + i * slot + (slot - barWidth) / 2;
+    const y = height - padding - barHeight;
+    return `
+      <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="4" fill="${color}">
+        <title>${escapeHtml(d.label)}: ${d.value}${unit}</title>
+      </rect>
+      <text x="${x + barWidth / 2}" y="${height - padding + 18}" text-anchor="middle" class="mini-chart-axis-label">${escapeHtml(d.shortLabel || d.label)}</text>
+    `;
+  }).join("");
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" class="mini-chart-svg" preserveAspectRatio="xMidYMid meet">
+      <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" class="mini-chart-baseline" />
+      ${bars}
+    </svg>
+  `;
+}
+
 let vikarUsageByMonthCache = {};
 
 function renderVikarTables() {
@@ -5285,6 +5356,12 @@ function renderVikarTables() {
       }).join("")
     : `<tr><td colspan="3" class="muted">Ingen vikarvakter registrert i perioden.</td></tr>`;
 
+  renderMiniBarChart("vikarTrendChart", months.map(monthKey => ({
+    label: monthLabel(monthKey),
+    shortLabel: monthLabel(monthKey).split(" ")[0].slice(0, 3),
+    value: Number(vikarUsageByMonthCache[monthKey].totalHours.toFixed(1))
+  })), { color: "#2f6b3f", unit: " t", maxBars: 12 });
+
   const currentMonthKey = toMonthKey(new Date());
   const currentMonth = vikarUsageByMonthCache[currentMonthKey];
 
@@ -5295,11 +5372,13 @@ function renderVikarTables() {
 
   if (!currentMonth || !Object.keys(currentMonth.byPerson).length) {
     personBody.innerHTML = `<tr><td colspan="3" class="muted">Ingen vikarvakter denne måneden.</td></tr>`;
+    renderMiniBarChart("vikarPersonChart", [], { horizontal: true });
     return;
   }
 
-  personBody.innerHTML = Object.entries(currentMonth.byPerson)
-    .sort(([, a], [, b]) => b - a)
+  const personEntries = Object.entries(currentMonth.byPerson).sort(([, a], [, b]) => b - a);
+
+  personBody.innerHTML = personEntries
     .map(([name, hours]) => {
       const shiftCount = nokkeltallShiftsCache.filter(shift =>
         shift.employee === "Vikar" &&
@@ -5315,6 +5394,11 @@ function renderVikarTables() {
         </tr>
       `;
     }).join("");
+
+  renderMiniBarChart("vikarPersonChart", personEntries.map(([name, hours]) => ({
+    label: name,
+    value: Number(hours.toFixed(1))
+  })), { color: "#c9822e", unit: " t", horizontal: true });
 }
 
 async function loadStatCards() {
@@ -5327,9 +5411,13 @@ async function loadStatCards() {
   if (statOpenSwaps) statOpenSwaps.textContent = openSwaps ?? "0";
 
   const statPendingAbsences = document.getElementById("statPendingAbsences");
-  if (statPendingAbsences) {
-    statPendingAbsences.textContent = absencesCache.filter(a => a.status === "Ønsket").length;
-  }
+  const pendingCount = absencesCache.filter(a => a.status === "Ønsket").length;
+  if (statPendingAbsences) statPendingAbsences.textContent = pendingCount;
+
+  // Swap the tile to the warning status color when something actually
+  // needs action - a real state change, not decoration.
+  const pendingCard = document.getElementById("statPendingAbsencesCard");
+  if (pendingCard) pendingCard.classList.toggle("stat-needs-attention", pendingCount > 0);
 }
 
 async function initializeNokkeltall() {

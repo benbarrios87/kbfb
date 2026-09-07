@@ -67,19 +67,23 @@
       </section>
 
       <section class="stat-grid" id="nokkeltallStats">
-        <div class="stat-card">
+        <div class="stat-card stat-accent-blue">
+          <span class="stat-icon">🔄</span>
           <span class="stat-value" id="statOpenSwaps">–</span>
           <span class="stat-label">Åpne vaktbytter</span>
         </div>
-        <div class="stat-card">
+        <div class="stat-card stat-accent-aqua" id="statPendingAbsencesCard">
+          <span class="stat-icon">⏳</span>
           <span class="stat-value" id="statPendingAbsences">–</span>
           <span class="stat-label">Ubehandlet fravær</span>
         </div>
-        <div class="stat-card">
+        <div class="stat-card stat-accent-amber">
+          <span class="stat-icon">🤒</span>
           <span class="stat-value" id="statSickDaysYtd">–</span>
           <span class="stat-label">Sykefraværsdager hittil i år</span>
         </div>
-        <div class="stat-card">
+        <div class="stat-card stat-accent-violet">
+          <span class="stat-icon">🕒</span>
           <span class="stat-value" id="statVikarHoursMonth">–</span>
           <span class="stat-label">Vikartimer denne måneden</span>
         </div>
@@ -98,6 +102,9 @@
           <button type="button" class="secondary-btn" data-period="month">Denne måneden</button>
           <button type="button" class="primary-btn" data-period="year">Hittil i år</button>
         </div>
+
+        <h3 class="mini-chart-heading">Totalt fravær (dager) - rangert</h3>
+        <div id="absenceRankingChart"></div>
 
         <div class="table-wrap">
           <table class="shift-table" id="absenceStatsTable">
@@ -129,6 +136,8 @@
           </div>
         </summary>
 
+        <div id="vikarTrendChart"></div>
+
         <div class="table-wrap">
           <table class="shift-table" id="vikarTrendTable">
             <thead>
@@ -145,6 +154,7 @@
         </div>
 
         <h3 style="margin-top: 22px;">Fordelt på vikar - denne måneden</h3>
+        <div id="vikarPersonChart"></div>
         <div class="table-wrap">
           <table class="shift-table" id="vikarPersonTable">
             <thead>
