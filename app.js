@@ -4494,6 +4494,12 @@ const noApprovalNeededTypes = [
 
 const avspaseringTypes = ["Avspasering opptjent", "Avspasering brukt"];
 
+// Only "Avspasering opptjent" (auto-created alongside an Overtid entry) is
+// a pure hours ledger with no meaningful "day" of its own. "Avspasering
+// brukt" is someone actually taking time off on a real date - that date
+// needs to be pickable and editable, not silently forced to "today".
+const dateHiddenAvspaseringTypes = ["Avspasering opptjent"];
+
 function updateAbsenceStatusVisibility() {
   if (!absenceType || !absenceStatusField || !absenceStatus) return;
 
@@ -4507,9 +4513,10 @@ function updateAbsenceStatusVisibility() {
     }
   }
 
-  // Avspasering is an hours ledger, not a day-range - skip the dates and
-  // require a note explaining what it's for instead (e.g. "kveldsmøte").
-  const isAvspasering = avspaseringTypes.includes(absenceType.value);
+  // Avspasering opptjent is an hours ledger, not a day-range - skip the
+  // dates and require a note explaining what it's for instead (e.g.
+  // "kveldsmøte"). Avspasering brukt keeps the date picker (see above).
+  const isAvspasering = dateHiddenAvspaseringTypes.includes(absenceType.value);
   const startField = document.getElementById("absenceStartDateField");
   const endField = document.getElementById("absenceEndDateField");
 
@@ -4608,7 +4615,7 @@ if (absenceForm) {
     event.preventDefault();
 
     const todayKey = toDateKey(new Date());
-    const isAvspaseringEntry = avspaseringTypes.includes(absenceType.value);
+    const isAvspaseringEntry = dateHiddenAvspaseringTypes.includes(absenceType.value);
 
     const record = {
       name: absenceName.value,
