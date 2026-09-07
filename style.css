@@ -2202,7 +2202,7 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 }
 
 .past-dates-toggle {
-  margin-top: 18px;
+  margin-bottom: 18px;
 }
 
 .past-dates-toggle summary {

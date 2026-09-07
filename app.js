@@ -2928,7 +2928,7 @@ function renderEvents() {
     </details>
   ` : "";
 
-  dateList.innerHTML = upcomingHtml + pastHtml;
+  dateList.innerHTML = pastHtml + upcomingHtml;
 
   document.querySelectorAll("[data-edit-date]").forEach(button => {
     button.addEventListener("click", () => {
