@@ -5384,6 +5384,50 @@ function renderShiftCountStats(period) {
   })), { color: "#1baf7a", horizontal: true });
 }
 
+// Fixed order/colors so TV is always blue, TM always aqua, etc - same
+// categorical slots used for the stat tiles, kept consistent site-wide.
+const shiftTypeCodes = [
+  { code: "TV", color: "#2a78d6" },
+  { code: "TM", color: "#1baf7a" },
+  { code: "MV", color: "#eda100" },
+  { code: "SV", color: "#4a3aa7" }
+];
+
+function computeShiftTypeCounts(shifts, periodStart, periodEnd) {
+  const supportRows = ["Vikar", "Foreldreinnsats", "Ekstra"];
+  const counts = { TV: {}, TM: {}, MV: {}, SV: {} };
+
+  shifts.forEach(shift => {
+    if (supportRows.includes(shift.employee)) return;
+
+    const value = (shift.shift_value || "").trim();
+    if (!counts[value]) return;
+
+    const dateKey = toDateKey(addDays(new Date(shift.week_start + "T12:00:00"), shift.day_index));
+    if (dateKey < periodStart || dateKey > periodEnd) return;
+
+    counts[value][shift.employee] = (counts[value][shift.employee] || 0) + 1;
+  });
+
+  return counts;
+}
+
+function renderShiftTypeStats(period) {
+  const firstContainer = document.getElementById("shiftTypeChartTV");
+  if (!firstContainer) return;
+
+  const { start, end } = currentPeriodRange(period);
+  const counts = computeShiftTypeCounts(nokkeltallShiftsCache, start, end);
+
+  shiftTypeCodes.forEach(({ code, color }) => {
+    const ranked = Object.entries(counts[code]).sort(([, a], [, b]) => b - a);
+    renderMiniBarChart(`shiftTypeChart${code}`, ranked.map(([name, count]) => ({
+      label: name,
+      value: count
+    })), { color, horizontal: true, maxBars: 6 });
+  });
+}
+
 let vikarUsageByMonthCache = {};
 
 function renderVikarTables() {
@@ -5490,6 +5534,7 @@ async function initializeNokkeltall() {
   vikarUsageByMonthCache = computeVikarUsageByMonth(nokkeltallShiftsCache);
   renderVikarTables();
   renderShiftCountStats("year");
+  renderShiftTypeStats("year");
 
   const periodToggle = document.getElementById("absenceStatsPeriodToggle");
   if (periodToggle) {
@@ -5509,6 +5554,17 @@ async function initializeNokkeltall() {
         shiftCountToggle.querySelectorAll("button").forEach(b => b.className = "secondary-btn");
         button.className = "primary-btn";
         renderShiftCountStats(button.dataset.period);
+      });
+    });
+  }
+
+  const shiftTypeToggle = document.getElementById("shiftTypePeriodToggle");
+  if (shiftTypeToggle) {
+    shiftTypeToggle.querySelectorAll("button").forEach(button => {
+      button.addEventListener("click", () => {
+        shiftTypeToggle.querySelectorAll("button").forEach(b => b.className = "secondary-btn");
+        button.className = "primary-btn";
+        renderShiftTypeStats(button.dataset.period);
       });
     });
   }
