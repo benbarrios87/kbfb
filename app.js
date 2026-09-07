@@ -5282,6 +5282,56 @@ function renderAvspaseringAndFerieStats() {
   renderMiniBarChart("ferieRemainingChart", ferieRanked, { color: "#eda100", unit: " d", horizontal: true });
 }
 
+// Private, admin-only detail view for one employee's full fravær-historikk
+// - meant for spotting a pattern worth a samtale, not a stat to publish.
+// Unlike the aggregated tables elsewhere, this shows every record
+// regardless of status, so a declined/pending request is still visible
+// for context.
+function renderAbsenceDetailForEmployee(name) {
+  const summaryEl = document.getElementById("absenceDetailSummary");
+  const body = document.getElementById("absenceDetailTableBody");
+  if (!summaryEl || !body) return;
+
+  if (!name) {
+    summaryEl.innerHTML = "";
+    body.innerHTML = `<tr><td colspan="5" class="muted">Velg en ansatt over.</td></tr>`;
+    return;
+  }
+
+  const records = absencesCache
+    .filter(a => a.name === name)
+    .sort((a, b) => (b.start_date || "").localeCompare(a.start_date || ""));
+
+  if (!records.length) {
+    summaryEl.innerHTML = `<p class="muted">Ingen registrert fravær for ${escapeHtml(name)}.</p>`;
+    body.innerHTML = `<tr><td colspan="5" class="muted">Ingen fravær registrert.</td></tr>`;
+    return;
+  }
+
+  const sickCases = records.filter(a => sickAbsenceTypes.includes(a.type));
+  const sickDaysTotal = sickCases.reduce((sum, a) => sum + daysBetweenInclusive(a.start_date, a.end_date), 0);
+
+  const twelveMonthsAgoKey = toDateKey(addDays(new Date(), -365));
+  const recentSickCount = sickCases.filter(a => a.start_date && a.start_date >= twelveMonthsAgoKey).length;
+
+  summaryEl.innerHTML = `
+    <div class="dept-absence-stats">
+      <span>🤒 Sykefravær totalt: <strong>${sickDaysTotal}</strong> dager over <strong>${sickCases.length}</strong> tilfeller</span>
+      <span>📅 Siste 12 måneder: <strong>${recentSickCount}</strong> tilfeller</span>
+    </div>
+  `;
+
+  body.innerHTML = records.map(record => `
+    <tr>
+      <td>${formatDateRange(record.start_date, record.end_date)}</td>
+      <td>${escapeHtml(record.type)}</td>
+      <td>${record.hours ? record.hours + " t" : daysBetweenInclusive(record.start_date, record.end_date) + " d"}</td>
+      <td>${escapeHtml(record.status || "Registrert")}</td>
+      <td>${escapeHtml(record.note || "")}</td>
+    </tr>
+  `).join("");
+}
+
 let nokkeltallShiftsCache = [];
 
 // Loads every kbfb_shifts row with a week_start in the given range -
@@ -5531,6 +5581,14 @@ async function initializeNokkeltall() {
   renderAbsenceStatsTable("year");
   renderAvspaseringAndFerieStats();
   await loadStatCards();
+
+  populateEmployeeSelect("absenceDetailEmployee", { blankText: "Velg ansatt" });
+  const absenceDetailEmployee = document.getElementById("absenceDetailEmployee");
+  if (absenceDetailEmployee) {
+    absenceDetailEmployee.addEventListener("change", () => {
+      renderAbsenceDetailForEmployee(absenceDetailEmployee.value);
+    });
+  }
 
   // At least 6 months back, and always back to 1. januar this year too -
   // "Hittil i år" needs the full year covered even when today is early in

@@ -155,6 +155,43 @@
         <summary class="section-heading">
           <div>
             <span class="details-toggle-icon">▸</span>
+            <p class="eyebrow">Kun synlig for deg</p>
+            <h2>🔍 Fraværsdetaljer per ansatt</h2>
+          </div>
+        </summary>
+
+        <label class="simple-filter">
+          Velg ansatt
+          <select id="absenceDetailEmployee"></select>
+        </label>
+
+        <div id="absenceDetailSummary" style="margin-top: 14px;"></div>
+
+        <div class="table-wrap" style="margin-top: 14px;">
+          <table class="shift-table" id="absenceDetailTable">
+            <thead>
+              <tr>
+                <th>Dato</th>
+                <th>Type</th>
+                <th>Dager/timer</th>
+                <th>Status</th>
+                <th>Notat</th>
+              </tr>
+            </thead>
+            <tbody id="absenceDetailTableBody">
+              <tr><td colspan="5" class="muted">Velg en ansatt over.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="muted" style="margin-top: 10px;">
+          Full historikk for valgt ansatt, nyeste først - til bruk i en samtale med den ansatte hvis mønsteret i fraværet er verdt å ta opp.
+        </p>
+      </details>
+
+      <details class="card">
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
             <p class="eyebrow">Vaktplan</p>
             <h2>🕐 Vakttype-fordeling</h2>
           </div>
