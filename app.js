@@ -5637,7 +5637,7 @@ async function loadAllSwapsForNokkeltall() {
   return allSwapsCache;
 }
 
-function swapStatusLabel(status) {
+function swapStatusBadge(status) {
   if (status === "pending") return `<span class="swap-status swap-status-pending">Venter</span>`;
   if (status === "accepted") return `<span class="swap-status swap-status-accepted">Godkjent</span>`;
   if (status === "declined") return `<span class="swap-status swap-status-declined">Avslått</span>`;
@@ -5665,7 +5665,7 @@ function renderSwapTable(statusFilter) {
         <td><strong>${escapeHtml(req.from_employee)}</strong><br><span class="muted">${escapeHtml(req.from_shift_value || "–")}</span></td>
         <td><strong>${escapeHtml(req.to_employee)}</strong><br><span class="muted">${escapeHtml(req.to_shift_value || "–")}</span></td>
         <td>${escapeHtml(req.from_department)}${req.from_department !== req.to_department ? ` → ${escapeHtml(req.to_department)}` : ""}</td>
-        <td>${swapStatusLabel(req.status)}${req.decline_reason ? `<br><span class="muted">${escapeHtml(req.decline_reason)}</span>` : ""}</td>
+        <td>${swapStatusBadge(req.status)}${req.decline_reason ? `<br><span class="muted">${escapeHtml(req.decline_reason)}</span>` : ""}</td>
         <td>${req.created_at ? formatNorwegianDate(toDateKey(new Date(req.created_at))) : "–"}</td>
       </tr>
     `;
