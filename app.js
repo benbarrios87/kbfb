@@ -5114,7 +5114,7 @@ async function loadPendingApprovalsSummary() {
 // nothing stops someone typing the URL directly - this is the actual
 // gate. Runs on every page (cheap early-return everywhere but admin.html).
 function enforceAdminPageAccess() {
-  const protectedPages = ["admin.html", "nokkeltall.html", "avvik.html", "hms.html"];
+  const protectedPages = ["admin.html", "nokkeltall.html", "avvik.html", "hms.html", "lederutfordring.html"];
   if (!protectedPages.some(page => window.location.pathname.endsWith(page))) return;
   if (typeof currentEmployee === "undefined" || !currentEmployee) return;
 
@@ -8274,3 +8274,205 @@ async function initializeKjorebok() {
 }
 
 initializeKjorebok();
+
+/* ---------- LEDERUTFORDRINGEN ---------- */
+
+let leaderChallengesCache = [];
+let leaderChallengeLogCache = [];
+let leaderChallengeViewOffset = 0; // 0 = today, +N/-N = browsing other days
+
+const LEADER_LEVELS = [
+  { min: 0, title: "Fersk leder", icon: "🌱" },
+  { min: 5, title: "Leder i vekst", icon: "🌿" },
+  { min: 15, title: "Rutinert leder", icon: "🌳" },
+  { min: 30, title: "Inspirerende leder", icon: "⭐" },
+  { min: 50, title: "Erfaren leder", icon: "🏅" },
+  { min: 80, title: "Ledestjerne", icon: "🏆" },
+  { min: 120, title: "Legendarisk leder", icon: "👑" }
+];
+
+function getLeaderLevel(totalCompleted) {
+  let current = LEADER_LEVELS[0];
+  for (const lvl of LEADER_LEVELS) {
+    if (totalCompleted >= lvl.min) current = lvl;
+  }
+  return current;
+}
+
+// Deterministic day -> challenge index off a fixed epoch (not "today minus
+// install date"), so the rotation is stable across reloads/devices and
+// cycles through all 150 before repeating.
+function leaderChallengeIndexForDate(date, totalCount) {
+  const epoch = new Date(2026, 0, 1);
+  const daysSinceEpoch = Math.floor((date - epoch) / 86400000);
+  return ((daysSinceEpoch % totalCount) + totalCount) % totalCount;
+}
+
+// Counts backward from today (or yesterday, if today isn't marked done
+// yet - an unclicked "today" shouldn't zero out an otherwise-intact streak).
+function computeLeaderStreak() {
+  const doneDates = new Set(leaderChallengeLogCache.map(l => l.challenge_date));
+  let streak = 0;
+  let cursor = new Date();
+
+  if (!doneDates.has(toDateKey(cursor))) {
+    cursor = addDays(cursor, -1);
+  }
+
+  while (doneDates.has(toDateKey(cursor))) {
+    streak++;
+    cursor = addDays(cursor, -1);
+  }
+
+  return streak;
+}
+
+async function loadLeaderChallengesFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_leader_challenges")
+    .select("*")
+    .order("sort_order");
+
+  if (error) {
+    console.error("Kunne ikke hente lederutfordringer:", error);
+    return [];
+  }
+
+  leaderChallengesCache = data || [];
+  return leaderChallengesCache;
+}
+
+async function loadLeaderChallengeLogFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_leader_challenge_log")
+    .select("*");
+
+  if (error) {
+    console.error("Kunne ikke hente lederutfordring-logg:", error);
+    return [];
+  }
+
+  leaderChallengeLogCache = data || [];
+  return leaderChallengeLogCache;
+}
+
+function renderLeaderChallengeStats() {
+  const streak = computeLeaderStreak();
+  const total = leaderChallengeLogCache.length;
+  const level = getLeaderLevel(total);
+
+  const streakEl = document.getElementById("challengeStreak");
+  if (streakEl) streakEl.textContent = streak;
+
+  const levelIconEl = document.getElementById("challengeLevelIcon");
+  if (levelIconEl) levelIconEl.textContent = level.icon;
+
+  const levelTitleEl = document.getElementById("challengeLevelTitle");
+  if (levelTitleEl) levelTitleEl.textContent = level.title;
+
+  const totalEl = document.getElementById("challengeTotalDone");
+  if (totalEl) totalEl.textContent = total;
+}
+
+function renderLeaderChallengeDisplay() {
+  const textEl = document.getElementById("challengeText");
+  const categoryEl = document.getElementById("challengeCategory");
+  const dayLabelEl = document.getElementById("challengeDayLabel");
+  const doneBtn = document.getElementById("challengeDoneBtn");
+  const doneNote = document.getElementById("challengeDoneNote");
+  if (!textEl || !leaderChallengesCache.length) return;
+
+  const viewDate = addDays(new Date(), leaderChallengeViewOffset);
+  const index = leaderChallengeIndexForDate(viewDate, leaderChallengesCache.length);
+  const challenge = leaderChallengesCache[index];
+
+  textEl.textContent = challenge.text;
+  if (categoryEl) categoryEl.textContent = challenge.category || "";
+
+  const viewDateKey = toDateKey(viewDate);
+  const isToday = leaderChallengeViewOffset === 0;
+
+  if (dayLabelEl) {
+    dayLabelEl.textContent = isToday ? "I dag" : formatNorwegianDate(viewDateKey);
+  }
+
+  const alreadyDone = leaderChallengeLogCache.some(l => l.challenge_date === viewDateKey);
+
+  if (doneBtn) {
+    doneBtn.style.display = isToday ? "" : "none";
+    doneBtn.disabled = alreadyDone;
+    doneBtn.textContent = alreadyDone ? "✓ Gjort i dag" : "✓ Merk som gjort i dag";
+  }
+
+  if (doneNote) doneNote.style.display = isToday && alreadyDone ? "" : "none";
+}
+
+function renderLeaderChallengeAllList() {
+  const container = document.getElementById("challengeAllList");
+  if (!container) return;
+
+  const doneChallengeIds = new Set(leaderChallengeLogCache.map(l => l.challenge_id).filter(Boolean));
+
+  container.innerHTML = leaderChallengesCache.map(c => `
+    <div class="summary-item leader-challenge-row">
+      <span class="muted">#${c.sort_order + 1} · ${escapeHtml(c.category || "")}</span>
+      <strong>${doneChallengeIds.has(c.id) ? "✓ " : ""}${escapeHtml(c.text)}</strong>
+    </div>
+  `).join("");
+}
+
+async function initializeLederutfordring() {
+  const container = document.getElementById("challengeText");
+  if (!container) return;
+
+  await loadLeaderChallengesFromSupabase();
+  await loadLeaderChallengeLogFromSupabase();
+
+  renderLeaderChallengeStats();
+  renderLeaderChallengeDisplay();
+  renderLeaderChallengeAllList();
+
+  const doneBtn = document.getElementById("challengeDoneBtn");
+  if (doneBtn) {
+    doneBtn.addEventListener("click", async () => {
+      const todayKey = toDateKey(new Date());
+      const index = leaderChallengeIndexForDate(new Date(), leaderChallengesCache.length);
+      const challenge = leaderChallengesCache[index];
+      if (!challenge) return;
+
+      const { error } = await supabaseClient.from("kbfb_leader_challenge_log").insert([{
+        challenge_date: todayKey,
+        challenge_id: challenge.id
+      }]);
+
+      if (error) {
+        console.error("Kunne ikke lagre fullført utfordring:", error);
+        alert("Kunne ikke lagre. Prøv igjen.");
+        return;
+      }
+
+      await loadLeaderChallengeLogFromSupabase();
+      renderLeaderChallengeStats();
+      renderLeaderChallengeDisplay();
+      renderLeaderChallengeAllList();
+    });
+  }
+
+  const prevBtn = document.getElementById("challengePrevBtn");
+  if (prevBtn) {
+    prevBtn.addEventListener("click", () => {
+      leaderChallengeViewOffset -= 1;
+      renderLeaderChallengeDisplay();
+    });
+  }
+
+  const nextBtn = document.getElementById("challengeNextBtn");
+  if (nextBtn) {
+    nextBtn.addEventListener("click", () => {
+      leaderChallengeViewOffset += 1;
+      renderLeaderChallengeDisplay();
+    });
+  }
+}
+
+initializeLederutfordring();

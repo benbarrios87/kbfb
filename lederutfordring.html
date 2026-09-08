@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bestillinger | KBFB Personal</title>
+  <title>Lederutfordringen | KBFB Personal</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="images/icon-192.png" type="image/png" />
@@ -30,7 +30,7 @@
         <a href="vikarer.html">🕒 Vikarer</a>
         <a data-hide-from-vikar data-hide-from-guest href="ferieogavspasering.html">🌴 Ferie/avsp/overtid</a>
         <a data-hide-from-vikar data-hide-from-guest href="kjorebok.html">🚗 Kjørebok</a>
-        <a class="active" href="bestillinger.html">🛒 Bestillinger</a>
+        <a href="bestillinger.html">🛒 Bestillinger</a>
        <a data-hide-from-vikar href="kalender.html">📍 Hvor er Benjamin?</a>
         <a data-hide-from-vikar href="filarkiv.html">📁 Filarkiv</a>
         <a data-hide-from-vikar href="aarshjul.html">🗓️ Årshjul</a>
@@ -39,7 +39,7 @@
         <a href="nokkeltall.html" data-admin-only>📊 Nøkkeltall</a>
         <a href="admin.html" data-admin-only>⚙️ Admin</a>
         <a data-admin-only href="hms.html">🏥 HMS</a>
-        <a data-admin-only href="lederutfordring.html">🎯 Lederutfordringen</a>
+        <a data-admin-only href="lederutfordring.html" class="active">🎯 Lederutfordringen</a>
       </nav>
 
       <div class="sidebar-feedback" data-hide-from-guest>
@@ -60,63 +60,57 @@
     <main class="main">
       <section class="forest-hero compact">
         <div>
-          <p class="eyebrow">Trenger vi noe?</p>
-          <h1>Bestillinger</h1>
-          <p class="muted">Meld fra om ting som trengs - kontorrekvisita, dopapir og lignende.</p>
+          <p class="eyebrow">Kun for deg</p>
+          <h1>Lederutfordringen</h1>
+          <p class="muted">Én liten, konkret ting du kan gjøre som leder - hver dag, i en rundgang på 150.</p>
         </div>
-        <div class="hero-badge">🛒 Innkjøpsliste</div>
+        <div class="hero-badge">🎯 Daglig</div>
       </section>
 
-      <section class="card kitchen-simple" data-hide-from-guest>
-        <h2>Trengs noe?</h2>
-
-        <form id="supplyForm" class="form-grid">
-          <label class="wide-field">
-            Hva trengs?
-            <input type="text" id="supplyItem" placeholder="F.eks. dopapir" required />
-          </label>
-          <label>
-            Prioritet
-            <select id="supplyPriority" required>
-              <option value="nice_to_have">🙂 Hadde vært fint å ha</option>
-              <option value="haster">🔥 Haster</option>
-            </select>
-          </label>
-          <button class="primary-btn form-button" type="submit">Legg til</button>
-        </form>
+      <section class="stat-grid" id="challengeStats">
+        <div class="stat-card stat-accent-amber">
+          <span class="stat-icon">🔥</span>
+          <span class="stat-value" id="challengeStreak">–</span>
+          <span class="stat-label">Dager på rad</span>
+        </div>
+        <div class="stat-card stat-accent-violet">
+          <span class="stat-icon" id="challengeLevelIcon">🌱</span>
+          <span class="stat-value" id="challengeLevelTitle" style="font-size: 1.3rem;">–</span>
+          <span class="stat-label">Nivå</span>
+        </div>
+        <div class="stat-card stat-accent-aqua">
+          <span class="stat-icon">✅</span>
+          <span class="stat-value" id="challengeTotalDone">–</span>
+          <span class="stat-label">Fullført totalt</span>
+        </div>
       </section>
 
-      <section class="card">
-        <div class="section-heading">
+      <section class="card challenge-card">
+        <div class="challenge-nav">
+          <button type="button" class="secondary-btn" id="challengePrevBtn">◀ Forrige</button>
+          <span id="challengeDayLabel" class="muted">I dag</span>
+          <button type="button" class="secondary-btn" id="challengeNextBtn">Neste ▶</button>
+        </div>
+
+        <div class="challenge-display">
+          <span class="challenge-category" id="challengeCategory"></span>
+          <p class="challenge-text" id="challengeText">Laster...</p>
+        </div>
+
+        <button type="button" class="primary-btn challenge-done-btn" id="challengeDoneBtn">✓ Merk som gjort i dag</button>
+        <p class="muted" id="challengeDoneNote" style="margin-top: 8px; display: none;">Gjort i dag! 🎉</p>
+      </section>
+
+      <details class="card">
+        <summary class="section-heading">
           <div>
-            <p class="eyebrow">Oversikt</p>
-            <h2>Trenger bestilling</h2>
+            <span class="details-toggle-icon">▸</span>
+            <p class="eyebrow">Bla gjennom</p>
+            <h2>Alle 150 utfordringer</h2>
           </div>
-        </div>
-        <div id="supplyOpenList" class="summary-list">
-          <p class="muted">Ingenting meldt inn ennå.</p>
-        </div>
-      </section>
-
-      <section class="card" id="supplyOrderedSection" style="display: none;">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Fullført</p>
-            <h2>Allerede bestilt</h2>
-          </div>
-        </div>
-        <div id="supplyOrderedList" class="summary-list"></div>
-      </section>
-
-      <section class="card" id="supplyDeclinedSection" style="display: none;">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Ikke aktuelt</p>
-            <h2>Avslått</h2>
-          </div>
-        </div>
-        <div id="supplyDeclinedList" class="summary-list"></div>
-      </section>
+        </summary>
+        <div id="challengeAllList" class="summary-list"></div>
+      </details>
     </main>
   </div>
 

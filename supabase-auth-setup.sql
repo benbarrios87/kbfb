@@ -1425,3 +1425,46 @@ CREATE POLICY "kbfb_absences_insert_own_admin_or_avdelingsleder_sick" ON public.
       )
     )
   );
+
+-- =========================================================
+-- STEP 43: Lederutfordringen (lederutfordring.html) - a private, admin-
+--   only "daily challenge" page for Benjamin. 150 small, concrete
+--   leadership/culture prompts (kbfb_leader_challenges) rotate one per
+--   day off a fixed date-based index computed client-side - no server
+--   logic needed for the rotation itself. kbfb_leader_challenge_log
+--   records which day's challenge got marked done (one row per date,
+--   unique on challenge_date) so the page can show a streak, a level,
+--   and total completed. Both tables are admin-only for read AND write -
+--   unlike Årshjul/HMS, nobody else should even see this list.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_leader_challenges (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  sort_order int NOT NULL,
+  category text,
+  text text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_leader_challenges ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_leader_challenges_admin_only" ON public.kbfb_leader_challenges;
+CREATE POLICY "kbfb_leader_challenges_admin_only" ON public.kbfb_leader_challenges
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());
+
+CREATE TABLE IF NOT EXISTS public.kbfb_leader_challenge_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  challenge_date date NOT NULL UNIQUE,
+  challenge_id uuid REFERENCES public.kbfb_leader_challenges(id) ON DELETE SET NULL,
+  completed_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_leader_challenge_log ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_leader_challenge_log_admin_only" ON public.kbfb_leader_challenge_log;
+CREATE POLICY "kbfb_leader_challenge_log_admin_only" ON public.kbfb_leader_challenge_log
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());
