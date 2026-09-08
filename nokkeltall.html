@@ -93,6 +93,41 @@
         <summary class="section-heading">
           <div>
             <span class="details-toggle-icon">▸</span>
+            <p class="eyebrow">Vaktbytte</p>
+            <h2>🔄 Alle vaktbytter</h2>
+          </div>
+        </summary>
+
+        <div class="view-toggle" id="swapStatusToggle" style="margin-bottom: 12px;">
+          <button type="button" class="primary-btn" data-status="all">Alle</button>
+          <button type="button" class="secondary-btn" data-status="pending">Venter</button>
+          <button type="button" class="secondary-btn" data-status="accepted">Godkjent</button>
+          <button type="button" class="secondary-btn" data-status="declined">Avslått</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="shift-table" id="swapTable">
+            <thead>
+              <tr>
+                <th>Dato</th>
+                <th>Fra</th>
+                <th>Til</th>
+                <th>Avdeling</th>
+                <th>Status</th>
+                <th>Opprettet</th>
+              </tr>
+            </thead>
+            <tbody id="swapTableBody">
+              <tr><td colspan="6" class="muted">Laster...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <details class="card">
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
             <p class="eyebrow">Fravær</p>
             <h2>🤒 Fraværsstatistikk per ansatt</h2>
           </div>

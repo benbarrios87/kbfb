@@ -5613,6 +5613,65 @@ async function loadStatCards() {
   if (pendingCard) pendingCard.classList.toggle("stat-needs-attention", pendingCount > 0);
 }
 
+// Admin-only overview across EVERYONE's vaktbytte-forespørsler - the app
+// elsewhere only ever queries "my own" (sent or received), even though
+// admin RLS on kbfb_shift_swap_requests already allows reading all of
+// them. Shows the from_shift_value/to_shift_value snapshot taken when the
+// request was made, not a live re-fetch (unlike the personal inbox, which
+// re-fetches because someone's about to act on it - here it's just a
+// review list, so the snapshot is enough and avoids a fetch per row).
+let allSwapsCache = [];
+
+async function loadAllSwapsForNokkeltall() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_shift_swap_requests")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Kunne ikke hente vaktbytter:", error);
+    return [];
+  }
+
+  allSwapsCache = data || [];
+  return allSwapsCache;
+}
+
+function swapStatusLabel(status) {
+  if (status === "pending") return `<span class="swap-status swap-status-pending">Venter</span>`;
+  if (status === "accepted") return `<span class="swap-status swap-status-accepted">Godkjent</span>`;
+  if (status === "declined") return `<span class="swap-status swap-status-declined">Avslått</span>`;
+  return escapeHtml(status || "");
+}
+
+function renderSwapTable(statusFilter) {
+  const body = document.getElementById("swapTableBody");
+  if (!body) return;
+
+  const filtered = statusFilter === "all"
+    ? allSwapsCache
+    : allSwapsCache.filter(req => req.status === statusFilter);
+
+  if (!filtered.length) {
+    body.innerHTML = `<tr><td colspan="6" class="muted">Ingen vaktbytter${statusFilter === "all" ? "" : " med denne statusen"}.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = filtered.map(req => {
+    const shiftDate = addDays(new Date(req.week_start + "T12:00:00"), req.day_index);
+    return `
+      <tr>
+        <td>${formatNorwegianDate(toDateKey(shiftDate))}</td>
+        <td><strong>${escapeHtml(req.from_employee)}</strong><br><span class="muted">${escapeHtml(req.from_shift_value || "–")}</span></td>
+        <td><strong>${escapeHtml(req.to_employee)}</strong><br><span class="muted">${escapeHtml(req.to_shift_value || "–")}</span></td>
+        <td>${escapeHtml(req.from_department)}${req.from_department !== req.to_department ? ` → ${escapeHtml(req.to_department)}` : ""}</td>
+        <td>${swapStatusLabel(req.status)}${req.decline_reason ? `<br><span class="muted">${escapeHtml(req.decline_reason)}</span>` : ""}</td>
+        <td>${req.created_at ? formatNorwegianDate(toDateKey(new Date(req.created_at))) : "–"}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
 async function initializeNokkeltall() {
   const container = document.getElementById("nokkeltallStats");
   if (!container) return;
@@ -5624,6 +5683,20 @@ async function initializeNokkeltall() {
   renderAbsenceStatsTable("year");
   renderAvspaseringAndFerieStats();
   await loadStatCards();
+
+  await loadAllSwapsForNokkeltall();
+  renderSwapTable("all");
+
+  const swapStatusToggle = document.getElementById("swapStatusToggle");
+  if (swapStatusToggle) {
+    swapStatusToggle.querySelectorAll("button").forEach(button => {
+      button.addEventListener("click", () => {
+        swapStatusToggle.querySelectorAll("button").forEach(b => b.className = "secondary-btn");
+        button.className = "primary-btn";
+        renderSwapTable(button.dataset.status);
+      });
+    });
+  }
 
   populateEmployeeSelect("absenceDetailEmployee", { blankText: "Velg ansatt" });
   const absenceDetailEmployee = document.getElementById("absenceDetailEmployee");
