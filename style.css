@@ -61,6 +61,54 @@ body {
   color: var(--green-dark);
 }
 
+.nav-folder {
+  border-radius: 16px;
+}
+
+.nav-folder summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 14px;
+  border-radius: 16px;
+  font-weight: 650;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nav-folder summary::-webkit-details-marker {
+  display: none;
+}
+
+.nav-folder summary::after {
+  content: "▸";
+  font-size: 0.75em;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.nav-folder[open] summary::after {
+  transform: rotate(90deg);
+}
+
+.nav-folder summary:hover {
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+
+.nav-folder-links {
+  display: grid;
+  gap: 6px;
+  padding: 4px 0 2px 10px;
+}
+
+.nav-folder-links a {
+  padding: 10px 14px;
+  font-size: 0.94em;
+}
+
 .main {
   padding: 32px;
   max-width: 1300px;
