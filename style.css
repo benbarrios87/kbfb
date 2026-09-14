@@ -2879,6 +2879,61 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   gap: 2px;
 }
 
+.task-project-toggle {
+  flex-wrap: wrap;
+}
+
+.task-row {
+  display: grid;
+  gap: 4px;
+  position: relative;
+  padding-right: 70px;
+}
+
+.task-row-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.task-row-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--green-dark);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.task-priority-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  flex-shrink: 0;
+}
+
+.task-due {
+  font-size: 0.82em;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.task-due-overdue {
+  color: #b91c1c;
+}
+
+.task-row-completed strong {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.task-row .kitchen-delete {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
 .swap-status {
   display: inline-block;
   font-size: 0.78em;

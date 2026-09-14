@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bestillinger | KBFB Personal</title>
+  <title>Oppgaver | KBFB Personal</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="images/icon-192.png" type="image/png" />
@@ -30,7 +30,7 @@
         <a href="vikarer.html">🕒 Vikarer</a>
         <a data-hide-from-vikar data-hide-from-guest href="ferieogavspasering.html">🌴 Ferie/avsp/overtid</a>
         <a data-hide-from-vikar data-hide-from-guest href="kjorebok.html">🚗 Kjørebok</a>
-        <a class="active" href="bestillinger.html">🛒 Bestillinger</a>
+        <a href="bestillinger.html">🛒 Bestillinger</a>
        <a data-hide-from-vikar href="kalender.html">📍 Hvor er Benjamin?</a>
         <a data-hide-from-vikar href="filarkiv.html">📁 Filarkiv</a>
         <a data-hide-from-vikar href="aarshjul.html">🗓️ Årshjul</a>
@@ -40,7 +40,7 @@
         <a href="admin.html" data-admin-only>⚙️ Admin</a>
         <a data-admin-only href="hms.html">🏥 HMS</a>
         <a data-admin-only href="lederutfordring.html">🎯 Lederutfordringen</a>
-        <a data-admin-only href="oppgaver.html">🗒️ Oppgaver</a>
+        <a data-admin-only href="oppgaver.html" class="active">🗒️ Oppgaver</a>
       </nav>
 
       <div class="sidebar-feedback" data-hide-from-guest>
@@ -61,26 +61,43 @@
     <main class="main">
       <section class="forest-hero compact">
         <div>
-          <p class="eyebrow">Trenger vi noe?</p>
-          <h1>Bestillinger</h1>
-          <p class="muted">Meld fra om ting som trengs - kontorrekvisita, dopapir og lignende.</p>
+          <p class="eyebrow">Kun for deg</p>
+          <h1>Oppgaver</h1>
+          <p class="muted">Alt på ett sted - Inbox og de faste mappene dine, uten et eget verktøy ved siden av.</p>
         </div>
-        <div class="hero-badge">🛒 Innkjøpsliste</div>
+        <div class="hero-badge">🗒️ To-do</div>
       </section>
 
-      <section class="card kitchen-simple" data-hide-from-guest>
-        <h2>Trengs noe?</h2>
+      <div class="view-toggle task-project-toggle" id="taskProjectToggle">
+        <button type="button" class="primary-btn" data-project="Inbox">📥 Inbox</button>
+        <button type="button" class="secondary-btn" data-project="Ledermøte">Ledermøte</button>
+        <button type="button" class="secondary-btn" data-project="Styremøte">Styremøte</button>
+        <button type="button" class="secondary-btn" data-project="Foreldremøte">Foreldremøte</button>
+        <button type="button" class="secondary-btn" data-project="Hus og hjem">Hus og hjem</button>
+        <button type="button" class="secondary-btn" data-project="Personalmøte">Personalmøte</button>
+      </div>
 
-        <form id="supplyForm" class="form-grid">
+      <section class="card">
+        <form id="taskForm" class="form-grid">
           <label class="wide-field">
-            Hva trengs?
-            <input type="text" id="supplyItem" placeholder="F.eks. dopapir" required />
+            Ny oppgave
+            <input id="taskText" type="text" placeholder="F.eks. Ringe regnskapsfører" required />
+          </label>
+          <label class="wide-field">
+            Notat (valgfritt)
+            <input id="taskNote" type="text" placeholder="Utdypende info, valgfritt" />
+          </label>
+          <label>
+            Forfallsdato (valgfritt)
+            <input id="taskDueDate" type="date" />
           </label>
           <label>
             Prioritet
-            <select id="supplyPriority" required>
-              <option value="nice_to_have">🙂 Hadde vært fint å ha</option>
-              <option value="haster">🔥 Haster</option>
+            <select id="taskPriority">
+              <option value="4">P4 - Ingen</option>
+              <option value="3">P3 - Lav</option>
+              <option value="2">P2 - Middels</option>
+              <option value="1">P1 - Høy</option>
             </select>
           </label>
           <button class="primary-btn form-button" type="submit">Legg til</button>
@@ -88,36 +105,22 @@
       </section>
 
       <section class="card">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Oversikt</p>
-            <h2>Trenger bestilling</h2>
-          </div>
-        </div>
-        <div id="supplyOpenList" class="summary-list">
-          <p class="muted">Ingenting meldt inn ennå.</p>
+        <h2 id="taskListHeading">Inbox</h2>
+        <div id="taskActiveList" class="summary-list">
+          <p class="muted">Laster...</p>
         </div>
       </section>
 
-      <section class="card" id="supplyOrderedSection" style="display: none;">
-        <div class="section-heading">
+      <details class="card">
+        <summary class="section-heading">
           <div>
-            <p class="eyebrow">Fullført</p>
-            <h2>Allerede bestilt</h2>
+            <span class="details-toggle-icon">▸</span>
+            <p class="eyebrow">Historikk</p>
+            <h2>✓ Fullførte oppgaver</h2>
           </div>
-        </div>
-        <div id="supplyOrderedList" class="summary-list"></div>
-      </section>
-
-      <section class="card" id="supplyDeclinedSection" style="display: none;">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Ikke aktuelt</p>
-            <h2>Avslått</h2>
-          </div>
-        </div>
-        <div id="supplyDeclinedList" class="summary-list"></div>
-      </section>
+        </summary>
+        <div id="taskCompletedList" class="summary-list"></div>
+      </details>
     </main>
   </div>
 

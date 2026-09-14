@@ -5207,7 +5207,7 @@ async function loadPendingApprovalsSummary() {
 // nothing stops someone typing the URL directly - this is the actual
 // gate. Runs on every page (cheap early-return everywhere but admin.html).
 function enforceAdminPageAccess() {
-  const protectedPages = ["admin.html", "nokkeltall.html", "avvik.html", "hms.html", "lederutfordring.html"];
+  const protectedPages = ["admin.html", "nokkeltall.html", "avvik.html", "hms.html", "lederutfordring.html", "oppgaver.html"];
   if (!protectedPages.some(page => window.location.pathname.endsWith(page))) return;
   if (typeof currentEmployee === "undefined" || !currentEmployee) return;
 
@@ -8599,3 +8599,179 @@ async function initializeLederutfordring() {
 }
 
 initializeLederutfordring();
+
+/* ---------- OPPGAVER ---------- */
+
+const TASK_PROJECTS = ["Inbox", "Ledermøte", "Styremøte", "Foreldremøte", "Hus og hjem", "Personalmøte"];
+
+// Matches Todoist's own P1-P4 colors, since that's the convention already
+// familiar from the tool this page replaces - P1 red, P2 orange, P3 blue,
+// P4 no color at all (default, nothing to flag).
+const TASK_PRIORITY_COLORS = { 1: "#e34948", 2: "#eb6834", 3: "#2a78d6", 4: null };
+
+let tasksCache = [];
+let taskSelectedProject = "Inbox";
+
+async function loadTasksFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_tasks")
+    .select("*")
+    .order("created_at");
+
+  if (error) {
+    console.error("Kunne ikke hente oppgaver:", error);
+    return [];
+  }
+
+  tasksCache = data || [];
+  return tasksCache;
+}
+
+function renderTaskLists() {
+  const headingEl = document.getElementById("taskListHeading");
+  const activeEl = document.getElementById("taskActiveList");
+  const completedEl = document.getElementById("taskCompletedList");
+  if (!activeEl || !completedEl) return;
+
+  if (headingEl) headingEl.textContent = taskSelectedProject;
+
+  const projectTasks = tasksCache.filter(t => t.project === taskSelectedProject);
+  const active = projectTasks
+    .filter(t => !t.completed)
+    .sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      const aDate = a.due_date || "9999-99-99";
+      const bDate = b.due_date || "9999-99-99";
+      return aDate.localeCompare(bDate);
+    });
+  const completed = projectTasks
+    .filter(t => t.completed)
+    .sort((a, b) => (b.completed_at || "").localeCompare(a.completed_at || ""));
+
+  const todayKey = toDateKey(new Date());
+
+  activeEl.innerHTML = active.length
+    ? active.map(t => {
+      const color = TASK_PRIORITY_COLORS[t.priority];
+      const isOverdue = t.due_date && t.due_date < todayKey;
+      return `
+        <div class="summary-item task-row">
+          <label class="task-row-check">
+            <input type="checkbox" data-task-toggle-id="${t.id}" />
+            <span class="task-priority-dot" style="${color ? `border-color:${color}; background:${color};` : ""}"></span>
+            <strong>${escapeHtml(t.text)}</strong>
+          </label>
+          ${t.note ? `<span class="muted">${escapeHtml(t.note)}</span>` : ""}
+          ${t.due_date ? `<span class="task-due${isOverdue ? " task-due-overdue" : ""}">${formatNorwegianDate(t.due_date)}</span>` : ""}
+          <button class="kitchen-delete" type="button" data-task-delete-id="${t.id}">Slett</button>
+        </div>
+      `;
+    }).join("")
+    : `<p class="muted">Ingen aktive oppgaver i ${escapeHtml(taskSelectedProject)}.</p>`;
+
+  completedEl.innerHTML = completed.length
+    ? completed.map(t => `
+        <div class="summary-item task-row task-row-completed">
+          <label class="task-row-check">
+            <input type="checkbox" data-task-toggle-id="${t.id}" checked />
+            <strong>${escapeHtml(t.text)}</strong>
+          </label>
+          <button class="kitchen-delete" type="button" data-task-delete-id="${t.id}">Slett</button>
+        </div>
+      `).join("")
+    : `<p class="muted">Ingen fullførte oppgaver i ${escapeHtml(taskSelectedProject)} ennå.</p>`;
+
+  activeEl.querySelectorAll("[data-task-toggle-id]").forEach(checkbox => {
+    checkbox.addEventListener("change", async () => {
+      await supabaseClient
+        .from("kbfb_tasks")
+        .update({ completed: true, completed_at: new Date().toISOString() })
+        .eq("id", checkbox.dataset.taskToggleId);
+
+      await loadTasksFromSupabase();
+      renderTaskLists();
+    });
+  });
+
+  completedEl.querySelectorAll("[data-task-toggle-id]").forEach(checkbox => {
+    checkbox.addEventListener("change", async () => {
+      await supabaseClient
+        .from("kbfb_tasks")
+        .update({ completed: false, completed_at: null })
+        .eq("id", checkbox.dataset.taskToggleId);
+
+      await loadTasksFromSupabase();
+      renderTaskLists();
+    });
+  });
+
+  activeEl.querySelectorAll("[data-task-delete-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      await supabaseClient.from("kbfb_tasks").delete().eq("id", button.dataset.taskDeleteId);
+      await loadTasksFromSupabase();
+      renderTaskLists();
+    });
+  });
+
+  completedEl.querySelectorAll("[data-task-delete-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      await supabaseClient.from("kbfb_tasks").delete().eq("id", button.dataset.taskDeleteId);
+      await loadTasksFromSupabase();
+      renderTaskLists();
+    });
+  });
+}
+
+async function initializeTasks() {
+  const container = document.getElementById("taskActiveList");
+  if (!container) return;
+
+  await loadTasksFromSupabase();
+  renderTaskLists();
+
+  const projectToggle = document.getElementById("taskProjectToggle");
+  if (projectToggle) {
+    projectToggle.querySelectorAll("button").forEach(button => {
+      button.addEventListener("click", () => {
+        projectToggle.querySelectorAll("button").forEach(b => b.className = "secondary-btn");
+        button.className = "primary-btn";
+        taskSelectedProject = button.dataset.project;
+        renderTaskLists();
+      });
+    });
+  }
+
+  const taskForm = document.getElementById("taskForm");
+  if (taskForm) {
+    taskForm.addEventListener("submit", async event => {
+      event.preventDefault();
+
+      const text = document.getElementById("taskText").value.trim();
+      const note = document.getElementById("taskNote").value.trim() || null;
+      const dueDate = document.getElementById("taskDueDate").value || null;
+      const priority = Number(document.getElementById("taskPriority").value);
+
+      const { error } = await supabaseClient.from("kbfb_tasks").insert([{
+        project: taskSelectedProject,
+        text,
+        note,
+        due_date: dueDate,
+        priority
+      }]);
+
+      if (error) {
+        console.error("Kunne ikke lagre oppgave:", error);
+        alert("Kunne ikke lagre. Prøv igjen.");
+        return;
+      }
+
+      taskForm.reset();
+      document.getElementById("taskPriority").value = "4";
+
+      await loadTasksFromSupabase();
+      renderTaskLists();
+    });
+  }
+}
+
+initializeTasks();

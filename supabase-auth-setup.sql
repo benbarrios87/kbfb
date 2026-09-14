@@ -1481,3 +1481,32 @@ CREATE POLICY "kbfb_leader_challenge_log_admin_only" ON public.kbfb_leader_chall
 -- =========================================================
 
 ALTER TABLE public.kbfb_sub_hours ADD COLUMN IF NOT EXISTS is_sick boolean NOT NULL DEFAULT false;
+
+-- =========================================================
+-- STEP 45: Oppgaver (oppgaver.html) - a private Todoist-inbox replacement
+--   for Benjamin. "project" is one of a fixed set (Inbox + his 5 real
+--   mapper: Ledermøte/Styremøte/Foreldremøte/Hus og hjem/Personalmøte),
+--   enforced client-side, not as a DB constraint - if he ever renames or
+--   adds a mappe, that's a one-line change in app.js, not a migration.
+--   Admin-only for read AND write, same as Lederutfordringen - private.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_tasks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project text NOT NULL DEFAULT 'Inbox',
+  text text NOT NULL,
+  note text,
+  due_date date,
+  priority int NOT NULL DEFAULT 4 CHECK (priority BETWEEN 1 AND 4),
+  completed boolean NOT NULL DEFAULT false,
+  completed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_tasks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_tasks_admin_only" ON public.kbfb_tasks;
+CREATE POLICY "kbfb_tasks_admin_only" ON public.kbfb_tasks
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());
