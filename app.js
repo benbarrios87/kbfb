@@ -8602,11 +8602,11 @@ initializeLederutfordring();
 
 /* ---------- OPPGAVER ---------- */
 
-const TASK_PROJECTS = ["Inbox", "Ledermøte", "Styremøte", "Foreldremøte", "Personalmøte"];
+const TASK_PROJECTS = ["Inbox", "Ledermøte", "Styremøte", "Foreldremøte", "Personalmøte", "SU-møte"];
 
 // Møtepunkt-mappene er huskelapper for neste møte, ikke oppgaver som skal
 // prioriteres seg imellom - derfor skjules prioritetsvalg/gruppering der.
-const TASK_MEETING_PROJECTS = ["Ledermøte", "Styremøte", "Foreldremøte", "Personalmøte"];
+const TASK_MEETING_PROJECTS = ["Ledermøte", "Styremøte", "Foreldremøte", "Personalmøte", "SU-møte"];
 
 // Matches Todoist's own P1-P4 colors, since that's the convention already
 // familiar from the tool this page replaces - P1 red, P2 orange, P3 blue,
