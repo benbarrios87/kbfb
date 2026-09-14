@@ -457,6 +457,19 @@ select {
   color: white;
 }
 
+.nature-sidebar .nav-folder summary {
+  color: #f4fff0;
+}
+
+.nature-sidebar .nav-folder summary:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: white;
+}
+
+.nature-sidebar .nav-folder summary::after {
+  color: #dcebd7;
+}
+
 .forest-hero {
   background:
     linear-gradient(120deg, rgba(28, 73, 43, 0.92), rgba(72, 111, 60, 0.78)),
