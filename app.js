@@ -168,11 +168,12 @@ function colorForEmployee(employee) {
   return employeeColorPalette[index % employeeColorPalette.length].value;
 }
 
-// A darker shade of an employee's own row color, used on their shift
-// cells - so the cell you're looking for reads as "Mari's blue, but
-// darker" instead of a generic neutral gray, without having to check
-// the name column on the left.
-function darkenEmployeeColor(hex, amount = 0.3) {
+// A darker shade of an employee's own row color, used on their name and
+// shift cells - so the cell you're looking for reads as "Mari's blue,
+// but darker" instead of a generic neutral gray, without having to
+// check the name column on the left. Darkened enough that white text
+// reads clearly on top of it.
+function darkenEmployeeColor(hex, amount = 0.55) {
   const clean = (hex || "").replace("#", "");
   if (clean.length !== 6) return "";
   const num = parseInt(clean, 16);
@@ -1398,11 +1399,15 @@ function colorShiftSelect(select) {
   select.className = isUnavailable ? "shift-select free" : "shift-select neutral";
 
   select.style.background = "";
+  select.style.color = "";
   if (!isUnavailable) {
     const row = select.closest("tr[data-employee]");
     const employee = row && employeesCache.find(item => item.name === row.dataset.employee);
     const color = colorForEmployee(employee);
-    if (color) select.style.background = darkenEmployeeColor(color);
+    if (color) {
+      select.style.background = darkenEmployeeColor(color);
+      select.style.color = "white";
+    }
   }
 }
 
@@ -1471,7 +1476,10 @@ function buildShiftDropdowns() {
       if (!isUnavailable) {
         const employee = employeesCache.find(item => item.name === row.dataset.employee);
         const color = colorForEmployee(employee);
-        if (color) badge.style.background = darkenEmployeeColor(color);
+        if (color) {
+          badge.style.background = darkenEmployeeColor(color);
+          badge.style.color = "white";
+        }
       }
       cell.appendChild(badge);
       return;
