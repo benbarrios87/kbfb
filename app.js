@@ -8602,7 +8602,11 @@ initializeLederutfordring();
 
 /* ---------- OPPGAVER ---------- */
 
-const TASK_PROJECTS = ["Inbox", "Ledermøte", "Styremøte", "Foreldremøte", "Hus og hjem", "Personalmøte"];
+const TASK_PROJECTS = ["Inbox", "Ledermøte", "Styremøte", "Foreldremøte", "Personalmøte"];
+
+// Møtepunkt-mappene er huskelapper for neste møte, ikke oppgaver som skal
+// prioriteres seg imellom - derfor skjules prioritetsvalg/gruppering der.
+const TASK_MEETING_PROJECTS = ["Ledermøte", "Styremøte", "Foreldremøte", "Personalmøte"];
 
 // Matches Todoist's own P1-P4 colors, since that's the convention already
 // familiar from the tool this page replaces - P1 red, P2 orange, P3 blue,
@@ -8650,23 +8654,37 @@ function renderTaskLists() {
 
   const todayKey = toDateKey(new Date());
 
+  const taskPriorityLabels = { 1: "Prioritet 1", 2: "Prioritet 2", 3: "Prioritet 3" };
+  const showPriority = !TASK_MEETING_PROJECTS.includes(taskSelectedProject);
+
+  function renderTaskRow(t) {
+    const color = showPriority ? TASK_PRIORITY_COLORS[t.priority] : null;
+    const isOverdue = t.due_date && t.due_date < todayKey;
+    return `
+      <div class="summary-item task-row" style="${color ? `border-left-color:${color};` : ""}">
+        <label class="task-row-check">
+          <input type="checkbox" data-task-toggle-id="${t.id}" />
+          ${showPriority ? `<span class="task-priority-dot" style="${color ? `border-color:${color}; background:${color};` : ""}"></span>` : ""}
+          <strong>${escapeHtml(t.text)}</strong>
+        </label>
+        ${t.note ? `<span class="muted">${escapeHtml(t.note)}</span>` : ""}
+        ${t.due_date ? `<span class="task-due${isOverdue ? " task-due-overdue" : ""}">${formatNorwegianDate(t.due_date)}</span>` : ""}
+        <button class="kitchen-delete" type="button" data-task-delete-id="${t.id}">Slett</button>
+      </div>
+    `;
+  }
+
   activeEl.innerHTML = active.length
-    ? active.map(t => {
-      const color = TASK_PRIORITY_COLORS[t.priority];
-      const isOverdue = t.due_date && t.due_date < todayKey;
-      return `
-        <div class="summary-item task-row">
-          <label class="task-row-check">
-            <input type="checkbox" data-task-toggle-id="${t.id}" />
-            <span class="task-priority-dot" style="${color ? `border-color:${color}; background:${color};` : ""}"></span>
-            <strong>${escapeHtml(t.text)}</strong>
-          </label>
-          ${t.note ? `<span class="muted">${escapeHtml(t.note)}</span>` : ""}
-          ${t.due_date ? `<span class="task-due${isOverdue ? " task-due-overdue" : ""}">${formatNorwegianDate(t.due_date)}</span>` : ""}
-          <button class="kitchen-delete" type="button" data-task-delete-id="${t.id}">Slett</button>
-        </div>
-      `;
-    }).join("")
+    ? (showPriority
+      ? [1, 2, 3, 4].map(p => {
+        const group = active.filter(t => t.priority === p);
+        if (!group.length) return "";
+        const heading = taskPriorityLabels[p]
+          ? `<h3 class="task-priority-heading" style="color:${TASK_PRIORITY_COLORS[p]};">${taskPriorityLabels[p]}</h3>`
+          : "";
+        return heading + group.map(renderTaskRow).join("");
+      }).join("")
+      : active.map(renderTaskRow).join(""))
     : `<p class="muted">Ingen aktive oppgaver i ${escapeHtml(taskSelectedProject)}.</p>`;
 
   completedEl.innerHTML = completed.length
@@ -8729,6 +8747,13 @@ async function initializeTasks() {
   await loadTasksFromSupabase();
   renderTaskLists();
 
+  const priorityField = document.getElementById("taskPriorityField");
+
+  function updateTaskPriorityFieldVisibility() {
+    if (priorityField) priorityField.style.display = TASK_MEETING_PROJECTS.includes(taskSelectedProject) ? "none" : "";
+  }
+  updateTaskPriorityFieldVisibility();
+
   const projectToggle = document.getElementById("taskProjectToggle");
   if (projectToggle) {
     projectToggle.querySelectorAll("button").forEach(button => {
@@ -8736,6 +8761,7 @@ async function initializeTasks() {
         projectToggle.querySelectorAll("button").forEach(b => b.className = "secondary-btn");
         button.className = "primary-btn";
         taskSelectedProject = button.dataset.project;
+        updateTaskPriorityFieldVisibility();
         renderTaskLists();
       });
     });
@@ -8749,7 +8775,9 @@ async function initializeTasks() {
       const text = document.getElementById("taskText").value.trim();
       const note = document.getElementById("taskNote").value.trim() || null;
       const dueDate = document.getElementById("taskDueDate").value || null;
-      const priority = Number(document.getElementById("taskPriority").value);
+      const priority = TASK_MEETING_PROJECTS.includes(taskSelectedProject)
+        ? 4
+        : Number(document.getElementById("taskPriority").value);
 
       const { error } = await supabaseClient.from("kbfb_tasks").insert([{
         project: taskSelectedProject,

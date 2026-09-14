@@ -2888,6 +2888,20 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   gap: 4px;
   position: relative;
   padding-right: 70px;
+  padding-left: 12px;
+  border-left: 4px solid transparent;
+}
+
+.task-priority-heading {
+  font-size: 0.78em;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin: 16px 0 2px;
+}
+
+.task-priority-heading:first-child {
+  margin-top: 0;
 }
 
 .task-row-check {
