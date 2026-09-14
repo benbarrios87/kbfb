@@ -101,17 +101,23 @@
   Til dato
   <input id="subEndDate" type="date" />
 </label>
-          <label>
+
+          <label class="wide-field checkbox-field">
+            <input type="checkbox" id="subIsSick" />
+            🤒 Syk (ingen vakt denne dagen)
+          </label>
+
+          <label id="subStartField">
             Fra
             <input id="subStart" type="time" value="08:30" required />
           </label>
 
-          <label>
+          <label id="subEndField">
             Til
             <input id="subEnd" type="time" value="16:00" required />
           </label>
 
-          <label>
+          <label id="subDepartmentField">
             Avdeling
             <select id="subDepartment">
               <option value="Sommerfuglen">Sommerfuglen</option>

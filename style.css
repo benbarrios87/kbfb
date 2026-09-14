@@ -846,6 +846,20 @@ details[open].arsplan-section summary .details-toggle-icon {
   color: var(--muted);
 }
 
+.checkbox-field {
+  display: flex !important;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px !important;
+}
+
+.checkbox-field input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--green-dark);
+  cursor: pointer;
+}
+
 .form-grid input,
 .form-grid select {
   width: 100%;

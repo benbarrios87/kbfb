@@ -3082,6 +3082,7 @@ const subTableBody = document.getElementById("subTableBody");
 const subSummary = document.getElementById("subSummary");
 const clearSubs = document.getElementById("clearSubs");
 const subEndDate = document.getElementById("subEndDate");
+const subIsSick = document.getElementById("subIsSick");
 
 const subPersonForm = document.getElementById("subPersonForm");
 const subPersonName = document.getElementById("subPersonName");
@@ -3212,7 +3213,8 @@ async function saveSubToSupabase(sub) {
       start_time: sub.start_time,
       end_time: sub.end_time,
       hours: sub.hours,
-      note: sub.note
+      note: sub.note,
+      is_sick: !!sub.is_sick
     }]);
 
   if (error) {
@@ -3296,8 +3298,8 @@ function renderSubs() {
       row.innerHTML = `
         <td>${formatNorwegianDate(sub.date)}</td>
         <td>${renderVikarBadge(sub.name)}</td>
-        <td>${escapeHtml(sub.department)}</td>
-        <td>${sub.start_time || ""}–${sub.end_time || ""}</td>
+        <td>${sub.is_sick ? "🤒 Syk" : escapeHtml(sub.department)}</td>
+        <td>${sub.is_sick ? "–" : `${sub.start_time || ""}–${sub.end_time || ""}`}</td>
         <td>${sub.hours || 0}</td>
         <td>${escapeHtml(sub.note)}</td>
         <td>${isAdmin ? `
@@ -3486,11 +3488,33 @@ if (subDate) {
   subDate.value = toDateKey(new Date());
 }
 
+// Syk-avkrysningen skjuler Fra/Til/Avdeling siden de ikke gir mening for
+// en dag vikaren ikke jobbet - Fra/Til beholder required=false mens
+// skjult, så submit ikke blokkeres av felt brukeren ikke ser.
+function updateSubSickFieldVisibility() {
+  const isSick = !!(subIsSick && subIsSick.checked);
+  const startField = document.getElementById("subStartField");
+  const endField = document.getElementById("subEndField");
+  const departmentField = document.getElementById("subDepartmentField");
+
+  if (startField) startField.style.display = isSick ? "none" : "";
+  if (endField) endField.style.display = isSick ? "none" : "";
+  if (departmentField) departmentField.style.display = isSick ? "none" : "";
+  if (subStart) subStart.required = !isSick;
+  if (subEnd) subEnd.required = !isSick;
+}
+
+if (subIsSick) {
+  subIsSick.addEventListener("change", updateSubSickFieldVisibility);
+}
+updateSubSickFieldVisibility();
+
 if (subForm) {
   subForm.addEventListener("submit", async event => {
     event.preventDefault();
 
-    const hours = calculateHours(subStart.value, subEnd.value);
+    const isSick = !!(subIsSick && subIsSick.checked);
+    const hours = isSick ? 0 : calculateHours(subStart.value, subEnd.value);
 
     const startDate = subDate.value;
     const endDate = subEndDate.value || subDate.value;
@@ -3502,15 +3526,17 @@ if (subForm) {
       const sub = {
         name: subName.value,
         date,
-        department: subDepartment.value,
+        department: isSick ? "Annet" : subDepartment.value,
         start_time: subStart.value,
         end_time: subEnd.value,
         hours,
-        note: subNote.value.trim()
+        note: subNote.value.trim(),
+        is_sick: isSick
       };
 
       // One vakt per vikar per dag - even if the time/avdeling differs from
       // an existing entry, it's still a double-booking on the same day.
+      // Also stops someone from being marked both syk and on vakt same dag.
       const duplicate = subsCache.some(existing =>
         existing.name === sub.name &&
         existing.date === sub.date
@@ -3540,6 +3566,7 @@ if (subForm) {
     subEndDate.value = "";
     subStart.value = "08:30";
     subEnd.value = "16:00";
+    updateSubSickFieldVisibility();
 
     renderSubs();
   });
@@ -3930,6 +3957,7 @@ function renderOvertimeSummary() {
   if (!overtimeSummary) return;
 
   populateOvertimeMonthFilter();
+  renderVikarSickDaysSummary();
 
   const selectedMonth = overtimeMonthFilter?.value || getCurrentMonthKey();
 
@@ -3967,6 +3995,56 @@ function renderOvertimeSummary() {
       </div>
     `).join("")}
   `;
+}
+
+let vikarSickDaysCache = [];
+
+// Vikarer don't go through kbfb_absences like faste ansatte - there's no
+// Ferie/avspasering for them. A "Syk"-avkrysning on the vikarvakt-skjema
+// (vikarer.html) is the only place this gets logged, so it needs its own
+// fetch here rather than reusing absencesCache.
+async function loadVikarSickDaysFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_sub_hours")
+    .select("*")
+    .eq("is_sick", true)
+    .order("date", { ascending: false });
+
+  if (error) {
+    console.error("Kunne ikke hente sykedager for vikarer:", error);
+    return [];
+  }
+
+  vikarSickDaysCache = data || [];
+  return vikarSickDaysCache;
+}
+
+function renderVikarSickDaysSummary() {
+  const container = document.getElementById("vikarSickDaysSummary");
+  if (!container) return;
+
+  const selectedMonth = overtimeMonthFilter?.value || getCurrentMonthKey();
+  const records = vikarSickDaysCache.filter(r => r.date && r.date.slice(0, 7) === selectedMonth);
+
+  if (!records.length) {
+    container.innerHTML = `<p class="muted">Ingen registrerte sykedager for vikarer i ${formatMonth(selectedMonth)}.</p>`;
+    return;
+  }
+
+  const grouped = {};
+  records.forEach(r => {
+    if (!grouped[r.name]) grouped[r.name] = [];
+    grouped[r.name].push(r);
+  });
+
+  container.innerHTML = Object.entries(grouped).map(([name, entries]) => `
+    <div class="summary-item">
+      <strong>${escapeHtml(name)} · ${entries.length} dag${entries.length === 1 ? "" : "er"}</strong>
+      <span>${entries
+        .map(e => `${formatNorwegianDate(e.date)}${e.note ? ` · ${escapeHtml(e.note)}` : ""}`)
+        .join(" · ")}</span>
+    </div>
+  `).join("");
 }
 
 // Anonymous Gregorian algorithm (Computus) - Easter moves every year, so
@@ -4828,6 +4906,7 @@ async function initializeAbsences() {
 
   await loadAbsencesFromSupabase();
   populateAbsenceYearFilter();
+  await loadVikarSickDaysFromSupabase();
 
   renderAbsences();
 }

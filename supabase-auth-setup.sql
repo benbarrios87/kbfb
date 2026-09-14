@@ -1468,3 +1468,16 @@ CREATE POLICY "kbfb_leader_challenge_log_admin_only" ON public.kbfb_leader_chall
   FOR ALL TO authenticated
   USING (public.kbfb_is_admin())
   WITH CHECK (public.kbfb_is_admin());
+
+-- =========================================================
+-- STEP 44: kbfb_sub_hours.is_sick - vikarer don't go through kbfb_absences
+--   (no Ferie/avspasering for them), so there was no way at all to log a
+--   vikar sick day. A "Syk"-avkrysning on the eksisterende vikarvakt-
+--   skjema (vikarer.html) sets this flag instead of hours; Ferie/
+--   avspasering shows a "Sykedager (vikarer)" summary next to Overtid,
+--   reading straight from kbfb_sub_hours. No RLS change needed - the
+--   table's existing policies (set up directly in Supabase, never
+--   logged here) already cover this column.
+-- =========================================================
+
+ALTER TABLE public.kbfb_sub_hours ADD COLUMN IF NOT EXISTS is_sick boolean NOT NULL DEFAULT false;
