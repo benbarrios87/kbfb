@@ -132,9 +132,12 @@ async function loadEventsFromSupabase() {
 }
 let employeesCache = [];
 
-// Same palette as the vikar color picker (vikarer.html) - one color per
-// person, shown on their vaktplan row. Kept wide (16) since a small
-// barnehage staff list still needs every person to be visually distinct.
+// Same palette as the vikar color picker (vikarer.html), but employees
+// don't pick their own - colorForEmployee() below assigns one to each
+// active employee automatically (by their position in employeesCache),
+// so every row/name/shift stays visually distinct without anyone having
+// to manage it. Kept wide (16) since a small barnehage staff list still
+// needs every person to be visually distinct.
 const employeeColorPalette = [
   { value: "#fde68a", label: "Gul" },
   { value: "#fed7aa", label: "Oransje" },
@@ -153,6 +156,17 @@ const employeeColorPalette = [
   { value: "#fef08a", label: "Sand" },
   { value: "#cbd5e1", label: "Grå" }
 ];
+
+// Deterministic, no picking required: each active employee's position in
+// the (department, name) sorted list they were loaded in picks their
+// color, so everyone gets a distinct one automatically and it stays the
+// same across reloads as long as the active staff list doesn't change.
+function colorForEmployee(employee) {
+  if (!employee) return "";
+  const index = employeesCache.indexOf(employee);
+  if (index === -1) return "";
+  return employeeColorPalette[index % employeeColorPalette.length].value;
+}
 
 // A darker shade of an employee's own row color, used on their shift
 // cells - so the cell you're looking for reads as "Mari's blue, but
@@ -1387,7 +1401,8 @@ function colorShiftSelect(select) {
   if (!isUnavailable) {
     const row = select.closest("tr[data-employee]");
     const employee = row && employeesCache.find(item => item.name === row.dataset.employee);
-    if (employee?.color) select.style.background = darkenEmployeeColor(employee.color);
+    const color = colorForEmployee(employee);
+    if (color) select.style.background = darkenEmployeeColor(color);
   }
 }
 
@@ -1397,19 +1412,26 @@ function colorShiftSelect(select) {
 // to one person, so they're left uncolored.
 //
 // The row background is the soft/pastel version of their color; the name
-// itself is colored with the same darker shade used on their shift cells
-// (colorShiftSelect), so the name and the shifts read as the same color
-// and the row background is just the paler frame around them.
+// and the avatar ring are colored with the same darker shade used on
+// their shift cells (colorShiftSelect), so the name, avatar and shifts
+// read as the same color and the row background is just the paler frame
+// around them.
 function applyEmployeeRowColors() {
   document.querySelectorAll(".department-table tr[data-employee]").forEach(row => {
     const name = row.dataset.employee;
     if (name === "Vikar" || name === "Foreldreinnsats" || name === "Ekstra") return;
 
     const employee = employeesCache.find(item => item.name === name);
-    row.style.background = employee?.color || "";
+    const color = colorForEmployee(employee);
+    const darkColor = color ? darkenEmployeeColor(color) : "";
+
+    row.style.background = color;
 
     const personCell = row.querySelector(".person");
-    if (personCell) personCell.style.color = employee?.color ? darkenEmployeeColor(employee.color) : "";
+    if (personCell) personCell.style.color = darkColor;
+
+    const avatar = personCell?.querySelector(".avatar");
+    if (avatar) avatar.style.border = darkColor ? `2px solid ${darkColor}` : "";
   });
 }
 
@@ -1448,7 +1470,8 @@ function buildShiftDropdowns() {
       badge.textContent = defaultValue || "—";
       if (!isUnavailable) {
         const employee = employeesCache.find(item => item.name === row.dataset.employee);
-        if (employee?.color) badge.style.background = darkenEmployeeColor(employee.color);
+        const color = colorForEmployee(employee);
+        if (color) badge.style.background = darkenEmployeeColor(color);
       }
       cell.appendChild(badge);
       return;
@@ -5059,14 +5082,6 @@ function renderAdminEmployeeTable() {
       </td>
       <td>
         <input type="text" class="admin-field" data-id="${employee.id}" data-field="department" value="${escapeHtml(employee.department)}" style="width: 130px;" />
-      </td>
-      <td>
-        <select class="admin-field" data-id="${employee.id}" data-field="color" style="width: 110px; background: ${employee.color || "white"};">
-          <option value="">Ingen</option>
-          ${employeeColorPalette.map(c => `
-            <option value="${c.value}" ${employee.color === c.value ? "selected" : ""}>${c.label}</option>
-          `).join("")}
-        </select>
       </td>
       <td>
         <input type="date" class="admin-field" data-id="${employee.id}" data-field="birthday" value="${employee.birthday || ""}" style="width: 150px;" />
