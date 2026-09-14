@@ -1395,6 +1395,11 @@ function colorShiftSelect(select) {
 // color instead of shift-type coloring - easier to scan a person's week
 // across the row. Support rows (Vikar/Foreldreinnsats/Ekstra) aren't tied
 // to one person, so they're left uncolored.
+//
+// The row background is the soft/pastel version of their color; the name
+// itself is colored with the same darker shade used on their shift cells
+// (colorShiftSelect), so the name and the shifts read as the same color
+// and the row background is just the paler frame around them.
 function applyEmployeeRowColors() {
   document.querySelectorAll(".department-table tr[data-employee]").forEach(row => {
     const name = row.dataset.employee;
@@ -1402,6 +1407,9 @@ function applyEmployeeRowColors() {
 
     const employee = employeesCache.find(item => item.name === name);
     row.style.background = employee?.color || "";
+
+    const personCell = row.querySelector(".person");
+    if (personCell) personCell.style.color = employee?.color ? darkenEmployeeColor(employee.color) : "";
   });
 }
 
