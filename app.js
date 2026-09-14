@@ -154,6 +154,20 @@ const employeeColorPalette = [
   { value: "#cbd5e1", label: "Grå" }
 ];
 
+// A darker shade of an employee's own row color, used on their shift
+// cells - so the cell you're looking for reads as "Mari's blue, but
+// darker" instead of a generic neutral gray, without having to check
+// the name column on the left.
+function darkenEmployeeColor(hex, amount = 0.3) {
+  const clean = (hex || "").replace("#", "");
+  if (clean.length !== 6) return "";
+  const num = parseInt(clean, 16);
+  const r = Math.round(((num >> 16) & 255) * (1 - amount));
+  const g = Math.round(((num >> 8) & 255) * (1 - amount));
+  const b = Math.round((num & 255) * (1 - amount));
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 async function loadEmployeesFromSupabase() {
   const { data, error } = await supabaseClient
     .from("kbfb_employees")
@@ -1362,6 +1376,13 @@ function colorShiftSelect(select) {
   // glance regardless of whose row it's on, so that one signal survives.
   const isUnavailable = getShiftSelectClass(select.value) === "free";
   select.className = isUnavailable ? "shift-select free" : "shift-select neutral";
+
+  select.style.background = "";
+  if (!isUnavailable) {
+    const row = select.closest("tr[data-employee]");
+    const employee = row && employeesCache.find(item => item.name === row.dataset.employee);
+    if (employee?.color) select.style.background = darkenEmployeeColor(employee.color);
+  }
 }
 
 // Whole rows on the vaktplan department tables show the employee's own
@@ -1411,6 +1432,10 @@ function buildShiftDropdowns() {
       const isUnavailable = getShiftSelectClass(defaultValue) === "free";
       badge.className = isUnavailable ? "badge free" : "badge neutral";
       badge.textContent = defaultValue || "—";
+      if (!isUnavailable) {
+        const employee = employeesCache.find(item => item.name === row.dataset.employee);
+        if (employee?.color) badge.style.background = darkenEmployeeColor(employee.color);
+      }
       cell.appendChild(badge);
       return;
     }
