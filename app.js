@@ -184,8 +184,14 @@ async function loadEmployeesFromSupabase() {
   employeesCache = data || [];
 
   // buildShiftDropdowns() may already have run (with an empty cache) before
-  // this resolves - re-apply row colors now that we actually know them.
-  if (typeof applyEmployeeRowColors === "function") applyEmployeeRowColors();
+  // this resolves - rebuild it now (which also re-applies row colors) so
+  // the row AND shift-cell colors both reflect the employees we just
+  // learned about, instead of only the row background catching up.
+  if (typeof buildShiftDropdowns === "function") {
+    buildShiftDropdowns();
+  } else if (typeof applyEmployeeRowColors === "function") {
+    applyEmployeeRowColors();
+  }
 
   return employeesCache;
 }
