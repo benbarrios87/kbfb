@@ -1320,20 +1320,27 @@ async function saveShiftToSupabase(shift) {
 // that's an edit on the Ferie/avspasering-siden afterward, same as any
 // other correction there.
 async function ensureSickAbsenceForShift(name, dateKey) {
+  // Checked by date range, not just an exact start_date match - a
+  // manually entered multi-day Egenmelding/Sykemelding still needs to
+  // "cover" every day in it, otherwise a day in the middle of that range
+  // looked uncovered here and got a second, overlapping record created
+  // on top of the one already covering it.
   const { data: existing, error: selectError } = await supabaseClient
     .from("kbfb_absences")
-    .select("id")
+    .select("id, start_date, end_date")
     .eq("name", name)
-    .eq("start_date", dateKey)
-    .in("type", ["Egenmelding", "Sykemelding"])
-    .limit(1);
+    .in("type", ["Egenmelding", "Sykemelding"]);
 
   if (selectError) {
     console.error("Kunne ikke sjekke eksisterende fravær:", selectError);
     return;
   }
 
-  if (existing && existing.length) return;
+  const alreadyCovered = (existing || []).some(record =>
+    dateKey >= record.start_date && dateKey <= (record.end_date || record.start_date)
+  );
+
+  if (alreadyCovered) return;
 
   const { error: insertError } = await supabaseClient.from("kbfb_absences").insert([{
     name,
