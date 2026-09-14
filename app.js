@@ -8279,7 +8279,19 @@ initializeKjorebok();
 
 let leaderChallengesCache = [];
 let leaderChallengeLogCache = [];
-let leaderChallengeViewOffset = 0; // 0 = today, +N/-N = browsing other days
+let leaderChallengeViewDate = new Date(); // may land on a weekend - display handles that
+
+function isWeekday(date) {
+  const day = date.getDay();
+  return day !== 0 && day !== 6;
+}
+
+// Steps to the next weekday in the given direction (+1/-1), skipping
+// straight over a weekend either way (Fri -> Mon going forward, etc.).
+function stepToAdjacentWeekday(date, direction) {
+  const next = addDays(date, direction);
+  return isWeekday(next) ? next : stepToAdjacentWeekday(next, direction);
+}
 
 const LEADER_LEVELS = [
   { min: 0, title: "Fersk leder", icon: "🌱" },
@@ -8301,27 +8313,37 @@ function getLeaderLevel(totalCompleted) {
 
 // Deterministic day -> challenge index off a fixed epoch (not "today minus
 // install date"), so the rotation is stable across reloads/devices and
-// cycles through all 150 before repeating.
+// cycles through all 150 before repeating. Weekday-only: reuses
+// getWeekdaysBetween, which already skips Sat/Sun entirely, so a weekend
+// date naturally lands on the same index as the Friday before it - the
+// rotation simply doesn't advance over the weekend, it just resumes
+// Monday where Friday left off.
 function leaderChallengeIndexForDate(date, totalCount) {
-  const epoch = new Date(2026, 0, 1);
-  const daysSinceEpoch = Math.floor((date - epoch) / 86400000);
-  return ((daysSinceEpoch % totalCount) + totalCount) % totalCount;
+  const epoch = new Date(2026, 0, 1); // a Thursday - a weekday
+  const weekdayCount = getWeekdaysBetween(toDateKey(epoch), toDateKey(date)).length;
+  return ((weekdayCount - 1) % totalCount + totalCount) % totalCount;
 }
 
-// Counts backward from today (or yesterday, if today isn't marked done
-// yet - an unclicked "today" shouldn't zero out an otherwise-intact streak).
+// Counts backward through consecutive completed WEEKDAYS. If today is a
+// weekday and not done yet, starts from the previous weekday instead (an
+// unclicked "today" shouldn't zero out an otherwise-intact streak). If
+// today is a weekend, starts from Friday - there's no challenge to have
+// missed on a weekend, so it shouldn't break the streak either.
 function computeLeaderStreak() {
   const doneDates = new Set(leaderChallengeLogCache.map(l => l.challenge_date));
-  let streak = 0;
-  let cursor = new Date();
+  const today = new Date();
 
-  if (!doneDates.has(toDateKey(cursor))) {
-    cursor = addDays(cursor, -1);
+  let cursor;
+  if (isWeekday(today)) {
+    cursor = doneDates.has(toDateKey(today)) ? today : stepToAdjacentWeekday(today, -1);
+  } else {
+    cursor = stepToAdjacentWeekday(today, -1);
   }
 
+  let streak = 0;
   while (doneDates.has(toDateKey(cursor))) {
     streak++;
-    cursor = addDays(cursor, -1);
+    cursor = stepToAdjacentWeekday(cursor, -1);
   }
 
   return streak;
@@ -8382,19 +8404,27 @@ function renderLeaderChallengeDisplay() {
   const doneNote = document.getElementById("challengeDoneNote");
   if (!textEl || !leaderChallengesCache.length) return;
 
-  const viewDate = addDays(new Date(), leaderChallengeViewOffset);
+  const viewDate = leaderChallengeViewDate;
+  const viewDateKey = toDateKey(viewDate);
+  const isToday = viewDateKey === toDateKey(new Date());
+
+  if (dayLabelEl) {
+    dayLabelEl.textContent = isToday ? "I dag" : formatNorwegianDate(viewDateKey);
+  }
+
+  if (!isWeekday(viewDate)) {
+    if (categoryEl) categoryEl.textContent = "";
+    textEl.textContent = "Vær en god leder hjemme, du 🌿";
+    if (doneBtn) doneBtn.style.display = "none";
+    if (doneNote) doneNote.style.display = "none";
+    return;
+  }
+
   const index = leaderChallengeIndexForDate(viewDate, leaderChallengesCache.length);
   const challenge = leaderChallengesCache[index];
 
   textEl.textContent = challenge.text;
   if (categoryEl) categoryEl.textContent = challenge.category || "";
-
-  const viewDateKey = toDateKey(viewDate);
-  const isToday = leaderChallengeViewOffset === 0;
-
-  if (dayLabelEl) {
-    dayLabelEl.textContent = isToday ? "I dag" : formatNorwegianDate(viewDateKey);
-  }
 
   const alreadyDone = leaderChallengeLogCache.some(l => l.challenge_date === viewDateKey);
 
@@ -8461,7 +8491,7 @@ async function initializeLederutfordring() {
   const prevBtn = document.getElementById("challengePrevBtn");
   if (prevBtn) {
     prevBtn.addEventListener("click", () => {
-      leaderChallengeViewOffset -= 1;
+      leaderChallengeViewDate = stepToAdjacentWeekday(leaderChallengeViewDate, -1);
       renderLeaderChallengeDisplay();
     });
   }
@@ -8469,7 +8499,7 @@ async function initializeLederutfordring() {
   const nextBtn = document.getElementById("challengeNextBtn");
   if (nextBtn) {
     nextBtn.addEventListener("click", () => {
-      leaderChallengeViewOffset += 1;
+      leaderChallengeViewDate = stepToAdjacentWeekday(leaderChallengeViewDate, 1);
       renderLeaderChallengeDisplay();
     });
   }
