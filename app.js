@@ -3832,7 +3832,10 @@ const shiftTypesFromAbsence = {
   "Permisjon med lønn": "PERM",
   "Permisjon uten lønn": "PERM",
   "Velferdspermisjon": "PERM",
-  "Ønsker å avspasere": "AVS"
+  "Ønsker å avspasere": "AVS",
+  "Egenmelding": "SYK",
+  "Sykemelding": "SYK",
+  "Omsorgsdager": "SYK"
 };
 
 async function upsertShiftForApproval(week_start, department, employee, day_index, shift_value) {
@@ -4810,6 +4813,17 @@ if (absenceForm) {
 
     if (!isEditing && record.type === "Ønsker å avspasere") {
       notifyDepartmentLeadersOfAbsenceRequest(record);
+    }
+
+    // Egenmelding/Sykemelding/Omsorgsdager hopper over godkjenning (alltid
+    // status "Registrert", se noApprovalNeededTypes), så de går aldri
+    // gjennom Godkjenn-knappen som ellers trigger applyApprovedAbsenceTo
+    // Shifts - gjøres her i stedet, kun ved ny føring. Gjør sykdom-
+    // registrering toveis: uansett om SYK velges på vaktplanen (skriver
+    // Egenmelding hit) eller sykdom logges her først (skriver SYK dit),
+    // blir begge sider riktige.
+    if (!isEditing && sickAbsenceTypes.includes(record.type)) {
+      await applyApprovedAbsenceToShifts(record);
     }
 
     // Redigering av en Overtid/Avspasering-føring som har en tilhørende
