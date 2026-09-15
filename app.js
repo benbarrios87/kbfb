@@ -5093,6 +5093,14 @@ function renderAdminEmployeeTable() {
     <tr>
       <td><strong>${escapeHtml(employee.name)}</strong></td>
       <td>
+        <label class="secondary-btn admin-avatar-upload-label" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+          ${avatarSpanFor(employee.name, "avatar-tiny")}
+          <span>Last opp</span>
+          <input type="file" accept="image/*" class="admin-avatar-upload-input" data-id="${employee.id}" data-name="${escapeHtml(employee.name)}" style="display: none;" />
+        </label>
+        <p class="muted admin-avatar-upload-status" data-status-for="${employee.id}" style="margin: 4px 0 0; font-size: 0.8rem;"></p>
+      </td>
+      <td>
         <input type="text" class="admin-field" data-id="${employee.id}" data-field="role" value="${escapeHtml(employee.role)}" style="width: 140px;" />
       </td>
       <td>
@@ -5172,6 +5180,21 @@ function renderAdminEmployeeTable() {
 
       await updateEmployeeField(id, { [key]: value === "" ? null : value });
       await loadAllEmployeesForAdmin();
+    });
+  });
+
+  document.querySelectorAll(".admin-avatar-upload-input").forEach(input => {
+    input.addEventListener("change", async () => {
+      const file = input.files[0];
+      if (!file) return;
+
+      const id = input.dataset.id;
+      const name = input.dataset.name;
+      const statusEl = document.querySelector(`.admin-avatar-upload-status[data-status-for="${id}"]`);
+      const labelEl = input.closest("label");
+
+      await adminUploadAvatarForEmployee(id, name, file, labelEl, statusEl);
+      input.value = "";
     });
   });
 
@@ -6535,6 +6558,83 @@ function applyEmployeeAvatarsToGrid() {
     avatarSpan.style.backgroundImage = `url(${url})`;
     avatarSpan.textContent = "";
   });
+}
+
+// Admin quick-upload for someone else's avatar (see the "Bilde" column in
+// Admin > Ansatte) - for people who keep forgetting to set their own photo
+// under "Min konto". No interactive crop step like that one has - just
+// auto center-crops to a square, same framing math as that cropper's
+// untouched default view, so it still looks right without extra fiddling.
+async function adminUploadAvatarForEmployee(employeeId, employeeName, file, labelEl, statusEl) {
+  if (statusEl) statusEl.textContent = "Laster opp...";
+
+  const blob = await new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 280;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        const baseScale = Math.max(size / img.width, size / img.height);
+        const drawW = img.width * baseScale;
+        const drawH = img.height * baseScale;
+        ctx.drawImage(img, (size - drawW) / 2, (size - drawH) / 2, drawW, drawH);
+        canvas.toBlob(resolve, "image/png");
+      };
+      img.onerror = () => resolve(null);
+      img.src = reader.result;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+
+  if (!blob) {
+    if (statusEl) statusEl.textContent = "Kunne ikke lese bildet.";
+    return;
+  }
+
+  const filePath = `${employeeId}.png`;
+
+  const { error: uploadError } = await supabaseClient.storage
+    .from("avatars")
+    .upload(filePath, blob, { upsert: true, contentType: "image/png" });
+
+  if (uploadError) {
+    console.error("Kunne ikke laste opp bilde:", uploadError);
+    if (statusEl) statusEl.textContent = "Kunne ikke laste opp bilde.";
+    return;
+  }
+
+  const { data: publicUrlData } = supabaseClient.storage
+    .from("avatars")
+    .getPublicUrl(filePath);
+
+  const publicUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+
+  const { error: rpcError } = await supabaseClient.rpc("kbfb_admin_update_avatar", {
+    target_employee_id: employeeId,
+    new_avatar_url: publicUrl
+  });
+
+  if (rpcError) {
+    console.error("Kunne ikke lagre bilde:", rpcError);
+    if (statusEl) statusEl.textContent = "Kunne ikke lagre bilde. Sjekk at du er logget inn som admin.";
+    return;
+  }
+
+  employeeAvatarCache[employeeName] = publicUrl;
+  applyEmployeeAvatarsToGrid();
+
+  const avatarEl = labelEl?.querySelector(".avatar");
+  if (avatarEl) {
+    avatarEl.style.backgroundImage = `url(${publicUrl})`;
+    avatarEl.textContent = "";
+  }
+
+  if (statusEl) statusEl.textContent = "Bilde lagret ✓";
 }
 
 async function uploadAvatarBlob(blob) {

@@ -1510,3 +1510,25 @@ CREATE POLICY "kbfb_tasks_admin_only" ON public.kbfb_tasks
   FOR ALL TO authenticated
   USING (public.kbfb_is_admin())
   WITH CHECK (public.kbfb_is_admin());
+
+-- =========================================================
+-- STEP 46: kbfb_admin_update_avatar()
+--   kbfb_update_own_avatar() only ever let someone set their OWN photo
+--   (WHERE user_id = auth.uid()) - fine for self-service, but some people
+--   just never get around to it. This lets an admin set anyone's photo
+--   from Admin > Ansatte instead. The "avatars" storage bucket already
+--   accepts uploads to any path from any authenticated user (see STEP
+--   around kbfb_update_own_avatar), so only this RPC needed to change.
+-- =========================================================
+
+CREATE OR REPLACE FUNCTION public.kbfb_admin_update_avatar(target_employee_id uuid, new_avatar_url text)
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  UPDATE public.kbfb_employees
+  SET avatar_url = new_avatar_url
+  WHERE id = target_employee_id
+    AND public.kbfb_is_admin();
+$$;
