@@ -1532,3 +1532,13 @@ AS $$
   WHERE id = target_employee_id
     AND public.kbfb_is_admin();
 $$;
+
+-- =========================================================
+-- STEP 47: rename vaktkode "TJ" -> "Tjenestefri" (spelled out, matching
+--   the Tjenestefri absence type it already maps to), and migrate old
+--   saved shifts so past weeks don't suddenly show "ANNET / TJ" instead.
+--   Also added a new "SB" (Sykt barn) vaktkode, separate from "SYK" -
+--   both app.js changes, nothing else needed here for that part.
+-- =========================================================
+
+UPDATE public.kbfb_shifts SET shift_value = 'Tjenestefri' WHERE shift_value = 'TJ';

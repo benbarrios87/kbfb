@@ -1320,25 +1320,21 @@ async function saveShiftToSupabase(shift) {
   }
 }
 
-// Marking a vaktcelle "SYK" auto-logs it as Egenmelding on Ferie/
-// avspasering too, so sykefravær doesn't quietly go uncounted just
-// because nobody remembered the separate step. Checks for an existing
-// Egenmelding/Sykemelding row for that name+date first - re-selecting
-// SYK (or the cell re-rendering) must not create duplicates. Only ever
-// creates Egenmelding; if it turns into a longer, doctor-noted fravær,
-// that's an edit on the Ferie/avspasering-siden afterward, same as any
-// other correction there.
-async function ensureSickAbsenceForShift(name, dateKey) {
-  // Checked by date range, not just an exact start_date match - a
-  // manually entered multi-day Egenmelding/Sykemelding still needs to
-  // "cover" every day in it, otherwise a day in the middle of that range
-  // looked uncovered here and got a second, overlapping record created
-  // on top of the one already covering it.
+// Marking a vaktcelle "SYK" or "SB" auto-logs it as Egenmelding /
+// Omsorgsdager on Ferie/avspasering too, so fravær doesn't quietly go
+// uncounted just because nobody remembered the separate step. Checked by
+// date range, not just an exact start_date match - a manually entered
+// multi-day record still needs to "cover" every day in it, otherwise a
+// day in the middle of that range looked uncovered here and got a
+// second, overlapping record created on top of the one already covering
+// it. matchTypes is its own list (not always [type]) so SYK still treats
+// an existing Sykemelding as covering the day, same as before.
+async function ensureSickAbsenceForShift(name, dateKey, type = "Egenmelding", matchTypes = ["Egenmelding", "Sykemelding"]) {
   const { data: existing, error: selectError } = await supabaseClient
     .from("kbfb_absences")
     .select("id, start_date, end_date")
     .eq("name", name)
-    .in("type", ["Egenmelding", "Sykemelding"]);
+    .in("type", matchTypes);
 
   if (selectError) {
     console.error("Kunne ikke sjekke eksisterende fravær:", selectError);
@@ -1353,7 +1349,7 @@ async function ensureSickAbsenceForShift(name, dateKey) {
 
   const { error: insertError } = await supabaseClient.from("kbfb_absences").insert([{
     name,
-    type: "Egenmelding",
+    type,
     start_date: dateKey,
     end_date: dateKey,
     status: "Registrert",
@@ -1361,7 +1357,7 @@ async function ensureSickAbsenceForShift(name, dateKey) {
   }]);
 
   if (insertError) {
-    console.error("Kunne ikke opprette egenmelding fra vaktplanen:", insertError);
+    console.error(`Kunne ikke opprette ${type.toLowerCase()} fra vaktplanen:`, insertError);
   }
 }
 
@@ -1385,7 +1381,7 @@ const monthViewContent = document.getElementById("monthViewContent");
 let viewedWeekStart = getMonday(new Date());
 const realCurrentWeekStart = getMonday(new Date());
 
-const shiftValues = ["", "TV", "TM", "MV", "SV", "F", "AVS", "TJ", "PERM", "PLANDAG", "SYK", "MØTE", "ANNET"];
+const shiftValues = ["", "TV", "TM", "MV", "SV", "F", "AVS", "Tjenestefri", "PERM", "PLANDAG", "SYK", "SB", "MØTE", "ANNET"];
 
 function getCurrentWeekKey() {
   return toDateKey(viewedWeekStart);
@@ -1398,7 +1394,7 @@ function getShiftSelectClass(value) {
   if (value === "SM") return "sm";
   if (value === "SV") return "sv";
   if (value === "PT") return "pt";
-  if (value === "F" || value === "AVS" || value === "TJ" || value === "PERM" || value === "PLANDAG" || value === "SYK") return "free";
+  if (value === "F" || value === "AVS" || value === "TJ" || value === "Tjenestefri" || value === "PERM" || value === "PLANDAG" || value === "SYK" || value === "SB") return "free";
   if (value === "KONTOR" || value === "MØTE") return "office";
   if (value === "ANNET") return "custom";
   return "";
@@ -1681,9 +1677,13 @@ function buildShiftDropdowns() {
           shift_value: select.value
         });
 
-        if (select.value === "SYK") {
+        if (select.value === "SYK" || select.value === "SB") {
           const shiftDate = toDateKey(addDays(new Date(getCurrentWeekKey() + "T12:00:00"), dayIndex));
-          await ensureSickAbsenceForShift(row.dataset.employee, shiftDate);
+          if (select.value === "SYK") {
+            await ensureSickAbsenceForShift(row.dataset.employee, shiftDate);
+          } else {
+            await ensureSickAbsenceForShift(row.dataset.employee, shiftDate, "Omsorgsdager", ["Omsorgsdager"]);
+          }
         }
       }
 
@@ -1869,7 +1869,7 @@ async function updateWeekView() {
   renderResponsibilityBanner(toDateKey(viewedWeekStart));
 }
 
-const absenceShiftCodes = ["F", "AVS", "TJ", "PERM", "PLANDAG", "SYK"];
+const absenceShiftCodes = ["F", "AVS", "TJ", "Tjenestefri", "PERM", "PLANDAG", "SYK", "SB"];
 
 function updateShiftHeadcounts() {
   document.querySelectorAll(".department-table").forEach(table => {
@@ -3914,14 +3914,14 @@ async function updateAbsenceStatusInSupabase(id, status) {
 
 const shiftTypesFromAbsence = {
   "Ferie": "F",
-  "Tjenestefri": "TJ",
+  "Tjenestefri": "Tjenestefri",
   "Permisjon med lønn": "PERM",
   "Permisjon uten lønn": "PERM",
   "Velferdspermisjon": "PERM",
   "Ønsker å avspasere": "AVS",
   "Egenmelding": "SYK",
   "Sykemelding": "SYK",
-  "Omsorgsdager": "SYK"
+  "Omsorgsdager": "SB"
 };
 
 async function upsertShiftForApproval(week_start, department, employee, day_index, shift_value) {
