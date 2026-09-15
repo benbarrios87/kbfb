@@ -851,15 +851,15 @@ details[open].arsplan-section summary .details-toggle-icon {
 }
 
 .avatar {
-  width: 44px;
-  height: 44px;
+  width: 54px;
+  height: 54px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: var(--green-soft);
   color: var(--green-dark);
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   font-weight: 950;
   margin-right: 10px;
   vertical-align: middle;
@@ -2645,9 +2645,9 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 }
 
 .avatar-large {
-  width: 76px;
-  height: 76px;
-  font-size: 1.6rem;
+  width: 94px;
+  height: 94px;
+  font-size: 2rem;
   margin-right: 0;
 }
 
@@ -2706,23 +2706,23 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 }
 
 .avatar-tiny {
-  width: 28px;
-  height: 28px;
-  font-size: 0.8rem;
+  width: 35px;
+  height: 35px;
+  font-size: 0.95rem;
   margin-right: 6px;
 }
 
 .avatar-medium {
-  width: 46px;
-  height: 46px;
-  font-size: 1.2rem;
+  width: 58px;
+  height: 58px;
+  font-size: 1.45rem;
   margin-right: 8px;
 }
 
 .avatar-sidebar {
-  width: 34px;
-  height: 34px;
-  font-size: 0.9rem;
+  width: 42px;
+  height: 42px;
+  font-size: 1.05rem;
   margin-right: 8px;
   flex-shrink: 0;
 }
