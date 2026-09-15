@@ -161,11 +161,20 @@ const employeeColorPalette = [
 // the (department, name) sorted list they were loaded in picks their
 // color, so everyone gets a distinct one automatically and it stays the
 // same across reloads as long as the active staff list doesn't change.
+//
+// Employees are loaded sorted by department, so people on the same team
+// land on consecutive indexes - and consecutive palette entries are
+// often close in hue (Korall/Rosa, Fuksia/Lilla, ...), which made whole
+// departments look like near-identical colors. Multiplying by a stride
+// that shares no factor with the palette length (7 and 16) scatters
+// consecutive people across far-apart colors instead, while still
+// covering the full palette exactly once before any repeats.
 function colorForEmployee(employee) {
   if (!employee) return "";
   const index = employeesCache.indexOf(employee);
   if (index === -1) return "";
-  return employeeColorPalette[index % employeeColorPalette.length].value;
+  const spread = (index * 7) % employeeColorPalette.length;
+  return employeeColorPalette[spread].value;
 }
 
 // A darker shade of an employee's own row color, used on their name and
