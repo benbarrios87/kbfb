@@ -217,6 +217,13 @@ async function loadEmployeesFromSupabase() {
     applyEmployeeRowColors();
   }
 
+  // Same race as above - the "Til"-dropdown on Send beskjed may have
+  // been built (empty) before employeesCache was known.
+  if (document.getElementById("directMessageTo")) {
+    populateEmployeeSelect("directMessageTo", { includeBlank: true, blankText: "Velg ansatt" });
+  }
+  if (typeof loadMyDirectMessages === "function") loadMyDirectMessages();
+
   return employeesCache;
 }
 function populateEmployeeSelect(selectId, options = {}) {
