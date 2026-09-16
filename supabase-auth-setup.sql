@@ -1542,3 +1542,38 @@ $$;
 -- =========================================================
 
 UPDATE public.kbfb_shifts SET shift_value = 'Tjenestefri' WHERE shift_value = 'TJ';
+
+-- =========================================================
+-- STEP 48: kbfb_direct_messages
+--   Private, one-way admin -> one employee messages (e.g. "ja, alt ok
+--   med kjøreboken") - shown as a dismissible banner on Hjem until
+--   marked read, alongside a push nudge. Not the same as
+--   kbfb_kind_messages (that's a public feed everyone can post to).
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_direct_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  to_name text NOT NULL,
+  from_name text NOT NULL,
+  text text NOT NULL,
+  read boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_direct_messages ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_direct_messages_select" ON public.kbfb_direct_messages;
+CREATE POLICY "kbfb_direct_messages_select" ON public.kbfb_direct_messages
+  FOR SELECT TO authenticated
+  USING (to_name = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
+
+DROP POLICY IF EXISTS "kbfb_direct_messages_insert" ON public.kbfb_direct_messages;
+CREATE POLICY "kbfb_direct_messages_insert" ON public.kbfb_direct_messages
+  FOR INSERT TO authenticated
+  WITH CHECK (public.kbfb_is_admin());
+
+DROP POLICY IF EXISTS "kbfb_direct_messages_update" ON public.kbfb_direct_messages;
+CREATE POLICY "kbfb_direct_messages_update" ON public.kbfb_direct_messages
+  FOR UPDATE TO authenticated
+  USING (to_name = public.kbfb_current_employee_name() OR public.kbfb_is_admin())
+  WITH CHECK (to_name = public.kbfb_current_employee_name() OR public.kbfb_is_admin());

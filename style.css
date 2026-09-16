@@ -1890,6 +1890,31 @@ textarea {
   font-size: 1.05rem;
 }
 
+.message-banner {
+  background: linear-gradient(120deg, var(--green-soft), #d7f3e5);
+  border: 1px solid #a9d8b8;
+  border-radius: 22px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.message-banner-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.message-banner-item + .message-banner-item {
+  border-top: 1px solid rgba(47, 107, 63, 0.15);
+}
+
+.message-banner-item span {
+  font-weight: 700;
+  color: var(--green-dark);
+}
+
 /* ===== KJØKKENBOKA - REAKSJONER ===== */
 
 .reaction-bar {

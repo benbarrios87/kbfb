@@ -87,6 +87,11 @@
         <span id="dashboardBirthdayText"></span>
       </div>
 
+      <div class="message-banner" id="dashboardMessagesBanner" style="display: none;">
+        <p class="eyebrow">📨 Beskjed til deg</p>
+        <div id="dashboardMessagesList"></div>
+      </div>
+
       <section class="forest-hero compact team-photo">
         <div>
           <div class="hero-greeting" id="dashboardGreeting"></div>
@@ -232,6 +237,21 @@
             <button type="button" class="secondary-btn" id="pushToggleBtn">🔔 Skru på varsler på denne enheten</button>
             <p id="pushToggleStatus" class="muted"></p>
           </div>
+        </article>
+
+        <article class="card dash-card" id="directMessageCard" data-admin-only>
+          <h2>📨 Send beskjed</h2>
+          <p class="muted">En rask, privat beskjed til én ansatt - de ser den her på Hjem, og får et push-varsel med det samme.</p>
+
+          <form id="directMessageForm" class="quick-note-form">
+            <label>
+              Til
+              <select id="directMessageTo" required></select>
+            </label>
+            <textarea id="directMessageText" rows="2" placeholder="F.eks. Ja, alt ok med kjøreboken!" required></textarea>
+            <button class="primary-btn form-button" type="submit">Send</button>
+          </form>
+          <p id="directMessageStatus" class="muted"></p>
         </article>
       </section>
     </main>

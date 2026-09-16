@@ -1166,6 +1166,105 @@ loadTodayShiftsForDashboard();
 loadDashboardWeather();
 loadKindMessages();
 
+/* ---------- DIREKTE BESKJED (admin -> én ansatt) ----------
+   Unlike Hyggelig beskjed (public feed), this is private: one admin-sent
+   line to one specific person, so a quick "ja, alt ok" doesn't need a
+   separate SMS/e-post. Shown as a banner on Hjem until marked read, plus
+   an immediate push nudge via the existing push pipeline. */
+
+const directMessageForm = document.getElementById("directMessageForm");
+const directMessageTo = document.getElementById("directMessageTo");
+const directMessageText = document.getElementById("directMessageText");
+const directMessageStatus = document.getElementById("directMessageStatus");
+
+if (directMessageTo) populateEmployeeSelect("directMessageTo", { includeBlank: true, blankText: "Velg ansatt" });
+
+if (directMessageForm) {
+  directMessageForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+    const toName = directMessageTo.value;
+    const text = directMessageText.value.trim();
+    if (!toName || !text) return;
+
+    const { error } = await supabaseClient.from("kbfb_direct_messages").insert([{
+      to_name: toName,
+      from_name: currentEmployee.name,
+      text
+    }]);
+
+    if (error) {
+      console.error("Kunne ikke sende beskjed:", error);
+      if (directMessageStatus) directMessageStatus.textContent = "Kunne ikke sende. Prøv igjen.";
+      return;
+    }
+
+    sendPushNotification([toName], `Beskjed fra ${currentEmployee.name}`, text, "dashboard.html");
+
+    directMessageForm.reset();
+    if (directMessageStatus) {
+      directMessageStatus.textContent = "Sendt ✓";
+      setTimeout(() => { directMessageStatus.textContent = ""; }, 3000);
+    }
+  });
+}
+
+let myDirectMessagesCache = [];
+
+async function loadMyDirectMessages() {
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return;
+  if (!document.getElementById("dashboardMessagesBanner")) return;
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_direct_messages")
+    .select("*")
+    .eq("to_name", currentEmployee.name)
+    .eq("read", false)
+    .order("created_at");
+
+  if (error) {
+    console.error("Kunne ikke hente beskjeder:", error);
+    return;
+  }
+
+  myDirectMessagesCache = data || [];
+  renderMyDirectMessages();
+}
+
+function renderMyDirectMessages() {
+  const banner = document.getElementById("dashboardMessagesBanner");
+  const list = document.getElementById("dashboardMessagesList");
+  if (!banner || !list) return;
+
+  if (!myDirectMessagesCache.length) {
+    banner.style.display = "none";
+    return;
+  }
+
+  banner.style.display = "block";
+  list.innerHTML = myDirectMessagesCache.map(msg => `
+    <div class="message-banner-item">
+      <span>${escapeHtml(msg.from_name)}: "${escapeHtml(msg.text)}"</span>
+      <button type="button" class="secondary-btn" data-message-read-id="${msg.id}">Lest ✓</button>
+    </div>
+  `).join("");
+
+  list.querySelectorAll("[data-message-read-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      await supabaseClient
+        .from("kbfb_direct_messages")
+        .update({ read: true })
+        .eq("id", button.dataset.messageReadId);
+
+      await loadMyDirectMessages();
+    });
+  });
+}
+
+loadMyDirectMessages();
+
 function updateDashboardWeek() {
   if (!dashboardWeekTitle || !dashboardWeekDates) return;
 
@@ -6538,6 +6637,7 @@ async function loadEmployeeAvatars() {
   if (typeof renderDashboardGreeting === "function") renderDashboardGreeting();
   if (typeof loadTodayShiftsForDashboard === "function") loadTodayShiftsForDashboard();
   if (typeof loadKindMessages === "function") loadKindMessages();
+  if (typeof loadMyDirectMessages === "function") loadMyDirectMessages();
   if (typeof renderSupplies === "function") renderSupplies();
   if (typeof renderDashboardKitchenNotes === "function") renderDashboardKitchenNotes();
   if (typeof renderDashboardGreeting === "function") renderDashboardGreeting();
