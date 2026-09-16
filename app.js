@@ -2434,6 +2434,18 @@ async function loadSwapInbox() {
 
       if (req) {
         const actualDate = toDateKey(addDays(new Date(req.week_start + "T12:00:00"), req.day_index));
+
+        // The person who *sent* the swap request never got told it was
+        // accepted - only department leaders did. That's the actual news
+        // for them, so it needs its own direct push, not just the
+        // department-leader summary below.
+        sendPushNotification(
+          [req.from_employee],
+          "Vaktbytte godtatt",
+          `${currentEmployee.name} godtok byttet ${formatNorwegianDate(actualDate)}`,
+          "vakter.html"
+        );
+
         notifyDepartmentLeadersOfSwap(
           [req.from_department, req.to_department],
           `${currentEmployee.name} og ${req.from_employee} har byttet vakt ${formatNorwegianDate(actualDate)}`
