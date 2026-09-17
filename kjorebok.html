@@ -148,7 +148,10 @@
             <input id="kjorebokPurpose" type="text" placeholder="F.eks. Levere post, hente barn" />
           </label>
 
-          <button class="primary-btn form-button" type="submit">Lagre kjøring</button>
+          <div style="display: flex; gap: 8px;">
+            <button class="primary-btn form-button" type="submit" id="kjorebokSubmitBtn">Lagre kjøring</button>
+            <button class="secondary-btn" type="button" id="kjorebokCancelEditBtn" style="display: none;">Avbryt redigering</button>
+          </div>
         </form>
         <p id="kjorebokFormStatus" class="muted" style="margin-top: 10px;"></p>
       </section>

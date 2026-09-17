@@ -124,7 +124,10 @@
               <option value="1">P1 - Høy</option>
             </select>
           </label>
-          <button class="primary-btn form-button" type="submit">Legg til</button>
+          <div style="display: flex; gap: 8px;">
+            <button class="primary-btn form-button" type="submit" id="taskSubmitBtn">Legg til</button>
+            <button class="secondary-btn" type="button" id="taskCancelEditBtn" style="display: none;">Avbryt redigering</button>
+          </div>
         </form>
       </section>
 

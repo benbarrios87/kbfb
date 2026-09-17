@@ -6963,8 +6963,11 @@ let suppliesCache = [];
 
 const supplyPriorityLabel = {
   haster: "🔥 Haster",
+  snart: "⚠️ Trengs snart",
   nice_to_have: "🙂 Hadde vært fint å ha"
 };
+
+const supplyPriorityRank = { haster: 0, snart: 1, nice_to_have: 2 };
 
 async function loadSuppliesFromSupabase() {
   const { data, error } = await supabaseClient
@@ -6986,13 +6989,13 @@ function renderSupplies() {
 
   const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
   const open = [...suppliesCache.filter(s => !s.ordered && !s.declined)]
-    .sort((a, b) => (a.priority === "haster" ? 0 : 1) - (b.priority === "haster" ? 0 : 1));
+    .sort((a, b) => (supplyPriorityRank[a.priority] ?? 1) - (supplyPriorityRank[b.priority] ?? 1));
   const ordered = suppliesCache.filter(s => s.ordered);
   const declined = suppliesCache.filter(s => s.declined);
 
   supplyOpenList.innerHTML = open.length
     ? `<div class="supply-list">${open.map(s => `
-      <div class="supply-item${s.priority === "haster" ? " urgent" : ""}">
+      <div class="supply-item${s.priority === "haster" ? " urgent" : s.priority === "snart" ? " soon" : ""}">
         <div class="supply-item-top">
           <span class="supply-item-name">${escapeHtml(s.item)}</span>
           <span class="supply-priority-badge ${s.priority}">${supplyPriorityLabel[s.priority] || ""}</span>
@@ -7222,11 +7225,13 @@ function canEditArshjulVariant(variant) {
 }
 
 // Årsplan is one shared document for the whole barnehage (not per
-// wheel-variant) - Leder og pedagogene (Pedagog/Pedleder/Avdelingsleder)
-// can edit it, everyone else can only read it.
+// wheel-variant) - Leder, pedagogene (Pedagog/Pedleder/Avdelingsleder) og
+// assistenter kan alle komme med innspill (redigeringer vises som rødt
+// innsatt tekst inntil noen godkjenner/nullstiller dem - se
+// diffArsplanWords), everyone else can only read it.
 function canEditArsplan() {
   if (typeof currentEmployee === "undefined" || !currentEmployee) return false;
-  return !!currentEmployee.is_admin || employeeIsPedagogiskLederTier();
+  return !!currentEmployee.is_admin || employeeIsPedagogiskLederTier() || employeeIsAssistentTier();
 }
 
 function arshjulPolarPoint(cx, cy, r, angleDeg) {
@@ -7741,6 +7746,73 @@ async function loadArsplanFromSupabase() {
   return arsplanSectionsCache;
 }
 
+// Word-level LCS diff: finds which words in currentText are new
+// (inserted/changed) relative to originalText, so only the words that
+// were literally typed as an edit render red - not the whole paragraph
+// just because something in it changed. Deletions aren't shown (nothing
+// left to render for text that's no longer there). Tokenizes on
+// whitespace-vs-non-whitespace runs so spaces/newlines are preserved
+// exactly when reassembled.
+function diffArsplanWords(originalText, currentText) {
+  const tokenize = text => text.match(/\S+|\s+/g) || [];
+  const a = tokenize(originalText || "");
+  const b = tokenize(currentText || "");
+  const n = a.length;
+  const m = b.length;
+
+  const lcs = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      lcs[i][j] = a[i] === b[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+    }
+  }
+
+  const parts = [];
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (a[i] === b[j]) {
+      parts.push({ text: b[j], inserted: false });
+      i++; j++;
+    } else if (lcs[i + 1][j] >= lcs[i][j + 1]) {
+      i++;
+    } else {
+      parts.push({ text: b[j], inserted: true });
+      j++;
+    }
+  }
+  while (j < m) {
+    parts.push({ text: b[j], inserted: true });
+    j++;
+  }
+
+  return parts;
+}
+
+// Renders a section's current_text as HTML, wrapping only the inserted/
+// changed words in .arsplan-inserted - see diffArsplanWords() above.
+function renderArsplanBody(section) {
+  if (section.current_text === section.original_text) {
+    return escapeHtml(section.current_text || "").replace(/\n/g, "<br>");
+  }
+
+  const parts = diffArsplanWords(section.original_text, section.current_text);
+
+  const runs = [];
+  parts.forEach(part => {
+    const last = runs[runs.length - 1];
+    if (last && last.inserted === part.inserted) {
+      last.text += part.text;
+    } else {
+      runs.push({ text: part.text, inserted: part.inserted });
+    }
+  });
+
+  return runs.map(run => {
+    const html = escapeHtml(run.text).replace(/\n/g, "<br>");
+    return run.inserted ? `<span class="arsplan-inserted">${html}</span>` : html;
+  }).join("");
+}
+
 function renderArsplan() {
   const listEl = document.getElementById("arsplanSections");
   if (!listEl) return;
@@ -7777,7 +7849,7 @@ function renderArsplan() {
             ${isRevised ? `<span class="arsplan-revised-badge">Endret siden godkjenning</span>` : ""}
             ${canEdit ? `<button class="arsplan-inline-btn" type="button" data-arsplan-edit-id="${section.id}">Rediger</button>` : ""}
           </summary>
-          <div class="arsplan-body${isRevised ? " arsplan-body-revised" : ""}">${escapeHtml(section.current_text).replace(/\n/g, "<br>")}</div>
+          <div class="arsplan-body">${renderArsplanBody(section)}</div>
         </details>
       `;
     }).join("")
@@ -7986,6 +8058,7 @@ initializeArsplan();
 
 let kjorebokEntriesCache = [];
 let kjorebokRatesCache = { id: null, bil_sats: 5, passasjer_sats: 1 };
+let editingKjorebokId = null;
 
 const kjorebokForm = document.getElementById("kjorebokForm");
 const kjorebokName = document.getElementById("kjorebokName");
@@ -8003,6 +8076,45 @@ const kjorebokFilter = document.getElementById("kjorebokFilter");
 const kjorebokMonthFilter = document.getElementById("kjorebokMonthFilter");
 const kjorebokTableBody = document.getElementById("kjorebokTableBody");
 const kjorebokTableFoot = document.getElementById("kjorebokTableFoot");
+const kjorebokSubmitBtn = document.getElementById("kjorebokSubmitBtn");
+const kjorebokCancelEditBtn = document.getElementById("kjorebokCancelEditBtn");
+
+function startEditingKjorebokEntry(entry) {
+  editingKjorebokId = entry.id;
+
+  if (kjorebokName) kjorebokName.value = entry.name;
+  if (kjorebokDate) kjorebokDate.value = entry.date;
+  if (kjorebokRoute) kjorebokRoute.value = entry.route || "";
+  if (kjorebokKm) kjorebokKm.value = entry.km;
+  if (kjorebokPassengers) kjorebokPassengers.value = entry.passengers || 0;
+  if (kjorebokParking) kjorebokParking.value = entry.parking || 0;
+  if (kjorebokOther) kjorebokOther.value = entry.other_expenses || 0;
+  if (kjorebokCarNumber) kjorebokCarNumber.value = entry.car_number || "";
+  if (kjorebokPurpose) kjorebokPurpose.value = entry.purpose || "";
+  if (kjorebokPassengerName) kjorebokPassengerName.value = entry.passenger_name || "";
+  updateKjorebokPassengerNameVisibility();
+
+  if (kjorebokSubmitBtn) kjorebokSubmitBtn.textContent = "Oppdater kjøring";
+  if (kjorebokCancelEditBtn) kjorebokCancelEditBtn.style.display = "";
+
+  document.getElementById("kjorebokFormSection")?.scrollIntoView({ behavior: "smooth" });
+}
+
+function stopEditingKjorebokEntry() {
+  editingKjorebokId = null;
+  if (kjorebokSubmitBtn) kjorebokSubmitBtn.textContent = "Lagre kjøring";
+  if (kjorebokCancelEditBtn) kjorebokCancelEditBtn.style.display = "none";
+}
+
+if (kjorebokCancelEditBtn) {
+  kjorebokCancelEditBtn.addEventListener("click", () => {
+    stopEditingKjorebokEntry();
+    kjorebokForm?.reset();
+    lockKjorebokFormToSelf();
+    if (kjorebokDate) kjorebokDate.value = toDateKey(new Date());
+    updateKjorebokPassengerNameVisibility();
+  });
+}
 
 async function loadKjorebokRatesFromSupabase() {
   const { data, error } = await supabaseClient
@@ -8080,6 +8192,19 @@ async function deleteKjorebokEntryFromSupabase(id) {
     .eq("id", id);
 
   if (error) console.error("Kunne ikke slette kjøring:", error);
+}
+
+async function updateKjorebokEntryToSupabase(id, record) {
+  const { error } = await supabaseClient
+    .from("kbfb_kjorebok_entries")
+    .update(record)
+    .eq("id", id);
+
+  if (error) {
+    console.error("Kunne ikke oppdatere kjøring:", error);
+    return false;
+  }
+  return true;
 }
 
 // Samme formel som KBFBs egen "Kjørebok 2026.xlsx" (bekreftet fra de
@@ -8209,7 +8334,10 @@ function renderKjorebok() {
       <td>${Number(entry.parking || 0).toFixed(2)}</td>
       <td>${Number(entry.other_expenses || 0).toFixed(2)}</td>
       <td>${formatKjorebokPurposeDisplay(entry)}</td>
-      <td>${canModify ? `<button class="kitchen-delete" data-kjorebok-id="${entry.id}">Slett</button>` : ""}</td>
+      <td>${canModify ? `
+        <button class="secondary-btn" data-edit-kjorebok-id="${entry.id}">Endre</button>
+        <button class="kitchen-delete" data-kjorebok-id="${entry.id}">Slett</button>
+      ` : ""}</td>
     </tr>
   `;
   }).join("");
@@ -8234,6 +8362,13 @@ function renderKjorebok() {
       </tr>
     `;
   }
+
+  kjorebokTableBody.querySelectorAll("[data-edit-kjorebok-id]").forEach(button => {
+    button.addEventListener("click", () => {
+      const entry = kjorebokEntriesCache.find(item => String(item.id) === String(button.dataset.editKjorebokId));
+      if (entry) startEditingKjorebokEntry(entry);
+    });
+  });
 
   kjorebokTableBody.querySelectorAll("[data-kjorebok-id]").forEach(button => {
     button.addEventListener("click", async () => {
@@ -8593,6 +8728,15 @@ async function initializeKjorebok() {
         return;
       }
 
+      // Editing keeps the entry's ORIGINAL rate snapshot rather than
+      // re-stamping today's rates - otherwise fixing a typo on an old
+      // entry would silently re-price it if satser have changed since
+      // (defeats the whole point of snapshotting, see calculateKjorebokSum
+      // comment above).
+      const editingEntry = editingKjorebokId
+        ? kjorebokEntriesCache.find(item => String(item.id) === String(editingKjorebokId))
+        : null;
+
       const record = {
         name: kjorebokName.value,
         date: kjorebokDate.value,
@@ -8604,18 +8748,24 @@ async function initializeKjorebok() {
         purpose: kjorebokPurpose.value.trim(),
         passenger_name: kjorebokPassengerName.value.trim(),
         car_number: kjorebokCarNumber.value.trim(),
-        bil_sats: kjorebokRatesCache.bil_sats,
-        passasjer_sats: kjorebokRatesCache.passasjer_sats
+        bil_sats: editingEntry ? editingEntry.bil_sats : kjorebokRatesCache.bil_sats,
+        passasjer_sats: editingEntry ? editingEntry.passasjer_sats : kjorebokRatesCache.passasjer_sats
       };
 
       const statusEl = document.getElementById("kjorebokFormStatus");
 
-      const saved = await saveKjorebokEntryToSupabase(record);
+      const saved = editingKjorebokId
+        ? await updateKjorebokEntryToSupabase(editingKjorebokId, record)
+        : await saveKjorebokEntryToSupabase(record);
+
       if (!saved) {
         if (statusEl) statusEl.textContent = "";
         alert("Kunne ikke lagre kjøring. Prøv igjen.");
         return;
       }
+
+      const wasEditing = !!editingKjorebokId;
+      stopEditingKjorebokEntry();
 
       await loadKjorebokEntriesFromSupabase();
 
@@ -8631,7 +8781,7 @@ async function initializeKjorebok() {
 
       renderKjorebok();
 
-      if (statusEl) statusEl.textContent = "✓ Lagret! Se den i Oversikt under.";
+      if (statusEl) statusEl.textContent = wasEditing ? "✓ Oppdatert!" : "✓ Lagret! Se den i Oversikt under.";
     });
   }
 
@@ -8912,6 +9062,7 @@ const TASK_PRIORITY_COLORS = { 1: "#e34948", 2: "#eb6834", 3: "#2a78d6", 4: null
 
 let tasksCache = [];
 let taskSelectedProject = "Inbox";
+let editingTaskId = null;
 
 async function loadTasksFromSupabase() {
   const { data, error } = await supabaseClient
@@ -8966,6 +9117,7 @@ function renderTaskLists() {
         </label>
         ${t.note ? `<span class="muted">${escapeHtml(t.note)}</span>` : ""}
         ${t.due_date ? `<span class="task-due${isOverdue ? " task-due-overdue" : ""}">${formatNorwegianDate(t.due_date)}</span>` : ""}
+        <button class="secondary-btn" type="button" data-task-edit-id="${t.id}">Endre</button>
         <button class="kitchen-delete" type="button" data-task-delete-id="${t.id}">Slett</button>
       </div>
     `;
@@ -9020,6 +9172,13 @@ function renderTaskLists() {
     });
   });
 
+  activeEl.querySelectorAll("[data-task-edit-id]").forEach(button => {
+    button.addEventListener("click", () => {
+      const task = tasksCache.find(item => String(item.id) === String(button.dataset.taskEditId));
+      if (task) startEditingTask(task);
+    });
+  });
+
   activeEl.querySelectorAll("[data-task-delete-id]").forEach(button => {
     button.addEventListener("click", async () => {
       await supabaseClient.from("kbfb_tasks").delete().eq("id", button.dataset.taskDeleteId);
@@ -9037,12 +9196,49 @@ function renderTaskLists() {
   });
 }
 
+function startEditingTask(task) {
+  editingTaskId = task.id;
+
+  const textEl = document.getElementById("taskText");
+  const noteEl = document.getElementById("taskNote");
+  const dueDateEl = document.getElementById("taskDueDate");
+  const priorityEl = document.getElementById("taskPriority");
+  const submitBtn = document.getElementById("taskSubmitBtn");
+  const cancelBtn = document.getElementById("taskCancelEditBtn");
+
+  if (textEl) textEl.value = task.text;
+  if (noteEl) noteEl.value = task.note || "";
+  if (dueDateEl) dueDateEl.value = task.due_date || "";
+  if (priorityEl) priorityEl.value = String(task.priority);
+  if (submitBtn) submitBtn.textContent = "Oppdater oppgave";
+  if (cancelBtn) cancelBtn.style.display = "";
+
+  document.getElementById("taskForm")?.scrollIntoView({ behavior: "smooth" });
+}
+
+function stopEditingTask() {
+  editingTaskId = null;
+  const submitBtn = document.getElementById("taskSubmitBtn");
+  const cancelBtn = document.getElementById("taskCancelEditBtn");
+  if (submitBtn) submitBtn.textContent = "Legg til";
+  if (cancelBtn) cancelBtn.style.display = "none";
+}
+
 async function initializeTasks() {
   const container = document.getElementById("taskActiveList");
   if (!container) return;
 
   await loadTasksFromSupabase();
   renderTaskLists();
+
+  const cancelEditBtn = document.getElementById("taskCancelEditBtn");
+  if (cancelEditBtn) {
+    cancelEditBtn.addEventListener("click", () => {
+      stopEditingTask();
+      document.getElementById("taskForm")?.reset();
+      document.getElementById("taskPriority").value = "4";
+    });
+  }
 
   const priorityField = document.getElementById("taskPriorityField");
 
@@ -9076,13 +9272,11 @@ async function initializeTasks() {
         ? 4
         : Number(document.getElementById("taskPriority").value);
 
-      const { error } = await supabaseClient.from("kbfb_tasks").insert([{
-        project: taskSelectedProject,
-        text,
-        note,
-        due_date: dueDate,
-        priority
-      }]);
+      const fields = { text, note, due_date: dueDate, priority };
+
+      const { error } = editingTaskId
+        ? await supabaseClient.from("kbfb_tasks").update(fields).eq("id", editingTaskId)
+        : await supabaseClient.from("kbfb_tasks").insert([{ project: taskSelectedProject, ...fields }]);
 
       if (error) {
         console.error("Kunne ikke lagre oppgave:", error);
@@ -9090,6 +9284,7 @@ async function initializeTasks() {
         return;
       }
 
+      stopEditingTask();
       taskForm.reset();
       document.getElementById("taskPriority").value = "4";
 

@@ -1245,8 +1245,11 @@ details[open].arsplan-section summary .details-toggle-icon {
   color: #2c2c2c;
 }
 
-.arsplan-body-revised {
+.arsplan-inserted {
   color: #b91c1c;
+  background: #fee2e2;
+  border-radius: 3px;
+  padding: 0 2px;
 }
 
 .arsplan-section-editing {
@@ -3262,6 +3265,11 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   background: linear-gradient(135deg, #fff8f5, #fffdf7);
 }
 
+.supply-item.soon {
+  border-left-color: #d99000;
+  background: linear-gradient(135deg, #fffaf0, #fffdf7);
+}
+
 .supply-item.done {
   border-left-color: var(--muted);
   opacity: 0.75;
@@ -3304,6 +3312,11 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .supply-priority-badge.nice_to_have {
   background: var(--sand);
   color: var(--muted);
+}
+
+.supply-priority-badge.snart {
+  background: #fdecc8;
+  color: #8a5a00;
 }
 
 .supply-meta {

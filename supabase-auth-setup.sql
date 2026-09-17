@@ -1577,3 +1577,26 @@ CREATE POLICY "kbfb_direct_messages_update" ON public.kbfb_direct_messages
   FOR UPDATE TO authenticated
   USING (to_name = public.kbfb_current_employee_name() OR public.kbfb_is_admin())
   WITH CHECK (to_name = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
+
+-- =========================================================
+-- STEP 49: let assistenter contribute to Årsplan too
+--   kbfb_can_edit_arsplan() only let Leder/Pedagog/Pedleder/
+--   Avdelingsleder write - assistenter could only read. Re-running this
+--   (CREATE OR REPLACE) just adds the assistent check; nothing else
+--   about the function changes.
+-- =========================================================
+
+CREATE OR REPLACE FUNCTION public.kbfb_can_edit_arsplan()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    public.kbfb_is_admin()
+    OR public.kbfb_current_employee_role() ILIKE '%pedagog%'
+    OR public.kbfb_current_employee_role() ILIKE '%pedleder%'
+    OR public.kbfb_current_employee_role() ILIKE '%avdelingsleder%'
+    OR public.kbfb_current_employee_role() ILIKE '%assistent%';
+$$;
