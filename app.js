@@ -9113,7 +9113,7 @@ function renderTaskLists() {
         <label class="task-row-check">
           <input type="checkbox" data-task-toggle-id="${t.id}" />
           ${showPriority ? `<span class="task-priority-dot" style="${color ? `border-color:${color}; background:${color};` : ""}"></span>` : ""}
-          <strong class="task-text-editable" data-task-edit-id="${t.id}" title="Klikk for å endre">${escapeHtml(t.text)}</strong>
+          <strong class="task-text-editable" data-task-edit-id="${t.id}" title="Klikk for å endre">${escapeHtml(t.text)} <span class="task-edit-hint">✏️</span></strong>
         </label>
         ${t.note ? `<span class="muted">${escapeHtml(t.note)}</span>` : ""}
         ${t.due_date ? `<span class="task-due${isOverdue ? " task-due-overdue" : ""}">${formatNorwegianDate(t.due_date)}</span>` : ""}

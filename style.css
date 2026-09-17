@@ -3008,9 +3008,24 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   flex-shrink: 0;
 }
 
-.task-text-editable:hover {
-  text-decoration: underline;
+.task-text-editable {
+  text-decoration: underline dotted;
   text-underline-offset: 3px;
+  text-decoration-color: var(--muted);
+}
+
+.task-text-editable:hover {
+  text-decoration-style: solid;
+  text-decoration-color: var(--green-dark);
+}
+
+.task-edit-hint {
+  font-size: 0.78em;
+  opacity: 0.55;
+}
+
+.task-text-editable:hover .task-edit-hint {
+  opacity: 1;
 }
 
 .task-priority-dot {
