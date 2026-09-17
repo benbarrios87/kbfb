@@ -7621,6 +7621,8 @@ async function loadRoutinesFromSupabase() {
 }
 
 function renderRoutines() {
+  const canEdit = canEditArshjulVariant(arshjulSelectedVariant);
+
   ROUTINE_FREQUENCIES.forEach(frequency => {
     const listEl = document.getElementById(`routineList${frequency}`);
     if (!listEl) return;
@@ -7628,12 +7630,37 @@ function renderRoutines() {
     const items = routinesCache.filter(r => r.variant === arshjulSelectedVariant && r.frequency === frequency);
 
     listEl.innerHTML = items.length
-      ? items.map(item => `<div class="routine-item"><span>${escapeHtml(item.title)}</span></div>`).join("")
+      ? items.map(item => `
+        <div class="routine-item">
+          <span>${escapeHtml(item.title)}</span>
+          ${canEdit ? `<button class="routine-delete-btn" type="button" data-routine-delete-id="${item.id}" title="Slett">×</button>` : ""}
+        </div>
+      `).join("")
       : `<p class="muted">Ingenting lagt inn ennå.</p>`;
+
+    listEl.querySelectorAll("[data-routine-delete-id]").forEach(button => {
+      button.addEventListener("click", async () => {
+        if (!confirm("Slette denne rutinen?")) return;
+
+        const { error } = await supabaseClient
+          .from("kbfb_arshjul_routines")
+          .delete()
+          .eq("id", button.dataset.routineDeleteId);
+
+        if (error) {
+          console.error("Kunne ikke slette rutine:", error);
+          alert("Kunne ikke slette. Prøv igjen.");
+          return;
+        }
+
+        await loadRoutinesFromSupabase();
+        renderRoutines();
+      });
+    });
   });
 
   const addFormEl = document.getElementById("routineAddForm");
-  if (addFormEl) addFormEl.style.display = canEditArshjulVariant(arshjulSelectedVariant) ? "" : "none";
+  if (addFormEl) addFormEl.style.display = canEdit ? "" : "none";
 }
 
 function initializeRoutineForm() {

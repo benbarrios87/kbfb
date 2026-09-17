@@ -1306,10 +1306,32 @@ details[open].arsplan-section summary .details-toggle-icon {
   padding: 5px 2px;
   font-size: 0.92em;
   border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .routine-item:last-child {
   border-bottom: none;
+}
+
+.routine-delete-btn {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.routine-delete-btn:hover {
+  background: #fde3e0;
+  color: #a13a2e;
 }
 
 .arshjul-subitems {
