@@ -3008,6 +3008,11 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   flex-shrink: 0;
 }
 
+.task-text-editable:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .task-priority-dot {
   width: 12px;
   height: 12px;
