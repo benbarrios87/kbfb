@@ -5807,17 +5807,24 @@ const shiftTypeCodes = [
 function computeShiftTypeCounts(shifts, periodStart, periodEnd) {
   const supportRows = ["Vikar", "Foreldreinnsats", "Ekstra"];
   const counts = { TV: {}, TM: {}, MV: {}, SV: {} };
+  const codes = ["TV", "TM", "MV", "SV"];
 
   shifts.forEach(shift => {
     if (supportRows.includes(shift.employee)) return;
 
     const value = (shift.shift_value || "").trim();
-    if (!counts[value]) return;
+    if (!value) return;
+
+    // Not just an exact "TV" - someone who typed extra detail into ANNET
+    // (e.g. "TV-1245") is still working tidligvakt, so match by substring
+    // rather than requiring the cell to be exactly the bare code.
+    const matchedCode = codes.find(code => value.includes(code));
+    if (!matchedCode) return;
 
     const dateKey = toDateKey(addDays(new Date(shift.week_start + "T12:00:00"), shift.day_index));
     if (dateKey < periodStart || dateKey > periodEnd) return;
 
-    counts[value][shift.employee] = (counts[value][shift.employee] || 0) + 1;
+    counts[matchedCode][shift.employee] = (counts[matchedCode][shift.employee] || 0) + 1;
   });
 
   return counts;
