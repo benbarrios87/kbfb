@@ -846,6 +846,7 @@ details[open].arsplan-section summary .details-toggle-icon {
   color: white;
   font-weight: 650;
   font-size: 0.9rem;
+  margin-top: 12px;
 }
 
 .week-jump-label input[type="date"] {
