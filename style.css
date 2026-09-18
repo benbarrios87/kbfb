@@ -713,6 +713,16 @@ details[open].arsplan-section summary .details-toggle-icon {
   background: white;
 }
 
+.week-number-input {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-weight: 700;
+  background: white;
+  width: 68px;
+}
+
 .department-header span,
 .small-pill {
   background: rgba(47, 107, 63, 0.12);

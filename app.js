@@ -2643,6 +2643,29 @@ function goToCurrentWeek() {
   });
 });
 
+// Jan 4 is always in ISO week 1 - Mondayen i uke N er da bare Mandagen
+// i uke 1, pluss (N-1) uker. Bruker året til uka man allerede står i
+// (ikke alltid inneværende kalenderår), så "uke 52" betyr det året man
+// faktisk ser på.
+function getMondayOfWeekNumber(week, year) {
+  const week1Monday = getMonday(new Date(year, 0, 4));
+  return addDays(week1Monday, (week - 1) * 7);
+}
+
+[document.getElementById("weekSearchSF"), document.getElementById("weekSearchRB")].forEach(input => {
+  if (!input) return;
+
+  input.addEventListener("change", () => {
+    const week = Number(input.value);
+    if (!week || week < 1 || week > 53) return;
+
+    viewedWeekStart = getMondayOfWeekNumber(week, viewedWeekStart.getFullYear());
+    updateWeekView();
+    filterShifts();
+    input.value = "";
+  });
+});
+
 if (employeeFilter && departmentFilter) {
   employeeFilter.addEventListener("change", filterShifts);
   departmentFilter.addEventListener("change", filterShifts);
