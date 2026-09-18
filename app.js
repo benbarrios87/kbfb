@@ -5487,6 +5487,8 @@ async function loadPendingApprovalsSummary() {
   const container = document.getElementById("pendingApprovalsSummary");
   if (!container) return;
 
+  const badge = document.getElementById("pendingApprovalsBadge");
+
   const { data, error } = await supabaseClient
     .from("kbfb_absences")
     .select("*")
@@ -5497,6 +5499,15 @@ async function loadPendingApprovalsSummary() {
     console.error("Kunne ikke hente ubehandlede søknader:", error);
     container.innerHTML = `<p class="muted">Kunne ikke hente søknader.</p>`;
     return;
+  }
+
+  if (badge) {
+    if (data.length) {
+      badge.textContent = data.length;
+      badge.style.display = "";
+    } else {
+      badge.style.display = "none";
+    }
   }
 
   if (!data.length) {
