@@ -4340,7 +4340,12 @@ function renderHolidayRequestGroups() {
     r.type === "Ferie" || r.type === "Avspasering brukt" || r.type === "Ønsker å avspasere"
   );
 
-  const renderGroup = (el, records) => {
+  const renderGroup = (el, countEl, records) => {
+    if (countEl) {
+      const unanswered = records.filter(r => r.status === "Ønsket").length;
+      countEl.textContent = `(${unanswered} ubesvart${unanswered === 1 ? "" : "e"})`;
+    }
+
     if (!el) return;
 
     if (!records.length) {
@@ -4358,9 +4363,9 @@ function renderHolidayRequestGroups() {
     `).join("");
   };
 
-  renderGroup(julEl, relevant.filter(r => recordOverlapsWindow(r, dateInChristmasWindow)));
-  renderGroup(paskeEl, relevant.filter(r => recordOverlapsWindow(r, dateInEasterWindow)));
-  renderGroup(sommerEl, relevant.filter(r => recordOverlapsWindow(r, dateInSummerWindow)));
+  renderGroup(julEl, document.getElementById("holidayRequestsJulCount"), relevant.filter(r => recordOverlapsWindow(r, dateInChristmasWindow)));
+  renderGroup(paskeEl, document.getElementById("holidayRequestsPaskeCount"), relevant.filter(r => recordOverlapsWindow(r, dateInEasterWindow)));
+  renderGroup(sommerEl, document.getElementById("holidayRequestsSommerCount"), relevant.filter(r => recordOverlapsWindow(r, dateInSummerWindow)));
 }
 
 // Avdelingsleder can review (godkjenn/avslå/avventer) "Ønsker å

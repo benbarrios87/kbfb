@@ -839,6 +839,30 @@ details[open].arsplan-section summary .details-toggle-icon {
   background: rgba(255, 255, 255, 0.28);
 }
 
+.week-jump-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  font-weight: 650;
+  font-size: 0.9rem;
+}
+
+.week-jump-label input[type="date"] {
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+  padding: 10px 12px;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 650;
+}
+
+.week-jump-label input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
 .edit-help {
   margin-top: 14px;
 }
@@ -1577,6 +1601,12 @@ details[open].arsplan-section summary .details-toggle-icon {
 .holiday-request-group h3 {
   margin: 0 0 8px;
   font-size: 1rem;
+  display: inline;
+}
+
+.holiday-request-group summary {
+  cursor: pointer;
+  margin-bottom: 8px;
 }
 
 @media (max-width: 850px) {
