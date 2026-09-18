@@ -1015,7 +1015,7 @@ async function loadSharedPhotos() {
       .from("kbfb_shared_photos")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(3),
+      .limit(2),
     loadPhotoReactionsFromSupabase()
   ]);
 
