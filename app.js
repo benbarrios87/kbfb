@@ -9274,7 +9274,7 @@ async function initializeTasks() {
     cancelEditBtn.addEventListener("click", () => {
       stopEditingTask();
       document.getElementById("taskForm")?.reset();
-      document.getElementById("taskPriority").value = "4";
+      document.getElementById("taskPriority").value = "1";
     });
   }
 
@@ -9324,7 +9324,7 @@ async function initializeTasks() {
 
       stopEditingTask();
       taskForm.reset();
-      document.getElementById("taskPriority").value = "4";
+      document.getElementById("taskPriority").value = "1";
 
       await loadTasksFromSupabase();
       renderTaskLists();
