@@ -683,6 +683,36 @@ details[open].arsplan-section summary .details-toggle-icon {
   border-radius: 999px;
 }
 
+.dept-week-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.dept-week-row .dept-week-pill {
+  margin: 0;
+}
+
+.week-jump-label-light {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.week-jump-label-light input[type="date"] {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-weight: 700;
+  background: white;
+}
+
 .department-header span,
 .small-pill {
   background: rgba(47, 107, 63, 0.12);
@@ -837,31 +867,6 @@ details[open].arsplan-section summary .details-toggle-icon {
 
 .week-controls button:hover {
   background: rgba(255, 255, 255, 0.28);
-}
-
-.week-jump-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: white;
-  font-weight: 650;
-  font-size: 0.9rem;
-  margin-top: 12px;
-}
-
-.week-jump-label input[type="date"] {
-  border: 1px solid rgba(255, 255, 255, 0.36);
-  background: rgba(255, 255, 255, 0.18);
-  color: white;
-  padding: 10px 12px;
-  border-radius: 999px;
-  font: inherit;
-  font-weight: 650;
-}
-
-.week-jump-label input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
-  cursor: pointer;
 }
 
 .edit-help {

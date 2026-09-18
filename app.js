@@ -2631,15 +2631,17 @@ function goToCurrentWeek() {
   if (btn) btn.addEventListener("click", goToCurrentWeek);
 });
 
-if (dateSearch) {
-  dateSearch.addEventListener("change", () => {
-    if (!dateSearch.value) return;
+[dateSearch, document.getElementById("dateSearchSF"), document.getElementById("dateSearchRB")].forEach(input => {
+  if (!input) return;
 
-    viewedWeekStart = getMonday(new Date(dateSearch.value + "T12:00:00"));
+  input.addEventListener("change", () => {
+    if (!input.value) return;
+
+    viewedWeekStart = getMonday(new Date(input.value + "T12:00:00"));
     updateWeekView();
     filterShifts();
   });
-}
+});
 
 if (employeeFilter && departmentFilter) {
   employeeFilter.addEventListener("change", filterShifts);
