@@ -2,6 +2,11 @@
   box-sizing: border-box;
 }
 
+/* Sesongbasert tema: :root holder sommer (default) - [data-season] på
+   <html> (satt av applySeasonTheme() i app.js, ut fra dagens måned)
+   overstyrer --green/--green-dark/--green-soft og sidebar/hero-
+   gradientene under, slik at samme mørkegrønne ikke står uendret hele
+   året. Alt annet som bruker var(--green*) følger automatisk med. */
 :root {
   --green: #2f6b3f;
   --green-dark: #234d31;
@@ -12,6 +17,68 @@
   --muted: #57685a;
   --line: #dfe8df;
   --shadow: 0 18px 50px rgba(36, 53, 40, 0.12);
+
+  --sidebar-overlay-1: rgba(18, 54, 33, 0.93);
+  --sidebar-overlay-2: rgba(18, 54, 33, 0.96);
+  --sidebar-radial-1: #5f8f56;
+  --sidebar-radial-2: #173420;
+
+  --hero-overlay-1: rgba(28, 73, 43, 0.92);
+  --hero-overlay-2: rgba(72, 111, 60, 0.78);
+  --hero-accent: #d9b56d;
+  --hero-linear-1: #244d31;
+  --hero-linear-2: #7b9a65;
+}
+
+[data-season="host"] {
+  --green: #b5651d;
+  --green-dark: #7a3e10;
+  --green-soft: #fbe8d3;
+
+  --sidebar-overlay-1: rgba(58, 30, 10, 0.93);
+  --sidebar-overlay-2: rgba(58, 30, 10, 0.96);
+  --sidebar-radial-1: #c97a3a;
+  --sidebar-radial-2: #4a2a12;
+
+  --hero-overlay-1: rgba(90, 40, 10, 0.92);
+  --hero-overlay-2: rgba(190, 110, 40, 0.78);
+  --hero-accent: #e8c468;
+  --hero-linear-1: #7a3e10;
+  --hero-linear-2: #c97a3a;
+}
+
+[data-season="vinter"] {
+  --green: #3a5a78;
+  --green-dark: #24384a;
+  --green-soft: #e6edf2;
+
+  --sidebar-overlay-1: rgba(15, 30, 40, 0.93);
+  --sidebar-overlay-2: rgba(15, 30, 40, 0.96);
+  --sidebar-radial-1: #5a7f9e;
+  --sidebar-radial-2: #1c2e3d;
+
+  --hero-overlay-1: rgba(20, 40, 55, 0.92);
+  --hero-overlay-2: rgba(60, 90, 110, 0.78);
+  --hero-accent: #cfe8f5;
+  --hero-linear-1: #24384a;
+  --hero-linear-2: #6a8fa8;
+}
+
+[data-season="var"] {
+  --green: #4a9d5f;
+  --green-dark: #2d6b3f;
+  --green-soft: #e3f5e6;
+
+  --sidebar-overlay-1: rgba(20, 60, 35, 0.93);
+  --sidebar-overlay-2: rgba(20, 60, 35, 0.96);
+  --sidebar-radial-1: #7fc98a;
+  --sidebar-radial-2: #245c34;
+
+  --hero-overlay-1: rgba(30, 80, 45, 0.92);
+  --hero-overlay-2: rgba(90, 150, 90, 0.78);
+  --hero-accent: #f3b6c8;
+  --hero-linear-1: #2d6b3f;
+  --hero-linear-2: #8fbf7a;
 }
 
 body {
@@ -423,8 +490,8 @@ select {
 }
 .nature-sidebar {
   background:
-    linear-gradient(rgba(18, 54, 33, 0.93), rgba(18, 54, 33, 0.96)),
-    radial-gradient(circle at top, #5f8f56, #173420);
+    linear-gradient(var(--sidebar-overlay-1), var(--sidebar-overlay-2)),
+    radial-gradient(circle at top, var(--sidebar-radial-1), var(--sidebar-radial-2));
   color: white;
 }
 
@@ -472,9 +539,9 @@ select {
 
 .forest-hero {
   background:
-    linear-gradient(120deg, rgba(28, 73, 43, 0.92), rgba(72, 111, 60, 0.78)),
-    radial-gradient(circle at top right, #d9b56d, transparent 36%),
-    linear-gradient(135deg, #244d31, #7b9a65);
+    linear-gradient(120deg, var(--hero-overlay-1), var(--hero-overlay-2)),
+    radial-gradient(circle at top right, var(--hero-accent), transparent 36%),
+    linear-gradient(135deg, var(--hero-linear-1), var(--hero-linear-2));
   border-radius: 34px;
   color: white;
   padding: 34px;

@@ -1,5 +1,19 @@
 /* ===== KBFB PERSONAL - REN APP.JS ===== */
 
+// Sesongbasert fargetema, kjørt aller først (og bare her - style.css'
+// [data-season] regler gjør resten): samme mørkegrønne hele året ble
+// litt kjedelig, så høst/vinter/vår/sommer bytter ut kjernefargene og
+// sidebar/hero-gradientene automatisk ut fra dagens måned.
+function applySeasonTheme() {
+  const month = new Date().getMonth();
+  let season = "sommer";
+  if (month >= 8 && month <= 10) season = "host";
+  else if (month === 11 || month <= 1) season = "vinter";
+  else if (month >= 2 && month <= 4) season = "var";
+  document.documentElement.dataset.season = season;
+}
+applySeasonTheme();
+
 /* ---------- HJELPEFUNKSJONER ---------- */
 
 // Anything an employee typed (notes, item names, reasons, etc.) must go
