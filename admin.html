@@ -92,6 +92,14 @@
         <div class="hero-badge">⚙️ Ansattstyring</div>
       </section>
 
+      <div class="message-banner" style="margin-bottom: 20px;">
+        <p class="eyebrow">📋 Ny som styrer her?</p>
+        <p class="muted" style="margin: 0;">
+          Det finnes et overleveringsdokument ("overlevering_ny_styrer.md") med bakgrunn og forklaringer
+          på hvordan alt henger sammen - spør Benjamin (eller Claude) om å finne fram til det.
+        </p>
+      </div>
+
       <section class="card dates-highlight">
         <div class="section-heading">
           <div>
@@ -117,8 +125,7 @@
         <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Ny ansatt eller vikar - med innlogging med det samme</h2></summary>
         <p class="muted">
           Dette skjemaet oppretter en ekte innloggingskonto og legger personen til i lista under - i ett steg.
-          Krever at "create-employee-login"-funksjonen er satt opp i Supabase (én gang, se instruksjonen
-          nedenfor). Er den ikke satt opp ennå, bruk fallback-skjemaet lenger ned i stedet.
+          Fungerer det ikke, bruk skjemaet lenger ned på siden i stedet - se "Engangsoppsett" nedenfor.
         </p>
 
         <form id="newEmployeeLoginForm" class="form-grid">
@@ -129,7 +136,15 @@
 
           <label>
             Rolle
-            <input id="loginEmployeeRole" type="text" placeholder="F.eks. Vikar, Pedagog, Assistent" />
+            <select id="loginEmployeeRole">
+              <option value="">Velg rolle</option>
+              <option value="Leder">Leder</option>
+              <option value="Avdelingsleder">Avdelingsleder</option>
+              <option value="Pedagogisk leder">Pedagogisk leder</option>
+              <option value="Assistent">Assistent</option>
+              <option value="Vikar">Vikar</option>
+              <option value="Gjest">Gjest</option>
+            </select>
           </label>
 
           <label>
@@ -151,8 +166,10 @@
         </form>
         <p id="loginEmployeeStatus" class="muted" style="margin-top: 10px;"></p>
         <p class="muted" style="margin-top: 6px;">
-          "Rolle" styrer tilgang: skriv nøyaktig <strong>Vikar</strong> for begrenset tilgang (kun Hjem, Vakter,
-          Kjøkkenboka, Vikarer). Alt annet blir behandlet som vanlig ansatt med full tilgang.
+          "Rolle" styrer hva personen får se og redigere: <strong>Vikar</strong> gir begrenset tilgang (kun Hjem, Vakter,
+          Kjøkkenboka, Vikarer). <strong>Gjest</strong> gir stort sett bare lesetilgang (f.eks. fellesiPad på kjøkkenet).
+          De andre rollene gir vanlig ansatt-tilgang - Leder/Avdelingsleder/Pedagogisk leder kan i tillegg redigere
+          Årsplan og Årshjul.
         </p>
       </details>
 
@@ -167,10 +184,11 @@
       </details>
 
       <details class="card">
-        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Fallback: legg til uten innlogging (koble til manuelt senere)</h2></summary>
+        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Legg til uten automatisk innlogging (sjelden nødvendig)</h2></summary>
         <p class="muted">
-          Bruk denne hvis Edge Function-en ikke er satt opp ennå. Legger bare til personen i lista -
-          du må da fortsatt opprette innloggingen i Supabase manuelt og lime inn UUID-en i tabellen under.
+          Bruk bare denne hvis skjemaet øverst på siden ikke fungerer. Legger personen til i lista,
+          men uten egen innlogging - noen må da koble den til manuelt etterpå (spør Claude eller
+          utvikleren om hjelp med det, det er et ett-gangs teknisk steg).
         </p>
 
         <form id="newEmployeeForm" class="form-grid">
@@ -181,7 +199,15 @@
 
           <label>
             Rolle
-            <input id="newEmployeeRole" type="text" placeholder="F.eks. Vikar, Pedagog, Assistent" />
+            <select id="newEmployeeRole">
+              <option value="">Velg rolle</option>
+              <option value="Leder">Leder</option>
+              <option value="Avdelingsleder">Avdelingsleder</option>
+              <option value="Pedagogisk leder">Pedagogisk leder</option>
+              <option value="Assistent">Assistent</option>
+              <option value="Vikar">Vikar</option>
+              <option value="Gjest">Gjest</option>
+            </select>
           </label>
 
           <label>

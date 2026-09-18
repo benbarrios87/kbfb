@@ -5157,6 +5157,40 @@ initializeAbsences();
 
 /* ---------- ADMIN - ANSATTSTYRING ---------- */
 
+// Canonical role labels - the exact strings the rest of the app looks
+// for (employeeIsPedagogiskLederTier/employeeIsAssistentTier via
+// substring, isSubstitute/isGuest via exact match, the Årshjul variant
+// names, kbfb_can_edit_arsplan() on the SQL side). A dropdown instead of
+// free text means a typo here can't silently break someone's own access.
+const ROLE_OPTIONS = ["Leder", "Avdelingsleder", "Pedagogisk leder", "Assistent", "Vikar", "Gjest"];
+
+// currentValue may be empty (never set) or something outside
+// ROLE_OPTIONS (old data, or a typo from before this was a dropdown) -
+// both are kept as their own option instead of silently swapped out,
+// so nothing changes until someone deliberately picks a real role.
+function roleSelectOptionsHtml(currentValue) {
+  const value = currentValue || "";
+  const known = ROLE_OPTIONS.includes(value);
+  const options = value && !known ? [value, ...ROLE_OPTIONS] : ["", ...ROLE_OPTIONS];
+
+  return options.map(role => {
+    const label = role === "" ? "Ikke satt" : (role === value && !known ? `${role} (ukjent - velg riktig)` : role);
+    return `<option value="${escapeHtml(role)}" ${role === value ? "selected" : ""}>${escapeHtml(label)}</option>`;
+  }).join("");
+}
+
+// Turns a raw Postgres/Supabase error into something an admin who isn't
+// technical can actually act on, instead of a bare "kunne ikke lagre".
+function describeSupabaseError(error) {
+  if (!error) return "Ukjent feil.";
+  if (error.code === "23505") return "Denne finnes allerede fra før.";
+  if (error.code === "23502") return "Et påkrevd felt mangler verdi.";
+  if (error.code === "42501" || error.message?.includes("row-level security")) {
+    return "Du har ikke tilgang til å gjøre denne endringen. Sjekk at du er logget inn som admin.";
+  }
+  return error.message || "Ukjent feil.";
+}
+
 const newEmployeeForm = document.getElementById("newEmployeeForm");
 const newEmployeeName = document.getElementById("newEmployeeName");
 const newEmployeeRole = document.getElementById("newEmployeeRole");
@@ -5193,7 +5227,7 @@ if (newEmployeeLoginForm) {
       const message = data?.error || error?.message || "Ukjent feil.";
       console.error("Kunne ikke opprette ansatt med innlogging:", message);
       if (loginEmployeeStatus) {
-        loginEmployeeStatus.textContent = `Feilet: ${message} (Er Edge Function-en satt opp? Bruk fallback-skjemaet under i mellomtiden.)`;
+        loginEmployeeStatus.textContent = `Feilet: ${message}. Prøv skjemaet lenger ned på siden i mellomtiden, eller spør Claude/utvikleren om hjelp.`;
       }
       return;
     }
@@ -5233,7 +5267,7 @@ async function updateEmployeeField(id, fields) {
 
   if (error) {
     console.error("Kunne ikke oppdatere ansatt:", error);
-    alert("Kunne ikke lagre endringen. Sjekk at du er logget inn som admin.");
+    alert("Kunne ikke lagre endringen: " + describeSupabaseError(error));
   }
 }
 
@@ -5252,7 +5286,9 @@ function renderAdminEmployeeTable() {
         <p class="muted admin-avatar-upload-status" data-status-for="${employee.id}" style="margin: 4px 0 0; font-size: 0.8rem;"></p>
       </td>
       <td>
-        <input type="text" class="admin-field" data-id="${employee.id}" data-field="role" value="${escapeHtml(employee.role)}" style="width: 140px;" />
+        <select class="admin-field" data-id="${employee.id}" data-field="role" style="width: 150px;">
+          ${roleSelectOptionsHtml(employee.role)}
+        </select>
       </td>
       <td>
         <input type="text" class="admin-field" data-id="${employee.id}" data-field="department" value="${escapeHtml(employee.department)}" style="width: 130px;" />
@@ -5273,7 +5309,7 @@ function renderAdminEmployeeTable() {
         <input type="checkbox" class="admin-field" data-id="${employee.id}" data-field="drives_car" ${employee.drives_car !== false ? "checked" : ""} />
       </td>
       <td>
-        <input type="text" class="admin-field" data-id="${employee.id}" data-field="user_id" value="${escapeHtml(employee.user_id)}" placeholder="Ikke koblet ennå" style="width: 260px; font-family: monospace; font-size: 0.85rem;" />
+        <input type="text" value="${escapeHtml(employee.user_id)}" placeholder="Ikke koblet ennå" readonly title="Kan ikke endres her - en feilklikk her kan koble noen fra sin egen innlogging. Bruk «Nullstill» for nytt passord, eller «Slett» for å fjerne innloggingen." style="width: 260px; font-family: monospace; font-size: 0.85rem; background: var(--sand); cursor: not-allowed;" />
       </td>
       <td>
         ${employee.user_id ? `
@@ -5407,7 +5443,7 @@ if (newEmployeeForm) {
 
     if (error) {
       console.error("Kunne ikke legge til ansatt:", error);
-      alert("Kunne ikke legge til ansatt. Sjekk at du er logget inn som admin.");
+      alert("Kunne ikke legge til ansatt: " + describeSupabaseError(error));
       return;
     }
 
