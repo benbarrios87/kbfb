@@ -3439,7 +3439,14 @@ async function saveSubToSupabase(sub) {
     console.error("Kunne ikke lagre vikarvakt:", error);
   }
 
-  return !error;
+  // 23505 = Postgres unique_violation - the DB has its own one-vakt-per-
+  // vikar-per-dag constraint (kbfb_sub_hours_name_date_unique) as the
+  // real guard. The caller's own subsCache-based check normally catches
+  // this first, but that cache can be stale (e.g. two people registering
+  // the same vikar's same day within moments of each other) - without
+  // this, whoever loses that race saw a generic "kunne ikke lagre"
+  // instead of "allerede registrert", with no indication why.
+  return { ok: !error, duplicate: error?.code === "23505" };
 }
 
 async function deleteSubFromSupabase(id) {
@@ -3765,8 +3772,11 @@ if (subForm) {
         continue;
       }
 
-      const saved = await saveSubToSupabase(sub);
-      if (!saved) anyFailed = true;
+      const result = await saveSubToSupabase(sub);
+      if (!result.ok) {
+        if (result.duplicate) anyDuplicate = true;
+        else anyFailed = true;
+      }
     }
 
     if (anyDuplicate) {
