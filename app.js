@@ -5306,7 +5306,10 @@ function renderAdminEmployeeTable() {
 
   adminEmployeeTableBody.innerHTML = adminEmployeesCache.map(employee => `
     <tr>
-      <td><strong>${escapeHtml(employee.name)}</strong></td>
+      <td>
+        <strong>${escapeHtml(employee.name)}</strong>
+        <button type="button" class="rename-employee-btn" data-rename-id="${employee.id}" data-rename-name="${escapeHtml(employee.name)}" title="Bytt navn">✏️</button>
+      </td>
       <td>
         <label class="secondary-btn admin-avatar-upload-label" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
           ${avatarSpanFor(employee.name, "avatar-tiny")}
@@ -5412,6 +5415,37 @@ function renderAdminEmployeeTable() {
 
       await adminUploadAvatarForEmployee(id, name, file, labelEl, statusEl);
       input.value = "";
+    });
+  });
+
+  document.querySelectorAll(".rename-employee-btn").forEach(button => {
+    button.addEventListener("click", async () => {
+      const oldName = button.dataset.renameName;
+      const newName = prompt(`Nytt navn for ${oldName}:`, oldName)?.trim();
+      if (!newName || newName === oldName) return;
+
+      const confirmed = confirm(
+        `Endre navn fra "${oldName}" til "${newName}"?\n\nDette oppdaterer navnet overalt personen er registrert - vakter, fravær, kjørebok, meldinger og mer - ikke bare i denne lista.`
+      );
+      if (!confirmed) return;
+
+      button.disabled = true;
+
+      const { error } = await supabaseClient.rpc("kbfb_rename_employee", {
+        old_name: oldName,
+        new_name: newName
+      });
+
+      button.disabled = false;
+
+      if (error) {
+        console.error("Kunne ikke endre navn:", error);
+        alert("Kunne ikke endre navn: " + describeSupabaseError(error));
+        return;
+      }
+
+      await loadAllEmployeesForAdmin();
+      renderAdminEmployeeTable();
     });
   });
 

@@ -1441,6 +1441,19 @@ details[open].arsplan-section summary .details-toggle-icon {
   color: #a13a2e;
 }
 
+.rename-employee-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+
+.rename-employee-btn:hover {
+  background: var(--green-soft);
+}
+
 .arshjul-subitems {
   margin-top: 4px;
   border: 1px solid var(--line);

@@ -1600,3 +1600,53 @@ AS $$
     OR public.kbfb_current_employee_role() ILIKE '%avdelingsleder%'
     OR public.kbfb_current_employee_role() ILIKE '%assistent%';
 $$;
+
+-- =========================================================
+-- STEP 50: kbfb_rename_employee()
+--   Names link people across this whole app instead of a UUID
+--   foreign key (kbfb_shifts.employee, kbfb_absences.name, etc. are all
+--   just the person's name as text) - so simply editing
+--   kbfb_employees.name would silently orphan every vakt/fravær/
+--   kjørebok/melding/etc already on record for that person. This RPC
+--   renames them EVERYWHERE in one transaction instead (plpgsql
+--   function body = one implicit transaction - any failure rolls back
+--   the whole thing, nothing is left half-renamed). Admin-only; refuses
+--   if the new name is already taken by someone else.
+-- =========================================================
+
+CREATE OR REPLACE FUNCTION public.kbfb_rename_employee(old_name text, new_name text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT public.kbfb_is_admin() THEN
+    RAISE EXCEPTION 'Kun admin kan endre navn.';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM public.kbfb_employees WHERE name = new_name AND name <> old_name) THEN
+    RAISE EXCEPTION 'Det finnes allerede en ansatt med navnet %.', new_name;
+  END IF;
+
+  UPDATE public.kbfb_employees SET name = new_name WHERE name = old_name;
+  UPDATE public.kbfb_shifts SET employee = new_name WHERE employee = old_name;
+  UPDATE public.kbfb_absences SET name = new_name WHERE name = old_name;
+  UPDATE public.kbfb_direct_messages SET to_name = new_name WHERE to_name = old_name;
+  UPDATE public.kbfb_direct_messages SET from_name = new_name WHERE from_name = old_name;
+  UPDATE public.kbfb_shift_swap_requests SET from_employee = new_name WHERE from_employee = old_name;
+  UPDATE public.kbfb_shift_swap_requests SET to_employee = new_name WHERE to_employee = old_name;
+  UPDATE public.kbfb_sub_hours SET name = new_name WHERE name = old_name;
+  UPDATE public.kbfb_employee_settings SET employee = new_name WHERE employee = old_name;
+  UPDATE public.kbfb_kind_messages SET author = new_name WHERE author = old_name;
+  UPDATE public.kbfb_feedback SET name = new_name WHERE name = old_name;
+  UPDATE public.kbfb_avvik SET reported_by = new_name WHERE reported_by = old_name;
+  UPDATE public.kbfb_avvik SET responsible = new_name WHERE responsible = old_name;
+  UPDATE public.kbfb_avvik SET closed_by = new_name WHERE closed_by = old_name;
+  UPDATE public.kbfb_photo_reactions SET author = new_name WHERE author = old_name;
+  UPDATE public.kbfb_note_reactions SET author = new_name WHERE author = old_name;
+  UPDATE public.kbfb_day_reads SET reader = new_name WHERE reader = old_name;
+  UPDATE public.kbfb_checklist_completions SET completed_by = new_name WHERE completed_by = old_name;
+  UPDATE public.kbfb_push_subscriptions SET employee_name = new_name WHERE employee_name = old_name;
+END;
+$$;
