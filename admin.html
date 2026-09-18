@@ -118,7 +118,7 @@
         <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Ny ansatt eller vikar - med innlogging med det samme</h2></summary>
         <p class="muted">
           Dette skjemaet oppretter en ekte innloggingskonto og legger personen til i lista under - i ett steg.
-          Fungerer det ikke, bruk skjemaet lenger ned på siden i stedet - se "Engangsoppsett" nedenfor.
+          Fungerer det ikke, bruk skjemaet lenger ned på siden i stedet.
         </p>
 
         <form id="newEmployeeLoginForm" class="form-grid">
@@ -164,16 +164,6 @@
           De andre rollene gir vanlig ansatt-tilgang - Leder/Avdelingsleder/Pedagogisk leder kan i tillegg redigere
           Årsplan og Årshjul.
         </p>
-      </details>
-
-      <details class="card">
-        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Engangsoppsett: koble til Edge Function</h2></summary>
-        <p class="muted">Gjøres én gang, av den som setter opp systemet. Ikke noe fremtidig admin trenger å røre.</p>
-        <ol style="margin: 10px 0 0; padding-left: 20px; color: var(--muted); font-weight: 650;">
-          <li>Gå til Supabase → Edge Functions → Create a new function. Kall den <strong>create-employee-login</strong>.</li>
-          <li>Lim inn koden fra <code>supabase/functions/create-employee-login/index.ts</code> i repoet.</li>
-          <li>Trykk Deploy. Ferdig - skjemaet over fungerer med en gang etter det.</li>
-        </ol>
       </details>
 
       <details class="card">
