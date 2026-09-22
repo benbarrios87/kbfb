@@ -3317,6 +3317,72 @@ if (dateCategoryFilter) {
   dateCategoryFilter.addEventListener("change", renderEvents);
 }
 
+// Same "HTML wrapped as .doc" trick as Kjørebok/Årsplan's Word-eksport
+// (Word opens it fine, no real docx library needed) - respects whatever
+// category-filter is currently selected, so "Styremøter" only downloads
+// styremøtene, not every dato.
+function datoerPrintableHtml() {
+  const category = dateCategoryFilter?.value || "all";
+  const events = getEvents()
+    .filter(event => category === "all" || event.category === category)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const label = category === "all" ? "Alle datoer" : categoryLabel(category);
+
+  const rowsHtml = events.length
+    ? events.map(event => `
+        <tr>
+          <td>${formatNorwegianDate(event.date)}</td>
+          <td>${escapeHtml(event.title)}</td>
+          <td>${categoryEmoji(event.category)} ${escapeHtml(categoryLabel(event.category))}</td>
+          <td>${escapeHtml(event.note || "")}</td>
+        </tr>
+      `).join("")
+    : `<tr><td colspan="4">Ingen datoer for dette utvalget.</td></tr>`;
+
+  return `<!DOCTYPE html>
+    <html lang="no">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Datoer - KBFB</title>
+      <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 30px auto; color: #222; }
+        h1 { text-align: center; margin-bottom: 2px; }
+        p.meta { text-align: center; color: #555; margin-top: 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px 10px; text-align: left; }
+        thead th { background: #f0f0f0; }
+      </style>
+    </head>
+    <body>
+      <h1>Datoer - Kirkerudbakken Friluftsbarnehage</h1>
+      <p class="meta">${escapeHtml(label)} · hentet ut ${formatNorwegianDate(toDateKey(new Date()))}</p>
+      <table>
+        <thead>
+          <tr><th>Dato</th><th>Tittel</th><th>Type</th><th>Notat</th></tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </body>
+    </html>`;
+}
+
+function exportDatesWord() {
+  const blob = new Blob(["﻿", datoerPrintableHtml()], { type: "application/msword" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  const category = dateCategoryFilter?.value || "all";
+  link.download = category === "all" ? "datoer.doc" : `datoer-${category}.doc`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+const datesWordBtn = document.getElementById("datesWordBtn");
+if (datesWordBtn) datesWordBtn.addEventListener("click", exportDatesWord);
+
 async function initializeEvents() {
   // Also load employees here (if some other init on the page hasn't
   // already) so birthdays are available for the dashboard banner and

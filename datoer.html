@@ -152,20 +152,23 @@
             <h2>Årshjul</h2>
           </div>
 
-          <label class="compact-filter">
-            Vis
-            <select id="dateCategoryFilter">
-              <option value="all">Alle</option>
-              <option value="general">Generelt</option>
-              <option value="personal">Personalmøte</option>
-              <option value="plandager">Plandag</option>
-              <option value="overnatting">Overnatting / tur</option>
-              <option value="foreldre">Foreldre</option>
-              <option value="styre">Styremøte</option>
-              <option value="su">SU-møte</option>
-              <option value="bursdag">Bursdag</option>
-            </select>
-          </label>
+          <div style="display: flex; align-items: flex-end; gap: 10px;">
+            <label class="compact-filter">
+              Vis
+              <select id="dateCategoryFilter">
+                <option value="all">Alle</option>
+                <option value="general">Generelt</option>
+                <option value="personal">Personalmøte</option>
+                <option value="plandager">Plandag</option>
+                <option value="overnatting">Overnatting / tur</option>
+                <option value="foreldre">Foreldre</option>
+                <option value="styre">Styremøte</option>
+                <option value="su">SU-møte</option>
+                <option value="bursdag">Bursdag</option>
+              </select>
+            </label>
+            <button type="button" class="secondary-btn" id="datesWordBtn">📄 Last ned Word</button>
+          </div>
         </div>
 
         <div id="dateList" class="date-list month-list"></div>
