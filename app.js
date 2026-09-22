@@ -5361,6 +5361,9 @@ function renderAdminEmployeeTable() {
       <td style="text-align: center;">
         <input type="checkbox" class="admin-field" data-id="${employee.id}" data-field="drives_car" ${employee.drives_car !== false ? "checked" : ""} />
       </td>
+      <td style="text-align: center;">
+        <input type="checkbox" class="admin-field" data-id="${employee.id}" data-field="arshjul_enabled" ${employee.arshjul_enabled !== false ? "checked" : ""} title="Skal denne personen ha sitt eget årshjul (kun relevant for pedagoger)?" />
+      </td>
       <td>
         <input type="text" value="${escapeHtml(employee.user_id)}" placeholder="Ikke koblet ennå" readonly title="Kan ikke endres her - en feilklikk her kan koble noen fra sin egen innlogging. Bruk «Nullstill» for nytt passord, eller «Slett» for å fjerne innloggingen." style="width: 260px; font-family: monospace; font-size: 0.85rem; background: var(--sand); cursor: not-allowed;" />
       </td>
@@ -7368,12 +7371,15 @@ let arshjulOpenNotatIds = new Set();
 let arshjulSelectedOwner = null;
 
 // Who the Pedagogisk leder owner-picker offers: everyone currently in
-// that role tier (not hardcoded names), so a new pedagog just shows up
-// once they're added as an employee.
+// that role tier (not hardcoded names) who hasn't been opted out via
+// "Årshjul?" in Admin (arshjul_enabled - for someone who's genuinely a
+// pedagog but doesn't need their own wheel, without misrepresenting
+// their actual role to make them disappear).
 function pedagogiskLederEmployees() {
   return employeesCache.filter(e => {
     const role = (e.role || "").toLowerCase();
-    return role.includes("pedagog") || role.includes("pedleder") || role.includes("avdelingsleder");
+    const isPedagog = role.includes("pedagog") || role.includes("pedleder") || role.includes("avdelingsleder");
+    return isPedagog && e.arshjul_enabled !== false;
   });
 }
 

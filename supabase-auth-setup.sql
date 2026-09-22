@@ -1707,3 +1707,13 @@ CREATE POLICY "kbfb_arshjul_routines_role_write" ON public.kbfb_arshjul_routines
   FOR ALL TO authenticated
   USING (public.kbfb_can_edit_arshjul_owner(variant, owner_name))
   WITH CHECK (public.kbfb_can_edit_arshjul_owner(variant, owner_name));
+
+-- =========================================================
+-- STEP 52: kbfb_employees.arshjul_enabled
+--   Opt a specific pedagog out of the per-person årshjul (STEP 51)
+--   without touching their actual role - e.g. Marianne Lien is
+--   genuinely "Pedagogisk leder" but doesn't need her own wheel.
+--   Defaults true so nothing changes for anyone already using it.
+-- =========================================================
+
+ALTER TABLE public.kbfb_employees ADD COLUMN IF NOT EXISTS arshjul_enabled boolean NOT NULL DEFAULT true;
