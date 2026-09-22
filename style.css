@@ -176,6 +176,53 @@ body {
   font-size: 0.94em;
 }
 
+.handbok-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.handbok-toc a {
+  background: var(--green-soft);
+  color: var(--green-dark);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.9em;
+  padding: 8px 14px;
+  border-radius: 999px;
+}
+
+.handbok-toc a:hover {
+  background: var(--green);
+  color: white;
+}
+
+.handbok-body h3 {
+  margin: 20px 0 6px;
+  font-size: 1.05rem;
+  color: var(--green-dark);
+}
+
+.handbok-body h3:first-child {
+  margin-top: 0;
+}
+
+.handbok-body p {
+  margin: 0 0 12px;
+  line-height: 1.6;
+}
+
+.handbok-body ul,
+.handbok-body ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+  line-height: 1.6;
+}
+
+.handbok-body li {
+  margin-bottom: 6px;
+}
+
 .main {
   padding: 32px;
   max-width: 1300px;

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Personalhåndbok | KBFB Personal</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="images/icon-192.png" type="image/png" />
+  <meta name="theme-color" content="#234d31" />
+  <link rel="apple-touch-icon" href="images/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="KBFB" />
+</head>
+
+<body>
+  <div class="layout">
+    <aside class="sidebar nature-sidebar">
+      <div class="brand">
+        <div class="brand-icon">🌲</div>
+        <h2>KBFB</h2>
+        <p>Personalrommet</p>
+      </div>
+
+      <nav>
+        <a href="dashboard.html">🏠 Hjem</a>
+        <a href="vakter.html">📅 Vakter<span class="nav-badge" style="display:none;"></span></a>
+        <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
+        <a data-admin-only href="oppgaver.html">🗒️ Oppgaver</a>
+
+        <details class="nav-folder" open>
+          <summary>📁 Personal</summary>
+          <div class="nav-folder-links">
+            <a data-hide-from-vikar href="datoer.html">📆 Datoer</a>
+            <a href="vikarer.html">🕒 Vikarer</a>
+            <a data-hide-from-vikar data-hide-from-guest href="ferieogavspasering.html">🌴 Ferie/avsp/overtid</a>
+            <a data-hide-from-vikar data-hide-from-guest href="kjorebok.html">🚗 Kjørebok</a>
+            <a class="active" data-hide-from-guest href="personalhandbok.html">📕 Personalhåndbok</a>
+          </div>
+        </details>
+
+        <details class="nav-folder" data-hide-from-vikar>
+          <summary>📁 Ressurser</summary>
+          <div class="nav-folder-links">
+            <a href="filarkiv.html">📁 Filarkiv</a>
+            <a href="aarshjul.html">🗓️ Årshjul</a>
+            <a href="arsplan.html">📘 Årsplan</a>
+            <a href="turbank.html">🏕️ Turbank (kommer)</a>
+          </div>
+        </details>
+
+        <details class="nav-folder">
+          <summary>📁 Praktisk</summary>
+          <div class="nav-folder-links">
+            <a href="bestillinger.html">🛒 Bestillinger</a>
+            <a data-hide-from-vikar href="kalender.html">📍 Hvor er Benjamin?</a>
+          </div>
+        </details>
+
+        <details class="nav-folder" data-admin-only>
+          <summary>📁 Admin</summary>
+          <div class="nav-folder-links">
+            <a href="nokkeltall.html">📊 Nøkkeltall</a>
+            <a href="admin.html">⚙️ Admin</a>
+            <a href="hms.html">🏥 HMS</a>
+            <a href="lederutfordring.html">🎯 Lederutfordringen</a>
+          </div>
+        </details>
+      </nav>
+
+      <div class="sidebar-feedback" data-hide-from-guest>
+        <p>💬 Innspill?</p>
+        <form id="feedbackForm">
+          <textarea id="feedbackText" rows="2" placeholder="Skriv her..." required></textarea>
+          <button type="submit">Send</button>
+        </form>
+        <p id="feedbackStatus"></p>
+      </div>
+
+      <div class="sidebar-footer">
+        <span class="user-badge" id="userBadge"></span>
+        <button class="logout-btn" id="logoutBtn">Logg ut</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="forest-hero compact">
+        <div>
+          <p class="eyebrow">Kirkerudbakken friluftsbarnehage</p>
+          <h1>Personalhåndbok</h1>
+          <p class="muted">Versjon 4.0, vedtatt 11.06.07 · sist endret 9.3.2016</p>
+        </div>
+        <div class="hero-badge">📕 Oppslagsverk</div>
+      </section>
+
+      <section class="card">
+        <p class="muted" style="margin: 0;">
+          Kirkerudbakken friluftsbarnehage · Borkenveien 41, postboks 4, 1339 Vøyenenga ·
+          Tlf 67 13 33 48 · <a href="mailto:kirkerudbakken@kbfb.no">kirkerudbakken@kbfb.no</a> ·
+          <a href="https://www.kbfb.no" target="_blank" rel="noopener">www.kbfb.no</a>
+        </p>
+        <p class="muted" style="margin: 10px 0 0;">
+          Gjelder for alle ansatte i barnehagen. Vikarer har ikke alltid de samme rettighetene som
+          fast ansatte, spesielt når det gjelder permisjoner og tjenestefri - se de enkelte punktene.
+          Rekkefølgen ved motstrid: 1) din egen arbeidsavtale, 2) denne håndboken, 3) lover og forskrifter.
+        </p>
+      </section>
+
+      <section class="card" id="handbokInnhold">
+        <h2 style="margin-top: 0;">📑 Innhold</h2>
+        <div class="handbok-toc">
+          <a href="#om-barnehagen">Om barnehagen</a>
+          <a href="#generelt">1. Generelt</a>
+          <a href="#ansettelse">Ansettelse</a>
+          <a href="#arbeidstid">3. Arbeidstid</a>
+          <a href="#ferie">4. Ferie</a>
+          <a href="#lonn">5. Lønn</a>
+          <a href="#fravaer">6. Fravær</a>
+          <a href="#oppsigelse">7. Oppsigelse</a>
+        </div>
+      </section>
+
+      <details class="card" id="om-barnehagen">
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
+            <h2 style="display: inline;">🏕️ Om barnehagen</h2>
+          </div>
+        </summary>
+        <div class="handbok-body">
+          <p>
+            Kirkerudbakken friluftsbarnehage er en privat, foreldreeiet barnehage med 33-35 barn i alderen
+            1-6 år. Barnehagen åpnet i 1989 og har utviklet seg til å bli en friluftsbarnehage. Barnehagen
+            skal respektere alles særegne kultur og religion.
+          </p>
+          <p>
+            Alle som jobber i barnehagen plikter å kjenne til og forholde seg til gjeldende instrukser og
+            vedtekter, samt til barnehagens friluftsprofil.
+          </p>
+          <h3>Målsetting</h3>
+          <p>Kirkerudbakken friluftsbarnehage må forholde seg til "Lov om barnehager" og "Rammeplanen". I tillegg:</p>
+          <ul>
+            <li>Skal være en fremtredende friluftsbarnehage i Bærum Kommune.</li>
+            <li>Skal markedsføre seg som friluftsbarnehage og på den måten rekruttere barn til sin virksomhet.</li>
+            <li>Ønsker å gi barna et naturlig forhold til friluftsliv hvor naturen er arena for nysgjerrighet, lek, vennskap og læring.</li>
+            <li>Ønsker å gi foreldrene trygghet for sine barn, og at de gjennom barna opplever at friluftsliv gir rike muligheter for allsidig utvikling. Ønsker å inspirere foreldrene til samarbeid og videreutvikling av friluftsliv i og utenfor barnehagens virksomhet.</li>
+            <li>Ønsker et personale som har høy kompetanse og stor entusiasme innenfor friluftsliv, samtidig som de er dyktige og gode omsorgspersoner.</li>
+            <li>Styrene skal sørge for at rammebetingelsene for driften bidrar til at barnehagen kan drives som en friluftsbarnehage med nødvendig aktivitetsnivå og kompetanseprofil.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="card" id="generelt">
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
+            <h2 style="display: inline;">1. Generelt</h2>
+          </div>
+        </summary>
+        <div class="handbok-body">
+          <p>
+            Personalhåndboken gjelder for alle ansatte i Kirkerudbakken friluftsbarnehage. Det gjøres
+            oppmerksom på at vikarer ikke har de samme rettigheter som fast ansatte når det gjelder
+            spesielt permisjoner og tjenestefri.
+          </p>
+          <p>Grunnlaget for rettigheter og plikter i arbeidsforholdet er prioritert i denne rekkefølgen:</p>
+          <ol>
+            <li>Personlige arbeidsavtaler.</li>
+            <li>Barnehagens personalhåndbok.</li>
+            <li>Lover og forskrifter.</li>
+          </ol>
+        </div>
+      </details>
+
+      <details class="card" id="ansettelse">
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
+            <h2 style="display: inline;">🖊️ Ansettelse</h2>
+          </div>
+        </summary>
+        <div class="handbok-body">
+          <p>
+            Ansettelse av daglig leder foretas og godkjennes av Styret. Øvrige ansettelser foretas av
+            daglig leder, hvor Styret godkjenner ansettelser av pedagogiske ledere.
+          </p>
+          <p>
+            Ved retur av underskrevet kontrakt anses ansettelsesavtalen inngått, og den ansatte får en
+            av de to ansettelseskontraktene samt et eksemplar av personalhåndboken.
+          </p>
+          <h3>Prøvetid ved fast ansettelse</h3>
+          <p>
+            De første 6 månedene av ansettelsesperioden regnes som prøvetid. Senest etter 3 måneder skal
+            daglig leder ha oppfølgingssamtale med den nyansatte. Når prøvetiden er over er arbeidstaker
+            fast ansatt dersom vedkommende tilfredsstiller gjeldende stillingskrav. Ved lengre sykefravær i
+            prøveperioden kan prøvetiden forlenges tilsvarende.
+          </p>
+          <h3>Tidsbegrenset ansettelse / vikariater</h3>
+          <p>
+            Ansettelsesforholdet utløper den dato som er angitt i kontrakten. Hvis den ansatte har et
+            sykevikariat hvor sluttdato ikke kan fastsettes, utløper vikariatet når den syke er tilbake i jobb.
+          </p>
+        </div>
+      </details>
+
+      <details class="card" id="arbeidstid">
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
+            <h2 style="display: inline;">3. Arbeidstid</h2>
+          </div>
+        </summary>
+        <div class="handbok-body">
+          <p>
+            Arbeidstiden er 37,5 timer pr. uke. De ansatte jobber normalt 7,5 timer pr. dag inkludert
+            matpause - den ansatte kan ikke forlate arbeidsplassen og må være disponibel i denne
+            perioden hvis ikke annet er avtalt.
+          </p>
+          <p>
+            Barnehagen er åpen fra kl. 07.30-17.00. For å dekke hele åpningstiden følger de ansatte et
+            vaktsystem, også deltidsansatte. Arbeidstiden skal avholdes fullt ut - personlige gjøremål som
+            avkledning, dobesøk og mat/kaffelaging skal være gjort før arbeidstiden begynner.
+          </p>
+          <p>
+            Blir man forsinket, skal barnehagen kontaktes så fort som mulig. Personalet på jobb skal,
+            ifølge instruks, straks ringe den ansatte som ikke har kommet på jobb til avtalt tid.
+          </p>
+          <p>
+            Den ansatte er ansatt i barnehagen som helhet, og må ved behov være villig til å bytte
+            avdeling. Pedagogisk leder har 4 timer ubundet tid inkludert i arbeidstiden pr. uke, som skal
+            brukes til planlegging og legges utenfor ordinær arbeidstid.
+          </p>
+
+          <h3>Overtid</h3>
+          <p>
+            Den ansatte har plikt til å møte til overtid pålagt av daglig leder. Godtgjørelse for overtid er
+            avspasering og overtidstillegg når arbeidstiden en dag overskrider 7,5 timer. Daglig leder
+            avgjør om overtiden avspaseres eller utbetales som lønn.
+          </p>
+
+          <h3>Avspasering</h3>
+          <p>
+            Arbeidstakere plikter å føre oversikt over all overtid og avspasering. Avspasering skal
+            fortrinnsvis tas ut i jul- og påskehelgen. All annen avspasering skal avtales med pedagogisk
+            leder eller daglig leder, og skal ikke påvirke driften i vesentlig grad.
+          </p>
+          <p>
+            Ved uventede hendelser som sykdom blant øvrig personale kan avspasering inndras med
+            øyeblikkelig virkning. Oppspart avspasering skal i størst mulig grad tas ut før 31.12 hvert år.
+          </p>
+
+          <h3>Redusert arbeidstid</h3>
+          <p>
+            Styret kan innvilge redusert arbeidstid for arbeidstakere som ønsker det. Slike avtaler
+            opphører idet det ikke kan settes inn vikar for den reduserte tiden.
+          </p>
+
+          <h3>Tjenestefri</h3>
+          <p>
+            Ansatte tilgodesees med 2 uker tjenestefri pr. arbeidsår. Full opptjening forutsetter fast
+            ansettelse og at man har vært i jobb fra 1.8 året før og fortsetter neste barnehageår. Dagene
+            tas ut i perioden uke 25-32 etter et barnehageår.
+          </p>
+          <p>
+            Ved sykefravær eller permisjoner reduseres antall tjenestefrie dager med én dag pr. måned
+            fravær. Forutsetningen for uttak er at driften ikke berøres i vesentlig grad - tjenestefri kan
+            trekkes inn ved uforutsette hendelser som sykdom blant øvrig personale. Redusert arbeidstid
+            medfører tilsvarende redusert tjenestefri. Vikarer som jobber i barnehagen i mer enn 1 år
+            kommer inn under denne ordningen.
+          </p>
+
+          <h3>Sykefravær - hvem varsler du?</h3>
+          <p>
+            Så fort en ansatt skjønner at hen ikke kan gå på jobb, skal nærmeste leder varsles - det skal
+            ringes, ikke sendes SMS. Den ansatte skal holde arbeidsplassen orientert om sykdomsforløpet
+            pr. telefon (ikke SMS).
+          </p>
+          <p>
+            Egenmelding kan ikke benyttes før etter 2 måneders ansettelse - i den perioden må lege
+            kontaktes ved fravær. Den første ansettelsesmåneden har man ikke krav på sykepenger. Den
+            ansatte har selv ansvar for å levere egenmelding eller sykemelding som dokumentasjon på
+            gyldig fravær.
+          </p>
+
+          <h3>Seniortiltak</h3>
+          <p>
+            Barnehagen følger PBLs seniorordning: ved fylte 62 år, 100 % stilling og minst 3 års
+            ansettelse kan man søke PBL om 100 % lønn og 80 % jobb - PBL refunderer 20 % lønn.
+          </p>
+        </div>
+      </details>
+
+      <details class="card" id="ferie">
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
+            <h2 style="display: inline;">4. Ferie</h2>
+          </div>
+        </summary>
+        <div class="handbok-body">
+          <p>
+            Arbeidstakere har krav på å avvikle 18 virkedager (3 uker) ferie sammenhengende i perioden
+            1.6-30.9 - av hensyn til driften er det ønskelig at denne avvikles i uke 25-32. Barnehagen
+            holder stengt tre uker av fellesferien, og da må personalet avvikle ferie.
+          </p>
+          <p>
+            Resten av ferien kan avvikles innenfor resten av ferieåret etter avtale med pedagogisk leder
+            eller daglig leder. Øvrige bestemmelser følger av ferieloven.
+          </p>
+          <h3>Feriepenger</h3>
+          <p>
+            Grunnlaget for beregning følger ferielovens regler. Ved slutt i perioden 1.1-31.12 i
+            opptjeningsåret trekkes forskuddsskatt av feriepenger opptjent etter 1.1, i tråd med
+            Skattedirektoratets regler. Feriepengene utbetales i sin helhet ca. 25.6 - det er ingen vanlig
+            lønnsutbetaling i juli.
+          </p>
+        </div>
+      </details>
+
+      <details class="card" id="lonn">
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
+            <h2 style="display: inline;">5. Lønn</h2>
+          </div>
+        </summary>
+        <div class="handbok-body">
+          <p>
+            Barnehagen er medlem av PBL og følger deres tariff, samtidig som Bærum Kommunes til
+            enhver tid gjeldende lønnsregulativ legges til grunn. Barnehagen har egen lønnspolitikk som
+            skal ivareta de ansattes rettigheter. Personalet kan reforhandle sin lønn med Styret etter
+            gjeldende lønnspolitikk når man har vært ansatt minimum 2 år.
+          </p>
+          <p>
+            Lønn utbetales den 15. i hver måned over bank - de ansatte plikter å ha lønnskonto i bank.
+            Lønnen er halvt forskudd og halvt etterskuddsvis. Skattekort hentes digitalt av
+            regnskapskontoret - ikke nødvendig å levere manuelt.
+          </p>
+          <p>I lønnen kan det trekkes for:</p>
+          <ul>
+            <li>Lovbestemt skattetrekk.</li>
+            <li>Underholdsbidrag, trygdepremie.</li>
+            <li>Beløp i følge skriftlig avtale.</li>
+            <li>Erstatning for tap eller skade arbeidstaker har påført barnehagen ved grov uaktsomhet, når arbeidstaker skriftlig erkjenner ansvaret eller det er fastsatt ved dom.</li>
+          </ul>
+
+          <h3>Forsikringer</h3>
+          <p>
+            Samtlige ansatte har lovpålagt yrkesskadeforsikring (menerstatning, ervervserstatning og
+            dødsfallserstatning). Ansatte meldes inn i barnehagens pensjonsforsikringsordning ved ansettelse.
+          </p>
+
+          <h3>Andre ordninger</h3>
+          <ul>
+            <li>Klesgodtgjørelse på kr 1500 pr. år for fast ansatte i 100 % stilling (redusert forholdsmessig ved lavere stilling). Ved fast ansettelse utbetales et engangsbeløp på kr 3000 til en utstyrspakke med nødvendige klær for jobb i friluftsbarnehage.</li>
+            <li>Overnattingsturer med barn godtgjøres fra arbeidstidens slutt (etter normal arbeidsdag) med overtidsbetaling (50 %) til kl. 22, og fra kl. 07.00 til normal arbeidstids start. Nattillegg etter statens satser, kr 615,- (KPI-justert januar 2026). Ved bruk av egen bil ytes kilometer- og passasjertillegg etter statens satser. (Vedtatt eiermøte 13.9.2010)</li>
+            <li>Stedfortredertillegg: kr 5000 til den som er utnevnt som stedfortreder.</li>
+            <li>Gaver ved 25, 40 og 50 års tjeneste - jubilanten velger ett av tre alternativer: (a) gave til kr 2000 + pengegave (hovedstilling: kr 2000/5000/8000 for hhv. 25/40/50 år; bistilling: kr 1400/3400/5400), (b) gave- og pengegavebeløpet slått sammen til én gave, eller (c) gave til kr 2000 + fri med lønn i 1, 2 og 3 uker for hhv. 25, 40 og 50 år.</li>
+            <li>Ansatte som fyller 50 eller 60 år kan gis blomster og gavekort for inntil kr 1000.</li>
+            <li>Slutter man etter minst 30 års samlet tjeneste: gave inntil kr 2400 (2690,-) og en tilstelning inntil kr 800 (900,-). Etter 20 års samlet tjeneste: gave inntil kr 1600 (1900,-) og en enkel tilstelning. (Vedtatt styremøte 9.3.2016)</li>
+          </ul>
+          <p class="muted">
+            Alle kronebeløp i denne seksjonen skal konsumprisreguleres - regulert med 12,1 % (2016-2021) + 5,8 % (2022).
+          </p>
+        </div>
+      </details>
+
+      <details class="card" id="fravaer">
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
+            <h2 style="display: inline;">6. Fravær</h2>
+          </div>
+        </summary>
+        <div class="handbok-body">
+          <p>
+            Alt fravær skal meldes til pedagogisk leder eller daglig leder så fort man er klar over at man
+            ikke kan møte på jobb som avtalt.
+          </p>
+          <h3>Egenmelding</h3>
+          <p>
+            Kan benyttes etter 2 måneders ansettelse. Retten gjelder 24 dager i løpet av et år, maks 8
+            dager pr. egenmelding. Ved mistanke om misbruk kan retten inndras. Er man borte fra jobb
+            dagen før og etter arbeidsfrie dager, telles de arbeidsfrie dagene med når antall kalenderdager regnes.
+          </p>
+          <p>
+            Når egne barn under 12 år eller barnepasser er syke, har man rett til permisjon i inntil 10
+            dager med lønn pr. kalenderår. Den som er alene om omsorgen for barn under 12 år har rett
+            til 20 dager permisjon med lønn pr. kalenderår.
+          </p>
+          <h3>Sykepenger</h3>
+          <p>Sykelønnsbestemmelsene er tilpasset reglene i folketrygdloven.</p>
+          <h3>Permisjoner</h3>
+          <p>
+            Besøk hos lege, tannlege, fysioterapeut eller andre skal legges utenfor fastlagt arbeidstid
+            (unntak: spesialister). Er det umulig å få time utenfor arbeidstiden, skal daglig leder godkjenne
+            det. Ved hyppige timer kan arbeidstaker søke om permisjon, godkjent av daglig leder.
+          </p>
+          <p>
+            Permisjon med lønn gis ved fødsel og svangerskapspermisjon, adopsjon, omsorg og amming,
+            eller som til enhver tid bestemt i arbeidsmiljøloven. Velferdspermisjon med lønn kan gis for
+            inntil 2 uker i kalenderåret - utover det kan Styret innvilge mer. All permisjonssøknad skal
+            være skriftlig og godkjennes av daglig leder.
+          </p>
+          <p>Permisjon med lønn kan ellers gis ved:</p>
+          <ul>
+            <li>Alvorlig sykdom i nærmeste familie (ektefelle, samboer, foreldre, svigerforeldre, besteforeldre, barn, søsken eller andre som står arbeidstaker spesielt nær).</li>
+            <li>Dødsfall og begravelse i nærmeste familie som over.</li>
+            <li>Tilvenning av barn i barnehage, inntil 3 dager.</li>
+            <li>Første skoledag.</li>
+            <li>Tilleggs- og etterutdannelse som har betydning for den ansattes rolle i barnehagen.</li>
+            <li>Eksamensdager, samt de nærmeste 2 dagene før hver eksamensdag hvis de ville vært arbeidsdager (redusert arbeidstid gir tilsvarende reduserte dager).</li>
+            <li>Eget og barns giftemål.</li>
+            <li>Flytting, 1 dag.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="card" id="oppsigelse">
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
+            <h2 style="display: inline;">7. Oppsigelse</h2>
+          </div>
+        </summary>
+        <div class="handbok-body">
+          <h3>Oppsigelser</h3>
+          <p>
+            Oppsigelse skal skje skriftlig fra begge parter. Gjensidig oppsigelsestid er 1 måned i
+            prøvetiden eller for vikariater, og 3 måneder for fast ansatte, der ikke annet er nevnt.
+            Tidsbegrensede ansettelseskontrakter opphører uten forhåndsvarsel ved tidsrommets opphør.
+          </p>
+          <h3>Disiplinærregler</h3>
+          <p>Tjenesteforsømmelse eller overtredelse av reglementer kan føre til disiplinære tiltak:</p>
+          <ul>
+            <li>Muntlig / skriftlig advarsel.</li>
+            <li>Etter to skriftlige advarsler følger oppsigelse.</li>
+          </ul>
+          <p>
+            Før disiplinærtiltak iverksettes skal arbeidstaker ha rett til å forklare seg. Avgjørelser om
+            disiplinærtiltak tas av daglig leder og Eierstyret.
+          </p>
+          <h3>Avskjed</h3>
+          <p>I spesielt alvorlige tilfeller kan avskjed gis med øyeblikkelig virkning. Avskjedsgrunner kan være:</p>
+          <ul>
+            <li>Uten rimelig grunn nekter eller med forsett unnlater å rette seg etter instruks fra overordnede om arbeid eller orden på arbeidsstedet.</li>
+            <li>Møter beruset på arbeid, eller nyter rusdrikk eller stoff i arbeidstiden.</li>
+            <li>Gjentatte ganger unnlater å møte på jobb til avtalt tid.</li>
+            <li>Underslår eller urettmessig tilegner seg noe av barnehagens eiendeler.</li>
+            <li>Brudd på taushetsløfte.</li>
+          </ul>
+        </div>
+      </details>
+
+      <p class="muted" style="text-align: center; margin: 20px 0;">
+        Dette er en digital avskrift av det offisielle dokumentet. Ved uklarheter eller avvik gjelder alltid
+        det formelt vedtatte dokumentet fra styret.
+      </p>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+  <script src="pwa.js"></script>
+</body>
+</html>
