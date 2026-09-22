@@ -233,8 +233,8 @@ async function loadEmployeesFromSupabase() {
 
   // Same race as above - the "Til"-dropdown on Send beskjed may have
   // been built (empty) before employeesCache was known.
-  if (document.getElementById("directMessageTo")) {
-    populateEmployeeSelect("directMessageTo", { includeBlank: true, blankText: "Velg ansatt" });
+  if (document.getElementById("directMessageTo") && typeof populateDirectMessageToSelect === "function") {
+    populateDirectMessageToSelect();
   }
   if (typeof loadMyDirectMessages === "function") loadMyDirectMessages();
 
@@ -1198,7 +1198,15 @@ const directMessageTo = document.getElementById("directMessageTo");
 const directMessageText = document.getElementById("directMessageText");
 const directMessageStatus = document.getElementById("directMessageStatus");
 
-if (directMessageTo) populateEmployeeSelect("directMessageTo", { includeBlank: true, blankText: "Velg ansatt" });
+// "Alle ansatte" appended after the real names (not via populateEmployeeSelect's
+// own includeAll, which would put it first and risk it being the accidental
+// default) - Velg ansatt stays the first/default option either way.
+function populateDirectMessageToSelect() {
+  populateEmployeeSelect("directMessageTo", { includeBlank: true, blankText: "Velg ansatt" });
+  if (directMessageTo) directMessageTo.innerHTML += `<option value="all">👥 Alle ansatte</option>`;
+}
+
+if (directMessageTo) populateDirectMessageToSelect();
 
 if (directMessageForm) {
   directMessageForm.addEventListener("submit", async event => {
@@ -1210,11 +1218,14 @@ if (directMessageForm) {
     const text = directMessageText.value.trim();
     if (!toName || !text) return;
 
-    const { error } = await supabaseClient.from("kbfb_direct_messages").insert([{
-      to_name: toName,
-      from_name: currentEmployee.name,
-      text
-    }]);
+    const recipients = toName === "all"
+      ? employeesCache.filter(e => e.role !== "Gjest" && e.name !== currentEmployee.name).map(e => e.name)
+      : [toName];
+    if (!recipients.length) return;
+
+    const { error } = await supabaseClient.from("kbfb_direct_messages").insert(
+      recipients.map(name => ({ to_name: name, from_name: currentEmployee.name, text }))
+    );
 
     if (error) {
       console.error("Kunne ikke sende beskjed:", error);
@@ -1222,11 +1233,11 @@ if (directMessageForm) {
       return;
     }
 
-    sendPushNotification([toName], `Beskjed fra ${currentEmployee.name}`, text, "dashboard.html");
+    sendPushNotification(recipients, `Beskjed fra ${currentEmployee.name}`, text, "dashboard.html");
 
     directMessageForm.reset();
     if (directMessageStatus) {
-      directMessageStatus.textContent = "Sendt ✓";
+      directMessageStatus.textContent = toName === "all" ? `Sendt til ${recipients.length} ansatte ✓` : "Sendt ✓";
       setTimeout(() => { directMessageStatus.textContent = ""; }, 3000);
     }
   });
