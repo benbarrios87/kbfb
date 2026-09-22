@@ -1650,3 +1650,60 @@ BEGIN
   UPDATE public.kbfb_push_subscriptions SET employee_name = new_name WHERE employee_name = old_name;
 END;
 $$;
+
+-- =========================================================
+-- STEP 51: per-pedagog årshjul + rutiner (helt separate hjul, ikke ett
+--   delt "Pedagogisk leder"-hjul lenger)
+--   owner_name IS NULL on a row = it's still one of the shared
+--   role-tier wheels (Leder/Assistent, unchanged). owner_name set =
+--   it belongs to exactly that pedagog - only they (or admin) can
+--   write to it. Existing "Pedagogisk leder" rows from before this
+--   step have owner_name NULL, so they simply stop showing once the
+--   app starts filtering by owner - nothing is deleted, they're just
+--   orphaned until someone re-enters the content on their own wheel.
+--   Routines also get a completed flag for the first time (items
+--   already had one from STEP 33).
+-- =========================================================
+
+ALTER TABLE public.kbfb_arshjul_items ADD COLUMN IF NOT EXISTS owner_name text;
+ALTER TABLE public.kbfb_arshjul_routines ADD COLUMN IF NOT EXISTS owner_name text;
+ALTER TABLE public.kbfb_arshjul_routines ADD COLUMN IF NOT EXISTS completed boolean NOT NULL DEFAULT false;
+
+CREATE OR REPLACE FUNCTION public.kbfb_can_edit_arshjul_owner(target_variant text, target_owner text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    public.kbfb_is_admin()
+    OR (target_owner IS NOT NULL AND target_owner = public.kbfb_current_employee_name())
+    OR (target_owner IS NULL AND public.kbfb_can_edit_arshjul_variant(target_variant));
+$$;
+
+DROP POLICY IF EXISTS "kbfb_arshjul_items_role_write" ON public.kbfb_arshjul_items;
+CREATE POLICY "kbfb_arshjul_items_role_write" ON public.kbfb_arshjul_items
+  FOR ALL TO authenticated
+  USING (public.kbfb_can_edit_arshjul_owner(variant, owner_name))
+  WITH CHECK (public.kbfb_can_edit_arshjul_owner(variant, owner_name));
+
+DROP POLICY IF EXISTS "kbfb_arshjul_subitems_role_write" ON public.kbfb_arshjul_subitems;
+CREATE POLICY "kbfb_arshjul_subitems_role_write" ON public.kbfb_arshjul_subitems
+  FOR ALL TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.kbfb_arshjul_items i
+    WHERE i.id = kbfb_arshjul_subitems.arshjul_item_id
+    AND public.kbfb_can_edit_arshjul_owner(i.variant, i.owner_name)
+  ))
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM public.kbfb_arshjul_items i
+    WHERE i.id = kbfb_arshjul_subitems.arshjul_item_id
+    AND public.kbfb_can_edit_arshjul_owner(i.variant, i.owner_name)
+  ));
+
+DROP POLICY IF EXISTS "kbfb_arshjul_routines_role_write" ON public.kbfb_arshjul_routines;
+CREATE POLICY "kbfb_arshjul_routines_role_write" ON public.kbfb_arshjul_routines
+  FOR ALL TO authenticated
+  USING (public.kbfb_can_edit_arshjul_owner(variant, owner_name))
+  WITH CHECK (public.kbfb_can_edit_arshjul_owner(variant, owner_name));

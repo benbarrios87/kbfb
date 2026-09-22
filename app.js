@@ -238,6 +238,15 @@ async function loadEmployeesFromSupabase() {
   }
   if (typeof loadMyDirectMessages === "function") loadMyDirectMessages();
 
+  // Same race again - which pedagoger show up in the Pedagogisk leder
+  // owner-picker depends on employeesCache too.
+  if (document.getElementById("arshjulOwnerToggle") && typeof updateArshjulOwnerToggle === "function") {
+    updateArshjulOwnerToggle();
+    if (typeof renderArshjulWheel === "function") renderArshjulWheel();
+    if (typeof renderArshjulMonthDetail === "function") renderArshjulMonthDetail();
+    if (typeof renderRoutines === "function") renderRoutines();
+  }
+
   return employeesCache;
 }
 function populateEmployeeSelect(selectId, options = {}) {
@@ -7352,6 +7361,22 @@ let arshjulSelectedMonth = null;
 let arshjulOpenSubitemIds = new Set();
 let arshjulOpenNotatIds = new Set();
 
+// Pedagogisk leder is the one variant that isn't one shared wheel - each
+// pedagog gets their own separate årshjul + rutiner (own content, own
+// checkmarks), picked here. null outside that variant, or before a
+// pedagog has been picked/known yet.
+let arshjulSelectedOwner = null;
+
+// Who the Pedagogisk leder owner-picker offers: everyone currently in
+// that role tier (not hardcoded names), so a new pedagog just shows up
+// once they're added as an employee.
+function pedagogiskLederEmployees() {
+  return employeesCache.filter(e => {
+    const role = (e.role || "").toLowerCase();
+    return role.includes("pedagog") || role.includes("pedleder") || role.includes("avdelingsleder");
+  });
+}
+
 // Pedagog / Pedleder / Avdelingsleder are all the same tier in this
 // barnehage (a department lead is also the pedagogical leader).
 function employeeIsPedagogiskLederTier() {
@@ -7368,6 +7393,9 @@ function employeeIsAssistentTier() {
 // Leder (admin) can edit every variant. Pedagogisk leder can edit the
 // Pedagogisk leder + Assistent wheels/rutiner (not Leder). Assistent can
 // only edit their own Assistent wheel/rutiner. Vikar/Gjest/anyone else: none.
+// Doesn't apply to Pedagogisk leder items/rutiner themselves anymore (those
+// are per-person - see canEditArshjulOwner) - only to the shared Leder and
+// Assistent variants, and to whether someone belongs to the tier at all.
 function canEditArshjulVariant(variant) {
   if (typeof currentEmployee === "undefined" || !currentEmployee) return false;
   if (currentEmployee.is_admin) return true;
@@ -7375,6 +7403,17 @@ function canEditArshjulVariant(variant) {
   if (variant === "Pedagogisk leder") return employeeIsPedagogiskLederTier();
   if (variant === "Assistent") return employeeIsPedagogiskLederTier() || employeeIsAssistentTier();
   return false;
+}
+
+// Whether the current user can edit one specific Pedagogisk leder item/
+// rutine (own årshjul, separate per pedagog) - only that pedagog
+// themselves, or admin. ownerName null means it's not a per-person row
+// (Leder/Assistent) - falls back to the shared-tier check above.
+function canEditArshjulOwner(variant, ownerName) {
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return false;
+  if (currentEmployee.is_admin) return true;
+  if (ownerName) return currentEmployee.name === ownerName;
+  return canEditArshjulVariant(variant);
 }
 
 // Årsplan is one shared document for the whole barnehage (not per
@@ -7436,7 +7475,11 @@ async function refreshArshjulData() {
 }
 
 function itemsForArshjulMonth(variant, month) {
-  return arshjulItemsCache.filter(item => item.variant === variant && item.month === month);
+  return arshjulItemsCache.filter(item =>
+    item.variant === variant &&
+    item.month === month &&
+    (variant !== "Pedagogisk leder" || item.owner_name === arshjulSelectedOwner)
+  );
 }
 
 function subitemsForArshjulItem(itemId) {
@@ -7479,7 +7522,7 @@ function renderArshjulWheel() {
     <svg viewBox="0 0 ${size} ${size}" class="arshjul-svg">
       ${wedges}
       <circle cx="${cx}" cy="${cy}" r="46" class="arshjul-center"></circle>
-      <text x="${cx}" y="${cy + 6}" text-anchor="middle" class="arshjul-center-label">${escapeHtml(arshjulSelectedVariant)}</text>
+      <text x="${cx}" y="${cy + 6}" text-anchor="middle" class="arshjul-center-label">${escapeHtml(arshjulSelectedVariant === "Pedagogisk leder" && arshjulSelectedOwner ? arshjulSelectedOwner : arshjulSelectedVariant)}</text>
     </svg>
   `;
 
@@ -7493,18 +7536,19 @@ function renderArshjulMonthDetail() {
   const listEl = document.getElementById("arshjulMonthItems");
   if (!titleEl || !listEl) return;
 
+  const canEdit = canEditArshjulOwner(arshjulSelectedVariant, arshjulSelectedVariant === "Pedagogisk leder" ? arshjulSelectedOwner : null);
+
   if (!arshjulSelectedMonth) {
     titleEl.textContent = "Velg en måned";
     listEl.innerHTML = `<p class="muted">Trykk på en måned i hjulet for å se hva som skjer da.</p>`;
     const addFormEl = document.getElementById("arshjulAddForm");
-    if (addFormEl) addFormEl.style.display = canEditArshjulVariant(arshjulSelectedVariant) ? "" : "none";
+    if (addFormEl) addFormEl.style.display = canEdit ? "" : "none";
     return;
   }
 
-  titleEl.textContent = `${NORWEGIAN_MONTHS[arshjulSelectedMonth - 1]} - ${arshjulSelectedVariant}`;
+  titleEl.textContent = `${NORWEGIAN_MONTHS[arshjulSelectedMonth - 1]} - ${arshjulSelectedVariant === "Pedagogisk leder" && arshjulSelectedOwner ? arshjulSelectedOwner : arshjulSelectedVariant}`;
 
   const items = itemsForArshjulMonth(arshjulSelectedVariant, arshjulSelectedMonth);
-  const canEdit = canEditArshjulVariant(arshjulSelectedVariant);
 
   listEl.innerHTML = items.length
     ? items.map(item => {
@@ -7735,6 +7779,48 @@ function selectArshjulMonth(month) {
   renderArshjulMonthDetail();
 }
 
+// Which pedagog's wheel shows by default when switching to Pedagogisk
+// leder: yourself if you're one of them, otherwise whoever's first -
+// keeps the current pick if it's still valid (e.g. flipping to another
+// variant and back shouldn't reset it).
+function updateArshjulOwnerToggle() {
+  const toggleEl = document.getElementById("arshjulOwnerToggle");
+  const hintEl = document.getElementById("arshjulOwnerHint");
+  if (!toggleEl) return;
+
+  if (arshjulSelectedVariant !== "Pedagogisk leder") {
+    toggleEl.style.display = "none";
+    if (hintEl) hintEl.style.display = "none";
+    arshjulSelectedOwner = null;
+    return;
+  }
+
+  const pedagoger = pedagogiskLederEmployees();
+  const me = typeof currentEmployee !== "undefined" ? currentEmployee : null;
+
+  if (!arshjulSelectedOwner || !pedagoger.some(e => e.name === arshjulSelectedOwner)) {
+    const self = pedagoger.find(e => e.name === me?.name);
+    arshjulSelectedOwner = self ? self.name : (pedagoger[0]?.name || null);
+  }
+
+  toggleEl.style.display = pedagoger.length ? "" : "none";
+  if (hintEl) hintEl.style.display = pedagoger.length ? "" : "none";
+
+  toggleEl.innerHTML = pedagoger.map(e => `
+    <button type="button" class="${e.name === arshjulSelectedOwner ? "primary-btn" : "secondary-btn"}" data-owner="${escapeHtml(e.name)}">${escapeHtml(e.name)}</button>
+  `).join("");
+
+  toggleEl.querySelectorAll("button").forEach(button => {
+    button.addEventListener("click", () => {
+      arshjulSelectedOwner = button.dataset.owner;
+      updateArshjulOwnerToggle();
+      renderArshjulWheel();
+      renderArshjulMonthDetail();
+      renderRoutines();
+    });
+  });
+}
+
 function selectArshjulVariant(variant) {
   arshjulSelectedVariant = variant;
 
@@ -7743,6 +7829,7 @@ function selectArshjulVariant(variant) {
     button.className = isActive ? "primary-btn" : "secondary-btn";
   });
 
+  updateArshjulOwnerToggle();
   renderArshjulWheel();
   renderArshjulMonthDetail();
   renderRoutines();
@@ -7767,22 +7854,48 @@ async function loadRoutinesFromSupabase() {
 }
 
 function renderRoutines() {
-  const canEdit = canEditArshjulVariant(arshjulSelectedVariant);
+  const isPersonal = arshjulSelectedVariant === "Pedagogisk leder";
+  const canEdit = canEditArshjulOwner(arshjulSelectedVariant, isPersonal ? arshjulSelectedOwner : null);
 
   ROUTINE_FREQUENCIES.forEach(frequency => {
     const listEl = document.getElementById(`routineList${frequency}`);
     if (!listEl) return;
 
-    const items = routinesCache.filter(r => r.variant === arshjulSelectedVariant && r.frequency === frequency);
+    const items = routinesCache.filter(r =>
+      r.variant === arshjulSelectedVariant &&
+      r.frequency === frequency &&
+      (!isPersonal || r.owner_name === arshjulSelectedOwner)
+    );
 
     listEl.innerHTML = items.length
       ? items.map(item => `
         <div class="routine-item">
-          <span>${escapeHtml(item.title)}</span>
+          <label class="routine-item-check">
+            <input type="checkbox" data-routine-toggle-id="${item.id}" ${item.completed ? "checked" : ""} ${canEdit ? "" : "disabled"} />
+            <span${item.completed ? ` class="routine-item-done"` : ""}>${escapeHtml(item.title)}</span>
+          </label>
           ${canEdit ? `<button class="routine-delete-btn" type="button" data-routine-delete-id="${item.id}" title="Slett">×</button>` : ""}
         </div>
       `).join("")
       : `<p class="muted">Ingenting lagt inn ennå.</p>`;
+
+    listEl.querySelectorAll("[data-routine-toggle-id]").forEach(checkbox => {
+      checkbox.addEventListener("change", async () => {
+        const { error } = await supabaseClient
+          .from("kbfb_arshjul_routines")
+          .update({ completed: checkbox.checked })
+          .eq("id", checkbox.dataset.routineToggleId);
+
+        if (error) {
+          console.error("Kunne ikke oppdatere rutine:", error);
+          checkbox.checked = !checkbox.checked;
+          return;
+        }
+
+        await loadRoutinesFromSupabase();
+        renderRoutines();
+      });
+    });
 
     listEl.querySelectorAll("[data-routine-delete-id]").forEach(button => {
       button.addEventListener("click", async () => {
@@ -7822,7 +7935,8 @@ function initializeRoutineForm() {
     const { error } = await supabaseClient.from("kbfb_arshjul_routines").insert([{
       variant: arshjulSelectedVariant,
       frequency,
-      title
+      title,
+      owner_name: arshjulSelectedVariant === "Pedagogisk leder" ? arshjulSelectedOwner : null
     }]);
 
     if (error) {
@@ -7852,6 +7966,7 @@ async function initializeArshjul() {
     button.addEventListener("click", () => selectArshjulVariant(button.dataset.variant));
   });
 
+  updateArshjulOwnerToggle();
   await refreshArshjulData();
 
   await loadRoutinesFromSupabase();
@@ -7888,7 +8003,8 @@ async function initializeArshjul() {
             variant: arshjulSelectedVariant,
             month,
             title,
-            description
+            description,
+            owner_name: arshjulSelectedVariant === "Pedagogisk leder" ? arshjulSelectedOwner : null
           }]);
 
       if (error) {

@@ -1470,6 +1470,26 @@ details[open].arsplan-section summary .details-toggle-icon {
   border-bottom: none;
 }
 
+.routine-item-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.routine-item-check input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--green-dark);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.routine-item-done {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
 .routine-delete-btn {
   flex-shrink: 0;
   width: 20px;
