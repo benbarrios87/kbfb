@@ -5624,21 +5624,27 @@ async function loadPendingApprovalsSummary() {
     return;
   }
 
+  // Excludes admin's own requests - "du har 2 ubehandlede søknader" som
+  // faktisk er dine egne er forvirrende, siden du uansett ikke godkjenner
+  // deg selv her. De ligger fortsatt som "Ønsket" og synlige på Ferie/
+  // avspasering som normalt, bare ikke i denne widgeten.
+  const pending = (data || []).filter(record => record.name !== currentEmployee?.name);
+
   if (badge) {
-    if (data.length) {
-      badge.textContent = data.length;
+    if (pending.length) {
+      badge.textContent = pending.length;
       badge.style.display = "";
     } else {
       badge.style.display = "none";
     }
   }
 
-  if (!data.length) {
+  if (!pending.length) {
     container.innerHTML = `<p class="muted">Ingen ubehandlede søknader akkurat nå.</p>`;
     return;
   }
 
-  container.innerHTML = data.map(record => `
+  container.innerHTML = pending.map(record => `
     <div class="summary-item">
       <strong>${escapeHtml(record.name)} · ${escapeHtml(record.type)}</strong>
       <span>${formatDateRange(record.start_date, record.end_date)}${record.note ? ` · ${escapeHtml(record.note)}` : ""}</span>
