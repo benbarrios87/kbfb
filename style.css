@@ -2557,6 +2557,7 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .legend-dot.date-foreldre { background: #e6ca42; }
 .legend-dot.date-styre { background: #6bd36b; }
 .legend-dot.date-su { background: #a46be0; }
+.legend-dot.date-nordplus { background: #1fb6c9; }
 
 .date-general { border-left-color: #999; background: #f4f4f2; }
 .date-personal { border-left-color: #f29b38; background: #fff2e2; }
@@ -2565,6 +2566,7 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .date-foreldre { border-left-color: #e6ca42; background: #fdf8e3; }
 .date-styre { border-left-color: #6bd36b; background: #ecf9ec; }
 .date-su { border-left-color: #a46be0; background: #f4ecfc; }
+.date-nordplus { border-left-color: #1fb6c9; background: #e5f8fa; }
 
               .month-list {
   display: grid;

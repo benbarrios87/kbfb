@@ -351,7 +351,8 @@ function categoryLabel(category) {
     styre: "Styremøte",
     su: "SU-møte",
     bursdag: "Bursdag",
-    jubileum: "Jubileum"
+    jubileum: "Jubileum",
+    nordplus: "Nordplus"
   };
 
   return labels[category] || "Generelt";
@@ -367,7 +368,8 @@ function categoryEmoji(category) {
     styre: "🟩",
     su: "🟪",
     bursdag: "🎂",
-    jubileum: "🏆"
+    jubileum: "🏆",
+    nordplus: "✈️"
   };
 
   return emojis[category] || "⚪";
@@ -530,30 +532,64 @@ function renderDashboardBirthdayBanner() {
   banner.style.display = "flex";
 }
 
-// Big confetti burst on top of the banner above - fires once per
-// birthday-person per day (sessionStorage-gated), for whoever visits the
-// dashboard that day, not just the birthday person themselves.
-function triggerBirthdayConfettiIfNeeded() {
+const BIRTHDAY_CONFETTI_COMMENTS = [
+  "Ett år eldre, null år klokere på å unngå limstifter i håret.",
+  "I dag er det du som bestemmer hvem som får sitte ved lunsjbordet.",
+  "Offisielt for gammel til å late som du ikke hører når de roper 'leeeder'.",
+  "Husk: kalorier i bursdagskaka teller ikke i dag.",
+  "Du har overlevd enda et år med votter som forsvinner sporløst.",
+  "Gratulerer! I dag slipper du oppvasken (spøk, det gjør du nok ikke)."
+];
+
+const ANNIVERSARY_CONFETTI_COMMENTS = [
+  "Så mange år, så mange skrubbsår plastret og så mye lim fjernet fra håret.",
+  "Du har holdt ut lenger enn de fleste av desembers juletrær.",
+  "Om erfaring var en vaktkode, hadde du hatt din egen.",
+  "Du har sett flere runder med vott-leting enn noe menneske burde måtte.",
+  "Fortsatt her, fortsatt legende.",
+  "Så lenge at du husker da 'ny styrer' faktisk betydde noe nytt."
+];
+
+function randomFrom(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+// Big confetti burst on top of the banner above - fires once per day
+// (sessionStorage-gated), for whoever visits the dashboard that day, not
+// just the birthday/jubileum person themselves. Covers both birthdays and
+// work anniversaries, each with its own pool of funny comments.
+function triggerCelebrationConfettiIfNeeded() {
   const birthdayEmployees = getEmployeesWithBirthdayToday();
-  if (!birthdayEmployees.length) return;
+  const anniversaryEmployees = getEmployeesWithAnniversaryToday();
+  if (!birthdayEmployees.length && !anniversaryEmployees.length) return;
 
   const todayKey = toDateKey(new Date());
-  const sessionKey = `kbfb-birthday-confetti-${todayKey}`;
+  const sessionKey = `kbfb-celebration-confetti-${todayKey}`;
   if (sessionStorage.getItem(sessionKey)) return;
   sessionStorage.setItem(sessionKey, "1");
 
-  const names = birthdayEmployees.map(employee => employee.name);
-  const namesText = names.length === 1
-    ? names[0]
-    : `${names.slice(0, -1).join(", ")} og ${names[names.length - 1]}`;
+  const lines = [];
 
-  launchBirthdayConfetti(namesText);
+  if (birthdayEmployees.length) {
+    const names = birthdayEmployees.map(employee => employee.name);
+    const namesText = names.length === 1
+      ? names[0]
+      : `${names.slice(0, -1).join(", ")} og ${names[names.length - 1]}`;
+
+    lines.push(`🎉 Gratulerer med dagen, ${namesText}! ${randomFrom(BIRTHDAY_CONFETTI_COMMENTS)}`);
+  }
+
+  anniversaryEmployees.forEach(({ employee, years }) => {
+    lines.push(`🏆 ${years} år hos oss, ${employee.name}! ${randomFrom(ANNIVERSARY_CONFETTI_COMMENTS)}`);
+  });
+
+  launchCelebrationConfetti(lines);
 }
 
-function launchBirthdayConfetti(namesText) {
+function launchCelebrationConfetti(lines) {
   const message = document.createElement("div");
   message.className = "birthday-confetti-message";
-  message.textContent = `🎉 Gratulerer med dagen, ${namesText}! 🎉`;
+  message.innerHTML = lines.map(line => escapeHtml(line)).join("<br>");
   document.body.appendChild(message);
 
   const canvas = document.createElement("canvas");
@@ -691,7 +727,7 @@ function renderDashboardEvents() {
     : `<p class="muted">Ingen kommende datoer.</p>`;
 
   renderDashboardBirthdayBanner();
-  triggerBirthdayConfettiIfNeeded();
+  triggerCelebrationConfettiIfNeeded();
 }
 
 // Best-effort: finds a clock time mentioned inside a note's own text
@@ -3149,7 +3185,8 @@ function defaultEventTitle(category) {
     foreldre: "Foreldremøte",
     styre: "Styremøte",
     su: "SU-møte",
-    bursdag: "Bursdag"
+    bursdag: "Bursdag",
+    nordplus: "Nordplus-tur"
   };
 
   return titles[category] || "Viktig dato";
