@@ -1717,3 +1717,12 @@ CREATE POLICY "kbfb_arshjul_routines_role_write" ON public.kbfb_arshjul_routines
 -- =========================================================
 
 ALTER TABLE public.kbfb_employees ADD COLUMN IF NOT EXISTS arshjul_enabled boolean NOT NULL DEFAULT true;
+
+-- =========================================================
+-- STEP 53: kbfb_events.end_date
+--   Optional end date for flerdagers hendelser (f.eks. Nordplus-turer),
+--   så "Datoer"-siden kan vise en dato-range ("30.11 - 04.12") i stedet
+--   for bare startdatoen. Null for vanlige énkelt-dags hendelser.
+-- =========================================================
+
+ALTER TABLE public.kbfb_events ADD COLUMN IF NOT EXISTS end_date date;

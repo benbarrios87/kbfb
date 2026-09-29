@@ -300,6 +300,7 @@ async function saveEventToSupabase(eventData) {
       .from("kbfb_events")
       .update({
         date: eventData.date,
+        end_date: eventData.end_date,
         title: eventData.title,
         category: eventData.category,
         note: eventData.note
@@ -317,6 +318,7 @@ async function saveEventToSupabase(eventData) {
     .from("kbfb_events")
     .insert([{
       date: eventData.date,
+      end_date: eventData.end_date,
       title: eventData.title,
       category: eventData.category,
       note: eventData.note
@@ -3170,6 +3172,7 @@ initializeNotes();
 const dateForm = document.getElementById("dateForm");
 const dateId = document.getElementById("dateId");
 const eventDate = document.getElementById("eventDate");
+const eventEndDate = document.getElementById("eventEndDate");
 const eventTitle = document.getElementById("eventTitle");
 const eventCategory = document.getElementById("eventCategory");
 const eventNote = document.getElementById("eventNote");
@@ -3215,12 +3218,15 @@ function renderEventGroups(events) {
 
       <div class="month-events">
         ${monthEvents.map(event => {
-          const isPast = new Date(event.date + "T23:59:59") < new Date();
+          const isPast = new Date((event.end_date || event.date) + "T23:59:59") < new Date();
+          const dateLabel = event.end_date && event.end_date !== event.date
+            ? `${shortDate(event.date)} – ${shortDate(event.end_date)}`
+            : shortDate(event.date);
           return `
           <article class="date-item date-${event.category} ${isPast ? "date-past" : ""}">
             <div class="date-item-top">
               <div>
-                <strong>${shortDate(event.date)} · ${escapeHtml(event.title)}</strong>
+                <strong>${dateLabel} · ${escapeHtml(event.title)}</strong>
                 <span>${categoryEmoji(event.category)} ${categoryLabel(event.category)}${event.note ? ` · ${escapeHtml(event.note)}` : ""}</span>
               </div>
 
@@ -3257,8 +3263,8 @@ function renderEvents() {
   // Passerte datoer skal ikke rote til lista - de havner samlet i en
   // lukket "Tidligere datoer" seksjon nederst, nyeste først, i stedet for
   // å stå blandet inn mellom kommende datoer.
-  const upcoming = events.filter(event => event.date >= todayKey);
-  const past = events.filter(event => event.date < todayKey).reverse();
+  const upcoming = events.filter(event => (event.end_date || event.date) >= todayKey);
+  const past = events.filter(event => (event.end_date || event.date) < todayKey).reverse();
 
   const upcomingHtml = upcoming.length
     ? renderEventGroups(upcoming)
@@ -3280,6 +3286,7 @@ function renderEvents() {
 
       dateId.value = event.id;
       eventDate.value = event.date;
+      eventEndDate.value = event.end_date || "";
       eventTitle.value = event.title;
       eventCategory.value = event.category;
       eventNote.value = event.note || "";
@@ -3329,6 +3336,7 @@ if (dateForm) {
     const eventData = {
       id: existingId || null,
       date: eventDate.value,
+      end_date: eventEndDate.value || null,
       title: eventTitle.value.trim(),
       category: eventCategory.value,
       note: eventNote.value.trim()
@@ -3341,6 +3349,7 @@ await loadEventsFromSupabase();
     dateForm.reset();
     dateId.value = "";
     eventDate.value = toDateKey(new Date());
+    eventEndDate.value = "";
     eventTitle.value = defaultEventTitle(eventCategory.value);
     eventCategory.dataset.previousCategory = eventCategory.value;
 
@@ -3369,7 +3378,7 @@ function datoerPrintableHtml() {
   const rowsHtml = events.length
     ? events.map(event => `
         <tr>
-          <td>${formatNorwegianDate(event.date)}</td>
+          <td>${event.end_date && event.end_date !== event.date ? formatDateRange(event.date, event.end_date) : formatNorwegianDate(event.date)}</td>
           <td>${escapeHtml(event.title)}</td>
           <td>${categoryEmoji(event.category)} ${escapeHtml(categoryLabel(event.category))}</td>
           <td>${escapeHtml(event.note || "")}</td>
