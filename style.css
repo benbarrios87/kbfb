@@ -1985,7 +1985,7 @@ textarea {
 
 .kitchen-day {
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .kitchen-day h3 {
@@ -1999,28 +1999,30 @@ textarea {
 .kitchen-entry {
   background: #fffdf7;
   border: 1px solid var(--line);
-  border-left: 6px solid var(--green);
-  border-radius: 18px;
-  padding: 14px 16px;
+  border-left: 4px solid var(--green);
+  border-radius: 12px;
+  padding: 8px 10px;
   display: grid;
-  gap: 7px;
+  gap: 3px;
 }
 
 .kitchen-entry-top {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
 }
 
 .kitchen-entry strong {
   color: var(--green-dark);
+  font-size: 0.85rem;
 }
 
 .kitchen-entry p {
   margin: 0;
-  line-height: 1.5;
-  font-weight: 600;
+  line-height: 1.4;
+  font-weight: 500;
+  font-size: 0.9rem;
 }
 
 .kitchen-delete {
