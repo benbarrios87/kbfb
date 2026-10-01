@@ -3484,7 +3484,7 @@ async function loadSubPeopleFromSupabase() {
 async function saveSubPersonToSupabase(name, color) {
   const { error } = await supabaseClient
     .from("kbfb_subs")
-    .insert([{ name, color }]);
+    .insert([{ name, color, active: true }]);
 
   if (error) {
     console.error("Kunne ikke legge til vikar:", error);
