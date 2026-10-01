@@ -3458,7 +3458,6 @@ const subSummary = document.getElementById("subSummary");
 const clearSubs = document.getElementById("clearSubs");
 const subEndDate = document.getElementById("subEndDate");
 const subIsSick = document.getElementById("subIsSick");
-const subSickHadShift = document.getElementById("subSickHadShift");
 
 const subPersonForm = document.getElementById("subPersonForm");
 const subPersonName = document.getElementById("subPersonName");
@@ -3871,49 +3870,16 @@ if (subDate) {
   subDate.value = toDateKey(new Date());
 }
 
-// Syk-avkrysningen skjuler Fra/Til/Avdeling siden de normalt ikke gir
-// mening for en dag vikaren ikke jobbet. Men hvis vikaren faktisk hadde
-// en avtalt vakt den dagen (ble syk samme dag som en planlagt vakt),
-// skal hun likevel ha betalt for de timene - "Hadde avtalt vakt"
-// avkrysningen (kun synlig når Syk er huket av) gjenåpner Fra/Til slik
-// at timene blir riktig utregnet og lagret, mens is_sick fortsatt
-// logges for sykedage-oversikten.
-function updateSubSickFieldVisibility() {
-  const isSick = !!(subIsSick && subIsSick.checked);
-  const hadAgreedShift = isSick && !!(subSickHadShift && subSickHadShift.checked);
-  const showShiftFields = !isSick || hadAgreedShift;
-
-  const sickHadShiftField = document.getElementById("subSickHadShiftField");
-  const startField = document.getElementById("subStartField");
-  const endField = document.getElementById("subEndField");
-  const departmentField = document.getElementById("subDepartmentField");
-
-  if (sickHadShiftField) sickHadShiftField.style.display = isSick ? "" : "none";
-  if (startField) startField.style.display = showShiftFields ? "" : "none";
-  if (endField) endField.style.display = showShiftFields ? "" : "none";
-  if (departmentField) departmentField.style.display = showShiftFields ? "" : "none";
-  if (subStart) subStart.required = showShiftFields;
-  if (subEnd) subEnd.required = showShiftFields;
-
-  if (!isSick && subSickHadShift) subSickHadShift.checked = false;
-}
-
-if (subIsSick) {
-  subIsSick.addEventListener("change", updateSubSickFieldVisibility);
-}
-if (subSickHadShift) {
-  subSickHadShift.addEventListener("change", updateSubSickFieldVisibility);
-}
-updateSubSickFieldVisibility();
-
+// Syk-avkrysningen er bare en logg for sykedage-oversikten til vikarer
+// (loadVikarSickDaysFromSupabase) - Fra/Til/Avdeling fylles ut som
+// normalt uansett, siden vikaren skal ha betalt for den avtalte vakten
+// sin selv om hun ble syk samme dag.
 if (subForm) {
   subForm.addEventListener("submit", async event => {
     event.preventDefault();
 
     const isSick = !!(subIsSick && subIsSick.checked);
-    const hadAgreedShift = isSick && !!(subSickHadShift && subSickHadShift.checked);
-    const paidShift = !isSick || hadAgreedShift;
-    const hours = paidShift ? calculateHours(subStart.value, subEnd.value) : 0;
+    const hours = calculateHours(subStart.value, subEnd.value);
 
     const startDate = subDate.value;
     const endDate = subEndDate.value || subDate.value;
@@ -3925,9 +3891,9 @@ if (subForm) {
       const sub = {
         name: subName.value,
         date,
-        department: paidShift ? subDepartment.value : "Annet",
-        start_time: paidShift ? subStart.value : "",
-        end_time: paidShift ? subEnd.value : "",
+        department: subDepartment.value,
+        start_time: subStart.value,
+        end_time: subEnd.value,
         hours,
         note: subNote.value.trim(),
         is_sick: isSick
@@ -3968,8 +3934,6 @@ if (subForm) {
     subEndDate.value = "";
     subStart.value = "08:30";
     subEnd.value = "16:00";
-    if (subSickHadShift) subSickHadShift.checked = false;
-    updateSubSickFieldVisibility();
 
     renderSubs();
   });
