@@ -247,6 +247,11 @@ async function loadEmployeesFromSupabase() {
     if (typeof renderRoutines === "function") renderRoutines();
   }
 
+  // Same race again - the vikarvakt-skjemaets "Velg vikar"-liste merger i
+  // ansatte med rolle "Vikar" (se renderSubPeople), så den må bygges på
+  // nytt når employeesCache blir kjent etter at den selv allerede kjørte.
+  if (typeof renderSubPeople === "function") renderSubPeople();
+
   return employeesCache;
 }
 function populateEmployeeSelect(selectId, options = {}) {
@@ -3497,10 +3502,20 @@ function renderSubPeople() {
   if (subName) {
     subName.innerHTML = `<option value="">Velg vikar</option>`;
 
-    subPeopleCache.forEach(person => {
+    // "Velg vikar" skal vise BÅDE de lette vikar-oppføringene (kbfb_subs,
+    // lagt til via "Legg til vikar" her på siden) OG ansatte som er lagt
+    // til med rollen "Vikar" via Admin-siden (kbfb_employees) - admin har
+    // brukt begge skjemaene om hverandre for samme type person, så begge
+    // må dukke opp her for at timer faktisk kan registreres på dem.
+    const subPeopleNames = new Set(subPeopleCache.map(person => person.name));
+    const employeeVikarNames = employeesCache
+      .filter(employee => employee.role === "Vikar" && !subPeopleNames.has(employee.name))
+      .map(employee => employee.name);
+
+    [...subPeopleCache.map(person => person.name), ...employeeVikarNames].forEach(name => {
       const option = document.createElement("option");
-      option.value = person.name;
-      option.textContent = person.name;
+      option.value = name;
+      option.textContent = name;
       subName.appendChild(option);
     });
   }
