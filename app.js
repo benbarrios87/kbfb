@@ -5335,6 +5335,28 @@ function describeSupabaseError(error) {
   return error.message || "Ukjent feil.";
 }
 
+// supabase-js throws a generic "Edge Function returned a non-2xx status
+// code" for ANY failed functions.invoke() call, regardless of what the
+// function itself actually responded with - the real {error: "..."}
+// JSON body is only reachable via error.context (the raw Response),
+// which has to be read separately since invoke() already consumed it.
+// Without this, every Edge Function failure in the admin UI looked
+// identical no matter the real cause.
+async function describeFunctionError(error, data) {
+  if (data?.error) return data.error;
+
+  if (error?.context && typeof error.context.json === "function") {
+    try {
+      const body = await error.context.json();
+      if (body?.error) return body.error;
+    } catch (_) {
+      // Response body already read or not JSON - fall through.
+    }
+  }
+
+  return error?.message || "Ukjent feil.";
+}
+
 const newEmployeeForm = document.getElementById("newEmployeeForm");
 const newEmployeeName = document.getElementById("newEmployeeName");
 const newEmployeeRole = document.getElementById("newEmployeeRole");
@@ -5368,7 +5390,7 @@ if (newEmployeeLoginForm) {
     });
 
     if (error || data?.error) {
-      const message = data?.error || error?.message || "Ukjent feil.";
+      const message = await describeFunctionError(error, data);
       console.error("Kunne ikke opprette ansatt med innlogging:", message);
       if (loginEmployeeStatus) {
         loginEmployeeStatus.textContent = `Feilet: ${message}. Prøv skjemaet lenger ned på siden i mellomtiden, eller spør Claude/utvikleren om hjelp.`;
@@ -5498,7 +5520,7 @@ function renderAdminEmployeeTable() {
       button.textContent = "Nullstill";
 
       if (error || data?.error) {
-        alert("Kunne ikke nullstille passord: " + (data?.error || error?.message || "Ukjent feil."));
+        alert("Kunne ikke nullstille passord: " + (await describeFunctionError(error, data)));
         return;
       }
 
@@ -5585,7 +5607,7 @@ function renderAdminEmployeeTable() {
       });
 
       if (error || data?.error) {
-        alert("Kunne ikke slette: " + (data?.error || error?.message || "Ukjent feil."));
+        alert("Kunne ikke slette: " + (await describeFunctionError(error, data)));
         button.disabled = false;
         button.textContent = "Slett";
         return;
