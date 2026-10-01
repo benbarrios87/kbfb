@@ -1726,3 +1726,50 @@ ALTER TABLE public.kbfb_employees ADD COLUMN IF NOT EXISTS arshjul_enabled boole
 -- =========================================================
 
 ALTER TABLE public.kbfb_events ADD COLUMN IF NOT EXISTS end_date date;
+
+-- =========================================================
+-- STEP 54: kbfb_hero_photos + "hero-photos" storage bucket
+--   Admin-managed rotation of header photos on dashboard.html's top
+--   hero section (replaces/supplements the static images/teamtur.jpg).
+--   Admin-only upload/delete, everyone can see the rotation - same
+--   upload-then-getPublicUrl pattern as kbfb_shared_photos (STEP 23).
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_hero_photos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  photo_url text NOT NULL,
+  uploaded_by text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_hero_photos ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_hero_photos_select_all" ON public.kbfb_hero_photos;
+CREATE POLICY "kbfb_hero_photos_select_all" ON public.kbfb_hero_photos
+  FOR SELECT TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "kbfb_hero_photos_admin_write" ON public.kbfb_hero_photos;
+CREATE POLICY "kbfb_hero_photos_admin_write" ON public.kbfb_hero_photos
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('hero-photos', 'hero-photos', true)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "hero_photos_admin_upload" ON storage.objects;
+CREATE POLICY "hero_photos_admin_upload" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'hero-photos' AND public.kbfb_is_admin());
+
+DROP POLICY IF EXISTS "hero_photos_admin_delete" ON storage.objects;
+CREATE POLICY "hero_photos_admin_delete" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'hero-photos' AND public.kbfb_is_admin());
+
+DROP POLICY IF EXISTS "hero_photos_public_read" ON storage.objects;
+CREATE POLICY "hero_photos_public_read" ON storage.objects
+  FOR SELECT TO public
+  USING (bucket_id = 'hero-photos');

@@ -1168,6 +1168,129 @@ if (photoShareForm) {
 
 loadSharedPhotos();
 
+/* ---------- FORSIDEBILDER (admin-styrt rundgang i hero øverst på Hjem) ---------- */
+
+let heroPhotosCache = [];
+
+async function loadHeroPhotosFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_hero_photos")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Kunne ikke hente forsidebilder:", error);
+    return [];
+  }
+
+  heroPhotosCache = data || [];
+  return heroPhotosCache;
+}
+
+function renderHeroPhotoList() {
+  const container = document.getElementById("heroPhotoList");
+  if (!container) return;
+
+  container.innerHTML = heroPhotosCache.length
+    ? heroPhotosCache.map(photo => `
+        <div class="compact-item">
+          <img src="${photo.photo_url}" alt="" style="width: 160px; height: 90px; object-fit: cover; border-radius: 10px; display: block;" />
+          <button class="kitchen-delete" data-hero-photo-id="${photo.id}" style="margin-top: 6px;">Slett</button>
+        </div>
+      `).join("")
+    : `<p class="muted">Ingen bilder lagt til ennå.</p>`;
+
+  document.querySelectorAll("[data-hero-photo-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      await supabaseClient.from("kbfb_hero_photos").delete().eq("id", button.dataset.heroPhotoId);
+      await loadHeroPhotosFromSupabase();
+      renderHeroPhotoList();
+    });
+  });
+}
+
+const heroPhotoForm = document.getElementById("heroPhotoForm");
+const heroPhotoInput = document.getElementById("heroPhotoInput");
+const heroPhotoStatus = document.getElementById("heroPhotoStatus");
+
+if (heroPhotoForm) {
+  heroPhotoForm.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const file = heroPhotoInput.files[0];
+    if (!file) return;
+
+    if (heroPhotoStatus) heroPhotoStatus.textContent = "Laster opp...";
+
+    const extension = file.name.split(".").pop() || "jpg";
+    const filePath = `${Date.now()}-${Math.round(Math.random() * 1e6)}.${extension}`;
+
+    const { error: uploadError } = await supabaseClient.storage
+      .from("hero-photos")
+      .upload(filePath, file, { contentType: file.type || "image/jpeg" });
+
+    if (uploadError) {
+      console.error("Kunne ikke laste opp forsidebilde:", uploadError);
+      if (heroPhotoStatus) heroPhotoStatus.textContent = "Kunne ikke laste opp bilde.";
+      return;
+    }
+
+    const { data: publicUrlData } = supabaseClient.storage
+      .from("hero-photos")
+      .getPublicUrl(filePath);
+
+    const { error } = await supabaseClient.from("kbfb_hero_photos").insert([{
+      photo_url: publicUrlData.publicUrl,
+      uploaded_by: typeof currentEmployee !== "undefined" ? currentEmployee?.name : null
+    }]);
+
+    if (error) {
+      console.error("Kunne ikke lagre forsidebilde:", error);
+      if (heroPhotoStatus) heroPhotoStatus.textContent = "Kunne ikke lagre bilde. Prøv igjen.";
+      return;
+    }
+
+    heroPhotoForm.reset();
+    if (heroPhotoStatus) heroPhotoStatus.textContent = "Bilde lagt til!";
+    await loadHeroPhotosFromSupabase();
+    renderHeroPhotoList();
+  });
+}
+
+if (document.getElementById("heroPhotoList")) {
+  loadHeroPhotosFromSupabase().then(renderHeroPhotoList);
+}
+
+// Dashboard: rotate through admin-uploaded forsidebilder i hero-headeren,
+// ett bilde av gangen - faller tilbake til det statiske
+// images/teamtur.jpg (via CSS-variabelens fallback-verdi) hvis ingen
+// bilder er lastet opp ennå.
+const HERO_PHOTO_ROTATION_MS = 9000;
+
+async function startHeroPhotoRotation() {
+  const hero = document.querySelector(".forest-hero.team-photo");
+  if (!hero) return;
+
+  await loadHeroPhotosFromSupabase();
+  if (!heroPhotosCache.length) return;
+
+  let index = 0;
+  const applyPhoto = () => {
+    hero.style.setProperty("--hero-photo-url", `url("${heroPhotosCache[index].photo_url}")`);
+  };
+
+  applyPhoto();
+
+  if (heroPhotosCache.length > 1) {
+    setInterval(() => {
+      index = (index + 1) % heroPhotosCache.length;
+      applyPhoto();
+    }, HERO_PHOTO_ROTATION_MS);
+  }
+}
+
+startHeroPhotoRotation();
+
 /* ---------- HYGGELIG BESKJED ---------- */
 
 const kindMessageForm = document.getElementById("kindMessageForm");

@@ -233,6 +233,27 @@
           </table>
         </div>
       </details>
+
+      <details class="card">
+        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Forsidebilder (rundgang øverst på Hjem)</h2></summary>
+        <p class="muted">
+          Bildene du laster opp her går på rundgang i overskriften på Hjem-siden, et nytt bilde innimellom.
+          Ingen bilder lastet opp ennå? Da vises standardbildet som før.
+        </p>
+
+        <form id="heroPhotoForm" class="form-grid">
+          <label class="wide-field">
+            Last opp bilde
+            <input id="heroPhotoInput" type="file" accept="image/*" required />
+          </label>
+          <button class="primary-btn form-button" type="submit">Last opp</button>
+        </form>
+        <p id="heroPhotoStatus" class="muted" style="margin-top: 10px;"></p>
+
+        <div id="heroPhotoList" class="summary-list" style="margin-top: 14px;">
+          <p class="muted">Ingen bilder lagt til ennå.</p>
+        </div>
+      </details>
     </main>
   </div>
 
