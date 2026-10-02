@@ -4429,6 +4429,65 @@ function getTjenestefriDaysFor(name) {
   return setting && setting.tjenestefri_days != null ? setting.tjenestefri_days : 10;
 }
 
+// Omsorgsdager per kalenderår, satt av admin per ansatt (0 = ingen barn i
+// omsorgsdag-alder). 10 = 1-2 barn, 15 = 3+ barn, dobbelt (20/30) for
+// f.eks. alene-omsorg.
+const OMSORGSDAGER_OPTIONS = [
+  { value: 0, label: "Ingen barn under 12 år" },
+  { value: 10, label: "10 dager (1–2 barn)" },
+  { value: 15, label: "15 dager (3 barn eller flere)" },
+  { value: 20, label: "20 dager (dobbel, 1–2 barn)" },
+  { value: 30, label: "30 dager (dobbel, 3 barn eller flere)" }
+];
+
+function getOmsorgsdagerFor(name) {
+  const setting = employeeSettingsCache.find(s => s.employee === name);
+  return setting && setting.omsorgsdager_days != null ? Number(setting.omsorgsdager_days) : 0;
+}
+
+// Generell lagring av én kolonne i kbfb_employee_settings (oppdater, eller
+// opprett raden hvis personen ikke har en ennå). Returnerer true/false.
+async function saveEmployeeSettingField(name, field, value) {
+  const { data, error } = await supabaseClient
+    .from("kbfb_employee_settings")
+    .update({ [field]: value })
+    .eq("employee", name)
+    .select();
+
+  if (error) {
+    console.error(`Kunne ikke oppdatere ${field}:`, error);
+    return false;
+  }
+
+  if (!data || !data.length) {
+    const { error: insertError } = await supabaseClient
+      .from("kbfb_employee_settings")
+      .insert([{ employee: name, [field]: value }]);
+
+    if (insertError) {
+      console.error(`Kunne ikke opprette innstillingsrad (${field}):`, insertError);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// Avspasering følger personen over nyttår (i motsetning til ferie, som
+// nullstilles hvert kalenderår) - saldoen regnes derfor over ALLE år.
+function getAvspaseringTotals(name) {
+  let opptjent = 0;
+  let brukt = 0;
+
+  absencesCache.forEach(record => {
+    if (record.name !== name) return;
+    if (record.type === "Avspasering opptjent") opptjent += Number(record.hours || 0);
+    brukt += getAvspaseringUsedHours(record);
+  });
+
+  return { opptjent, brukt, saldo: opptjent - brukt };
+}
+
 async function saveTjenestefriDaysToSupabase(name, days) {
   const { data, error } = await supabaseClient
     .from("kbfb_employee_settings")
@@ -5199,7 +5258,8 @@ function renderAbsenceSummary(records) {
       };
     }
 
-    const days = countWeekdays(record.start_date, record.end_date);
+    // Avslåtte søknader er ikke tatt ut - de skal ikke telle som brukt.
+    const days = record.status === "Avslått" ? 0 : countWeekdays(record.start_date, record.end_date);
     const hours = Number(record.hours || 0);
 
     switch (record.type) {
@@ -5255,7 +5315,8 @@ function renderAbsenceSummary(records) {
     .sort(([a],[b]) => a.localeCompare(b))
     .map(([name, t]) => {
 
-      const saldo = t.avsOpptjent - t.avsBrukt;
+      const avs = getAvspaseringTotals(name);
+      const omsorgQuota = getOmsorgsdagerFor(name);
 
       return `
       <div class="summary-card">
@@ -5278,16 +5339,20 @@ function renderAbsenceSummary(records) {
 
         <div>🏥 Sykemelding: <strong>${t.sykemelding}</strong> dager</div>
 
-        <div>👶 Omsorgsdager: <strong>${t.omsorgsdager}</strong> dager</div>
+        <div>👶 Omsorgsdager: ${omsorgQuota
+          ? `<strong>${t.omsorgsdager}/${omsorgQuota}</strong> brukt (${Math.max(0, omsorgQuota - t.omsorgsdager)} igjen)`
+          : `<strong>${t.omsorgsdager}</strong> dager`}</div>
 
         <hr>
 
-        <div>➕ Opptjent avsp.: ${t.avsOpptjent.toFixed(1)} t</div>
+        <div class="muted" style="font-size:0.85rem;">Avspasering (alle år - følger med over nyttår)</div>
 
-        <div>➖ Brukt avsp.: ${t.avsBrukt.toFixed(1)} t</div>
+        <div>➕ Opptjent avsp.: ${avs.opptjent.toFixed(1)} t</div>
+
+        <div>➖ Brukt avsp.: ${avs.brukt.toFixed(1)} t</div>
 
         <div style="font-size:1.1rem;font-weight:bold;margin-top:6px;">
-            Saldo: ${saldo.toFixed(1)} t
+            Saldo: ${avs.saldo.toFixed(1)} t
         </div>
 
       </div>
@@ -5322,7 +5387,7 @@ function renderDepartmentAbsenceOverview() {
 
   const grouped = {};
   const ensureEntry = name => {
-    if (!grouped[name]) grouped[name] = { ferie: 0, avsOpptjent: 0, avsBrukt: 0, upcoming: [] };
+    if (!grouped[name]) grouped[name] = { ferie: 0, omsorgsdager: 0, upcoming: [] };
     return grouped[name];
   };
 
@@ -5331,13 +5396,13 @@ function renderDepartmentAbsenceOverview() {
     const days = countWeekdays(record.start_date, record.end_date);
     const hours = Number(record.hours || 0);
 
-    if (inCurrentYear) {
+    if (inCurrentYear && record.status !== "Avslått") {
       if (record.type === "Ferie") ensureEntry(record.name).ferie += days;
-      if (record.type === "Avspasering opptjent") ensureEntry(record.name).avsOpptjent += hours;
-      if (record.type === "Avspasering brukt" || record.type === "Ønsker å avspasere") {
-        ensureEntry(record.name).avsBrukt += getAvspaseringUsedHours(record);
-      }
+      if (record.type === "Omsorgsdager") ensureEntry(record.name).omsorgsdager += days;
     }
+    // Avspasering regnes over alle år (getAvspaseringTotals), men personen
+    // må være med i lista selv om de bare har avspasering fra i fjor.
+    if (record.type === "Avspasering opptjent") ensureEntry(record.name);
 
     if (upcomingTypes.includes(record.type) && record.end_date && record.end_date >= todayKey) {
       ensureEntry(record.name).upcoming.push(record);
@@ -5351,7 +5416,8 @@ function renderDepartmentAbsenceOverview() {
       const t = grouped[name];
       const ferieTotal = getVacationDaysFor(name);
       const ferieIgjen = ferieTotal - t.ferie;
-      const avsSaldo = t.avsOpptjent - t.avsBrukt;
+      const avsSaldo = getAvspaseringTotals(name).saldo;
+      const omsorgQuota = getOmsorgsdagerFor(name);
       const employee = employeesCache.find(e => e.name === name);
 
       const upcomingHtml = t.upcoming
@@ -5369,6 +5435,7 @@ function renderDepartmentAbsenceOverview() {
           <div class="dept-absence-stats">
             <span>🌴 Ferie igjen: <strong>${ferieIgjen}</strong>/${ferieTotal} dager</span>
             <span>🕐 Avspasering igjen: <strong>${avsSaldo.toFixed(1)}</strong> t</span>
+            ${omsorgQuota ? `<span>Omsorgsdager: <strong>${t.omsorgsdager}/${omsorgQuota}</strong> brukt</span>` : ""}
           </div>
           ${upcomingHtml || `<p class="muted">Ingen planlagte datoer.</p>`}
         </div>
@@ -5733,7 +5800,10 @@ const newEmployeeForm = document.getElementById("newEmployeeForm");
 const newEmployeeName = document.getElementById("newEmployeeName");
 const newEmployeeRole = document.getElementById("newEmployeeRole");
 const newEmployeeDepartment = document.getElementById("newEmployeeDepartment");
-const adminEmployeeTableBody = document.getElementById("adminEmployeeTableBody");
+const adminEmployeeList = document.getElementById("adminEmployeeList");
+const adminEmployeeSearch = document.getElementById("adminEmployeeSearch");
+const adminEmployeeFilter = document.getElementById("adminEmployeeFilter");
+const adminEmployeeCount = document.getElementById("adminEmployeeCount");
 
 const newEmployeeLoginForm = document.getElementById("newEmployeeLoginForm");
 const loginEmployeeName = document.getElementById("loginEmployeeName");
@@ -5806,68 +5876,187 @@ async function updateEmployeeField(id, fields) {
   if (error) {
     console.error("Kunne ikke oppdatere ansatt:", error);
     alert("Kunne ikke lagre endringen: " + describeSupabaseError(error));
+    return false;
   }
+
+  return true;
+}
+
+// Alle ansatte (Admin): ett kort per person i stedet for en bred tabell
+// med 13 kolonner. Lukket kort = navn, rolle og merkelapper; åpnet kort =
+// feltene gruppert (Om personen / Tilganger / Ferie og fravær / Innlogging).
+// Hvilke kort som er åpne huskes når lista tegnes på nytt.
+const openEmployeeCards = new Set();
+
+function employeeCardSummaryHtml(employee) {
+  const meta = [employee.role, employee.department].filter(Boolean).map(escapeHtml).join(" · ");
+  const tags = [
+    employee.is_admin ? `<span class="emp-tag">Admin</span>` : "",
+    employee.active ? "" : `<span class="emp-tag emp-tag-muted">Ikke aktiv</span>`,
+    employee.user_id ? "" : `<span class="emp-tag emp-tag-warn">Ingen innlogging</span>`
+  ].join("");
+
+  return `
+    ${avatarSpanFor(employee.name, "avatar-tiny")}
+    <span class="emp-card-title">
+      <strong>${escapeHtml(employee.name)}</strong>
+      <span class="muted">${meta || "Rolle ikke satt"}</span>
+    </span>
+    <span class="emp-tags">${tags}</span>
+    <span class="emp-saved" data-saved-for="${employee.id}" aria-live="polite"></span>
+  `;
+}
+
+function employeeCheckboxHtml(employee, field, label, hint, checked) {
+  return `
+    <label class="emp-check">
+      <input type="checkbox" class="admin-field" data-id="${employee.id}" data-field="${field}" ${checked ? "checked" : ""} />
+      <span><strong>${label}</strong><br /><span class="muted">${hint}</span></span>
+    </label>
+  `;
+}
+
+function employeeCardHtml(employee) {
+  const name = escapeHtml(employee.name);
+  const hasLeave = employee.role !== "Vikar" && employee.role !== "Gjest";
+  const omsorg = getOmsorgsdagerFor(employee.name);
+  const omsorgOptions = OMSORGSDAGER_OPTIONS.some(o => o.value === omsorg)
+    ? OMSORGSDAGER_OPTIONS
+    : [...OMSORGSDAGER_OPTIONS, { value: omsorg, label: `${omsorg} dager` }];
+
+  return `
+    <details class="emp-card" data-emp-id="${employee.id}" ${openEmployeeCards.has(String(employee.id)) ? "open" : ""}>
+      <summary class="emp-card-head">${employeeCardSummaryHtml(employee)}</summary>
+
+      <div class="emp-card-body">
+        <section class="emp-group">
+          <h4>Om personen</h4>
+          <div class="emp-fields">
+            <div class="emp-field">
+              <span class="emp-label">Navn</span>
+              <button type="button" class="secondary-btn rename-employee-btn" data-rename-id="${employee.id}" data-rename-name="${name}">Bytt navn</button>
+            </div>
+            <label class="emp-field">
+              <span class="emp-label">Rolle</span>
+              <select class="admin-field" data-id="${employee.id}" data-field="role">${roleSelectOptionsHtml(employee.role)}</select>
+            </label>
+            <label class="emp-field">
+              <span class="emp-label">Avdeling</span>
+              <input type="text" class="admin-field" data-id="${employee.id}" data-field="department" value="${escapeHtml(employee.department)}" placeholder="F.eks. Sommerfuglen" />
+            </label>
+            <label class="emp-field">
+              <span class="emp-label">Bursdag <span class="muted">(året spiller ingen rolle)</span></span>
+              <input type="date" class="admin-field" data-id="${employee.id}" data-field="birthday" value="${employee.birthday || ""}" />
+            </label>
+            <label class="emp-field">
+              <span class="emp-label">Ansatt fra <span class="muted">(brukes til jubileum)</span></span>
+              <input type="date" class="admin-field" data-id="${employee.id}" data-field="start_date" value="${employee.start_date || ""}" />
+            </label>
+            <div class="emp-field">
+              <span class="emp-label">Profilbilde</span>
+              <label class="secondary-btn admin-avatar-upload-label">
+                ${avatarSpanFor(employee.name, "avatar-tiny")}
+                <span>Last opp</span>
+                <input type="file" accept="image/*" class="admin-avatar-upload-input" data-id="${employee.id}" data-name="${name}" hidden />
+              </label>
+              <p class="muted admin-avatar-upload-status" data-status-for="${employee.id}"></p>
+            </div>
+          </div>
+        </section>
+
+        <section class="emp-group">
+          <h4>Tilganger</h4>
+          <div class="emp-checks">
+            ${employeeCheckboxHtml(employee, "active", "Aktiv", "Kan logge inn og vises i lister", employee.active)}
+            ${employeeCheckboxHtml(employee, "is_admin", "Admin", "Full tilgang, også Admin og Nøkkeltall", employee.is_admin)}
+            ${employeeCheckboxHtml(employee, "drives_car", "Kjører bil", "Kan føre kjørebok", employee.drives_car !== false)}
+            ${employeeCheckboxHtml(employee, "arshjul_enabled", "Eget årshjul", "Mest for pedagoger", employee.arshjul_enabled !== false)}
+          </div>
+        </section>
+
+        ${hasLeave ? `
+        <section class="emp-group">
+          <h4>Ferie og fravær <span class="muted">(per kalenderår)</span></h4>
+          <div class="emp-fields">
+            <label class="emp-field">
+              <span class="emp-label">Feriedager</span>
+              <input type="number" min="0" step="1" class="admin-setting" data-name="${name}" data-emp-id="${employee.id}" data-setting="vacation_days" value="${getVacationDaysFor(employee.name)}" />
+            </label>
+            <label class="emp-field">
+              <span class="emp-label">Tjenestefri-dager</span>
+              <input type="number" min="0" step="1" class="admin-setting" data-name="${name}" data-emp-id="${employee.id}" data-setting="tjenestefri_days" value="${getTjenestefriDaysFor(employee.name)}" />
+            </label>
+            <label class="emp-field">
+              <span class="emp-label">Omsorgsdager</span>
+              <select class="admin-setting" data-name="${name}" data-emp-id="${employee.id}" data-setting="omsorgsdager_days">
+                ${omsorgOptions.map(o => `<option value="${o.value}" ${o.value === omsorg ? "selected" : ""}>${escapeHtml(o.label)}</option>`).join("")}
+              </select>
+            </label>
+          </div>
+        </section>
+        ` : ""}
+
+        <section class="emp-group">
+          <h4>Innlogging</h4>
+          ${employee.user_id ? `
+            <p class="muted">Har innlogging.</p>
+            <div class="emp-inline">
+              <input type="text" class="reset-password-input" data-id="${employee.id}" placeholder="Nytt passord" />
+              <button type="button" class="secondary-btn reset-password-btn" data-id="${employee.id}">Nullstill passord</button>
+            </div>
+            <p class="muted emp-small" title="Kan ikke endres her - en feilklikk kan koble noen fra sin egen innlogging.">Bruker-ID: ${escapeHtml(employee.user_id)}</p>
+          ` : `<p class="muted">Ingen innlogging koblet. Bruk «Ny ansatt eller vikar - med innlogging» over for å lage en.</p>`}
+        </section>
+
+        <div class="emp-danger">
+          <button type="button" class="kitchen-delete delete-employee-btn" data-id="${employee.id}">Slett ${name}</button>
+        </div>
+      </div>
+    </details>
+  `;
+}
+
+function flashEmployeeSaved(id, ok) {
+  const el = document.querySelector(`.emp-saved[data-saved-for="${id}"]`);
+  if (!el) return;
+  el.textContent = ok ? "Lagret" : "Ikke lagret";
+  el.classList.toggle("emp-saved-error", !ok);
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.textContent = ""; }, 2500);
+}
+
+function refreshEmployeeCardSummary(id) {
+  const employee = adminEmployeesCache.find(e => String(e.id) === String(id));
+  const head = document.querySelector(`.emp-card[data-emp-id="${id}"] > .emp-card-head`);
+  if (employee && head) head.innerHTML = employeeCardSummaryHtml(employee);
 }
 
 function renderAdminEmployeeTable() {
-  if (!adminEmployeeTableBody) return;
+  if (!adminEmployeeList) return;
 
-  adminEmployeeTableBody.innerHTML = adminEmployeesCache.map(employee => `
-    <tr>
-      <td>
-        <strong>${escapeHtml(employee.name)}</strong>
-        <button type="button" class="rename-employee-btn" data-rename-id="${employee.id}" data-rename-name="${escapeHtml(employee.name)}" title="Bytt navn">✏️</button>
-      </td>
-      <td>
-        <label class="secondary-btn admin-avatar-upload-label" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-          ${avatarSpanFor(employee.name, "avatar-tiny")}
-          <span>Last opp</span>
-          <input type="file" accept="image/*" class="admin-avatar-upload-input" data-id="${employee.id}" data-name="${escapeHtml(employee.name)}" style="display: none;" />
-        </label>
-        <p class="muted admin-avatar-upload-status" data-status-for="${employee.id}" style="margin: 4px 0 0; font-size: 0.8rem;"></p>
-      </td>
-      <td>
-        <select class="admin-field" data-id="${employee.id}" data-field="role" style="width: 150px;">
-          ${roleSelectOptionsHtml(employee.role)}
-        </select>
-      </td>
-      <td>
-        <input type="text" class="admin-field" data-id="${employee.id}" data-field="department" value="${escapeHtml(employee.department)}" style="width: 130px;" />
-      </td>
-      <td>
-        <input type="date" class="admin-field" data-id="${employee.id}" data-field="birthday" value="${employee.birthday || ""}" style="width: 150px;" />
-      </td>
-      <td>
-        <input type="date" class="admin-field" data-id="${employee.id}" data-field="start_date" value="${employee.start_date || ""}" style="width: 150px;" />
-      </td>
-      <td style="text-align: center;">
-        <input type="checkbox" class="admin-field" data-id="${employee.id}" data-field="is_admin" ${employee.is_admin ? "checked" : ""} />
-      </td>
-      <td style="text-align: center;">
-        <input type="checkbox" class="admin-field" data-id="${employee.id}" data-field="active" ${employee.active ? "checked" : ""} />
-      </td>
-      <td style="text-align: center;">
-        <input type="checkbox" class="admin-field" data-id="${employee.id}" data-field="drives_car" ${employee.drives_car !== false ? "checked" : ""} />
-      </td>
-      <td style="text-align: center;">
-        <input type="checkbox" class="admin-field" data-id="${employee.id}" data-field="arshjul_enabled" ${employee.arshjul_enabled !== false ? "checked" : ""} title="Skal denne personen ha sitt eget årshjul (kun relevant for pedagoger)?" />
-      </td>
-      <td>
-        <input type="text" value="${escapeHtml(employee.user_id)}" placeholder="Ikke koblet ennå" readonly title="Kan ikke endres her - en feilklikk her kan koble noen fra sin egen innlogging. Bruk «Nullstill» for nytt passord, eller «Slett» for å fjerne innloggingen." style="width: 260px; font-family: monospace; font-size: 0.85rem; background: var(--sand); cursor: not-allowed;" />
-      </td>
-      <td>
-        ${employee.user_id ? `
-          <div style="display: flex; gap: 6px;">
-            <input type="text" class="reset-password-input" data-id="${employee.id}" placeholder="Nytt passord" style="width: 130px;" />
-            <button type="button" class="secondary-btn reset-password-btn" data-id="${employee.id}">Nullstill</button>
-          </div>
-        ` : `<span class="muted">Ikke koblet</span>`}
-      </td>
-      <td>
-        <button type="button" class="kitchen-delete delete-employee-btn" data-id="${employee.id}">Slett</button>
-      </td>
-    </tr>
-  `).join("");
+  const query = (adminEmployeeSearch?.value || "").trim().toLowerCase();
+  const filter = adminEmployeeFilter?.value || "active";
+
+  const visible = adminEmployeesCache.filter(employee => {
+    if (filter === "active" && !employee.active) return false;
+    if (filter === "inactive" && employee.active) return false;
+    return !query || (employee.name || "").toLowerCase().includes(query);
+  });
+
+  if (adminEmployeeCount) {
+    adminEmployeeCount.textContent = `${visible.length} ${visible.length === 1 ? "person" : "personer"}`;
+  }
+
+  adminEmployeeList.innerHTML = visible.length
+    ? visible.map(employeeCardHtml).join("")
+    : `<p class="muted">Ingen treff.</p>`;
+
+  adminEmployeeList.querySelectorAll(".emp-card").forEach(card => {
+    card.addEventListener("toggle", () => {
+      if (card.open) openEmployeeCards.add(card.dataset.empId);
+      else openEmployeeCards.delete(card.dataset.empId);
+    });
+  });
 
   document.querySelectorAll(".reset-password-btn").forEach(button => {
     button.addEventListener("click", async () => {
@@ -5902,15 +6091,32 @@ function renderAdminEmployeeTable() {
   });
 
   document.querySelectorAll(".admin-field").forEach(field => {
-    const eventName = field.type === "checkbox" ? "change" : "change";
-
-    field.addEventListener(eventName, async () => {
+    field.addEventListener("change", async () => {
       const id = field.dataset.id;
       const key = field.dataset.field;
       const value = field.type === "checkbox" ? field.checked : field.value.trim();
 
-      await updateEmployeeField(id, { [key]: value === "" ? null : value });
+      const ok = await updateEmployeeField(id, { [key]: value === "" ? null : value });
       await loadAllEmployeesForAdmin();
+      refreshEmployeeCardSummary(id);
+      flashEmployeeSaved(id, ok);
+    });
+  });
+
+  document.querySelectorAll(".admin-setting").forEach(field => {
+    field.addEventListener("change", async () => {
+      const value = Number(field.value);
+      if (!Number.isFinite(value) || value < 0) {
+        flashEmployeeSaved(field.dataset.empId, false);
+        return;
+      }
+
+      const ok = await saveEmployeeSettingField(field.dataset.name, field.dataset.setting, value);
+      if (!ok && field.dataset.setting === "omsorgsdager_days") {
+        alert("Kunne ikke lagre omsorgsdager. Har du kjørt add-omsorgsdager.sql i Supabase?");
+      }
+      await loadEmployeeSettingsFromSupabase();
+      flashEmployeeSaved(field.dataset.empId, ok);
     });
   });
 
@@ -5986,6 +6192,7 @@ function renderAdminEmployeeTable() {
       }
 
       await loadAllEmployeesForAdmin();
+      renderAdminEmployeeTable();
     });
   });
 }
@@ -6101,10 +6308,14 @@ function enforceGuestPageRestrictions() {
 }
 
 async function initializeAdmin() {
-  if (!adminEmployeeTableBody) return;
+  if (!adminEmployeeList) return;
 
-  await loadAllEmployeesForAdmin();
+  // Feriedager/tjenestefri/omsorgsdager vises på hvert ansattkort.
+  await Promise.all([loadAllEmployeesForAdmin(), loadEmployeeSettingsFromSupabase()]);
   renderAdminEmployeeTable();
+
+  adminEmployeeSearch?.addEventListener("input", renderAdminEmployeeTable);
+  adminEmployeeFilter?.addEventListener("change", renderAdminEmployeeTable);
   loadPendingApprovalsSummary();
   loadFeedbackForAdmin();
 }
@@ -6182,7 +6393,8 @@ function computeAbsenceStats(absences, periodStart, periodEnd) {
     if (sickAbsenceTypes.includes(absence.type)) {
       entry.sickDays += days;
     } else if (absence.type === "Ferie") {
-      entry.vacationDays += days;
+      // Ferie telles i hverdager, som på Ferie/avspasering-siden.
+      entry.vacationDays += countWeekdays(absence.start_date, absence.end_date);
     } else if (usedAvspasering) {
       entry.avspaseringHours += usedAvspasering;
     } else if ((absence.type || "").startsWith("Permisjon")) {
@@ -6252,14 +6464,22 @@ function computeAvspaseringAndFerieBalance() {
   };
 
   absencesCache.forEach(absence => {
-    if (!absence.start_date || Number(absence.start_date.slice(0, 4)) !== currentYear) return;
-
+    // Avspasering følger med over nyttår - telles uansett år.
     if (absence.type === "Avspasering opptjent") {
       ensure(absence.name).avsOpptjent += Number(absence.hours || 0);
-    } else if (absence.type === "Avspasering brukt" || absence.type === "Ønsker å avspasere") {
+      return;
+    }
+    if (absence.type === "Avspasering brukt" || absence.type === "Ønsker å avspasere") {
       ensure(absence.name).avsBrukt += getAvspaseringUsedHours(absence);
-    } else if (absence.type === "Ferie" && countedAbsenceStatuses.includes(absence.status)) {
-      ensure(absence.name).ferieDays += daysBetweenInclusive(absence.start_date, absence.end_date);
+      return;
+    }
+
+    if (!absence.start_date || Number(absence.start_date.slice(0, 4)) !== currentYear) return;
+
+    // Samme regel som Ferie/avspasering-siden: hverdager, og alt som ikke
+    // er avslått teller som brukt/planlagt.
+    if (absence.type === "Ferie" && absence.status !== "Avslått") {
+      ensure(absence.name).ferieDays += countWeekdays(absence.start_date, absence.end_date);
     }
   });
 

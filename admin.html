@@ -205,33 +205,20 @@
 
       <details class="card">
         <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Alle ansatte</h2></summary>
-        <p class="muted">
-          Bursdag brukes kun til dag/måned (f.eks. bursdagsbeskjed på Hjem-siden) - året i datovelgeren spiller ingen rolle.
-          Ansettelsesdato brukes til jubileum - der brukes hele datoen, siden året teller antall år hos oss.
-        </p>
 
-        <div class="table-wrap">
-          <table class="shift-table" id="adminEmployeeTable">
-            <thead>
-              <tr>
-                <th>Navn</th>
-                <th>Bilde</th>
-                <th>Rolle</th>
-                <th>Avdeling</th>
-                <th>Bursdag</th>
-                <th>Ansatt fra</th>
-                <th>Admin?</th>
-                <th>Aktiv?</th>
-                <th>Kjører bil?</th>
-                <th>Årshjul?</th>
-                <th>Bruker-ID (UUID)</th>
-                <th>Nytt passord</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="adminEmployeeTableBody"></tbody>
-          </table>
+        <div class="emp-toolbar">
+          <input id="adminEmployeeSearch" type="search" placeholder="Søk etter navn" aria-label="Søk etter navn" />
+          <select id="adminEmployeeFilter" aria-label="Vis">
+            <option value="active">Aktive</option>
+            <option value="inactive">Ikke aktive</option>
+            <option value="all">Alle</option>
+          </select>
+          <span id="adminEmployeeCount" class="muted"></span>
         </div>
+
+        <p class="muted emp-help">Trykk på en person for å se og endre. Endringer lagres med en gang.</p>
+
+        <div id="adminEmployeeList" class="emp-list"></div>
       </details>
 
       <details class="card">
