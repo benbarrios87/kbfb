@@ -4804,6 +4804,12 @@ function renderOvertimeSummary() {
 
   const missingColumn = overtimePayrollColumnMissing();
   const unpaid = absencesCache.filter(record => record.type === "Overtid" && !record.payroll_done_on);
+
+  const badge = document.getElementById("overtimeUnpaidBadge");
+  if (badge) {
+    badge.textContent = unpaid.length ? `${unpaid.length} ikke ført` : "";
+    badge.style.display = unpaid.length ? "" : "none";
+  }
   const unpaidGroups = groupOvertimeByName(unpaid);
   const unpaidTotal = unpaid.reduce((sum, r) => sum + (Number(r.hours) || 0), 0);
 
@@ -5985,6 +5991,50 @@ function renderUnlinkedOpptjent() {
   });
 }
 
+/* ----- Varsel til styrer om føringer gjort i ettertid ----- */
+
+// Overtid fra en tidligere måned kan ha gått glipp av lønnskjøringen, og
+// sykdom/ferie langt tilbake i tid bør styrer også vite om. Admin får
+// push-varsel (ikke når admin registrerer selv - sendPushNotification
+// hopper over den innloggede).
+const LATE_REGISTRATION_DAYS = 7;
+
+function lateRegistrationInfo(record) {
+  const today = new Date();
+  const todayKey = toDateKey(today);
+  const monthStart = toDateKey(new Date(today.getFullYear(), today.getMonth(), 1));
+  const limit = toDateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() - LATE_REGISTRATION_DAYS));
+
+  if (!record.start_date || record.start_date > todayKey) return null;
+  if (record.type === "Overtid") return record.start_date < monthStart ? "overtid" : null;
+  return record.start_date < limit ? "annet" : null;
+}
+
+function notifyAdminsOfLateRegistration(record, kindLabel) {
+  const late = lateRegistrationInfo(record);
+  if (!late) return;
+
+  const admins = employeesCache.filter(e => e.is_admin).map(e => e.name);
+  if (!admins.length) return;
+
+  const when = formatDateRange(record.start_date, record.end_date);
+  if (late === "overtid") {
+    sendPushNotification(
+      admins,
+      "Sen overtid - sjekk lønn",
+      `${record.name} førte ${kindLabel.toLowerCase()} ${when} (${formatHoursNo(record.hours)} t). Ikke ført i lønn ennå.`,
+      "admin.html"
+    );
+  } else {
+    sendPushNotification(
+      admins,
+      "Registrert i ettertid",
+      `${record.name} førte ${kindLabel.toLowerCase()} ${when}.`,
+      "admin.html"
+    );
+  }
+}
+
 /* ----- Selve registreringsskjemaet ----- */
 
 let activeLeaveRegister = null;
@@ -6506,6 +6556,13 @@ function mountLeaveRegister(container, { getEmployeeName }) {
         });
         if (paired) await updateAbsenceRecordInSupabase(saved.id, { linked_id: paired.id });
         else ok = false;
+      }
+
+      if (saved) {
+        notifyAdminsOfLateRegistration(
+          { ...record, status },
+          type === "Overtid" ? (kind === "personalmote" ? "Personalmøte" : "Jobbet ekstra") : friendlyLeaveLabel({ ...record, status })
+        );
       }
 
       if (saved && type === "Ønsker å avspasere" && status === "Ønsket") {
