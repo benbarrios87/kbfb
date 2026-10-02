@@ -1292,7 +1292,15 @@ async function startHeroPhotoRotation() {
 
   const now = new Date();
   const dayNumber = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
-  const photo = heroPhotosCache[dayNumber % heroPhotosCache.length];
+
+  // Bilder lagt til i dag tas ikke med før i morgen - ellers endrer
+  // antall bilder på lista dagens utvalg midt på dagen (utvalget er
+  // dagnummer modulo antall bilder). Er alle bildene nye i dag, brukes
+  // de likevel så forsiden ikke står uten.
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const settled = heroPhotosCache.filter(p => new Date(p.created_at) < startOfToday);
+  const pool = settled.length ? settled : heroPhotosCache;
+  const photo = pool[dayNumber % pool.length];
 
   hero.style.setProperty("--hero-photo-url", `url("${photo.photo_url}")`);
 }
