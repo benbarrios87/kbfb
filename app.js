@@ -1261,12 +1261,10 @@ if (document.getElementById("heroPhotoList")) {
   loadHeroPhotosFromSupabase().then(renderHeroPhotoList);
 }
 
-// Dashboard: rotate through admin-uploaded forsidebilder i hero-headeren,
-// ett bilde av gangen - faller tilbake til det statiske
-// images/teamtur.jpg (via CSS-variabelens fallback-verdi) hvis ingen
-// bilder er lastet opp ennå.
-const HERO_PHOTO_ROTATION_MS = 9000;
-
+// Dashboard: ett forsidebilde per dag i hero-headeren, byttes ved
+// midnatt - samme bilde for alle som åpner siden samme dag. Faller
+// tilbake til det statiske images/teamtur.jpg (via CSS-variabelens
+// fallback-verdi) hvis ingen bilder er lastet opp ennå.
 async function startHeroPhotoRotation() {
   const hero = document.querySelector(".forest-hero.team-photo");
   if (!hero) return;
@@ -1274,19 +1272,11 @@ async function startHeroPhotoRotation() {
   await loadHeroPhotosFromSupabase();
   if (!heroPhotosCache.length) return;
 
-  let index = 0;
-  const applyPhoto = () => {
-    hero.style.setProperty("--hero-photo-url", `url("${heroPhotosCache[index].photo_url}")`);
-  };
+  const now = new Date();
+  const dayNumber = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
+  const photo = heroPhotosCache[dayNumber % heroPhotosCache.length];
 
-  applyPhoto();
-
-  if (heroPhotosCache.length > 1) {
-    setInterval(() => {
-      index = (index + 1) % heroPhotosCache.length;
-      applyPhoto();
-    }, HERO_PHOTO_ROTATION_MS);
-  }
+  hero.style.setProperty("--hero-photo-url", `url("${photo.photo_url}")`);
 }
 
 startHeroPhotoRotation();
