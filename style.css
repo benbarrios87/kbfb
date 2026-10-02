@@ -4043,3 +4043,60 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
     padding-left: 47px;
   }
 }
+
+/* Stort bilde øverst i et åpnet ansattkort */
+.emp-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.avatar.emp-photo {
+  width: 140px;
+  height: 140px;
+  font-size: 3rem;
+  margin: 0;
+  flex-shrink: 0;
+  border-width: 3px;
+  box-shadow: 0 8px 24px rgba(36, 53, 40, 0.15);
+}
+
+.emp-hero-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.emp-hero-text strong {
+  font-size: 1.3rem;
+}
+
+@media (max-width: 600px) {
+  .emp-hero {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .emp-hero-text {
+    align-items: center;
+  }
+}
+
+/* Ansattkort i personens egen vaktplan-farge */
+.emp-card-colored {
+  border-left: 6px solid var(--emp-color-dark);
+  overflow: hidden;
+}
+
+.emp-card-colored > .emp-card-head {
+  background: var(--emp-color);
+}
+
+.emp-card-colored .avatar.emp-photo {
+  border-color: var(--emp-color-dark);
+  border-width: 4px;
+}

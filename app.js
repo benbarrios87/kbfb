@@ -252,6 +252,11 @@ async function loadEmployeesFromSupabase() {
   // nytt når employeesCache blir kjent etter at den selv allerede kjørte.
   if (typeof renderSubPeople === "function") renderSubPeople();
 
+  // Og ansattkortene på Admin bruker personens farge fra employeesCache.
+  if (document.getElementById("adminEmployeeList") && typeof renderAdminEmployeeTable === "function") {
+    renderAdminEmployeeTable();
+  }
+
   return employeesCache;
 }
 function populateEmployeeSelect(selectId, options = {}) {
@@ -5931,11 +5936,31 @@ function employeeCardHtml(employee) {
     ? OMSORGSDAGER_OPTIONS
     : [...OMSORGSDAGER_OPTIONS, { value: omsorg, label: `${omsorg} dager` }];
 
+  // Samme faste farge som personen har på vaktplanen (colorForEmployee).
+  // Ikke-aktive ansatte har ingen farge der, og får nøytralt kort.
+  const color = colorForEmployee(employeesCache.find(e => e.name === employee.name));
+  const colorStyle = color
+    ? `style="--emp-color: ${color}; --emp-color-dark: ${darkenEmployeeColor(color, 0.35)};"`
+    : "";
+
   return `
-    <details class="emp-card" data-emp-id="${employee.id}" ${openEmployeeCards.has(String(employee.id)) ? "open" : ""}>
+    <details class="emp-card${color ? " emp-card-colored" : ""}" data-emp-id="${employee.id}" ${colorStyle} ${openEmployeeCards.has(String(employee.id)) ? "open" : ""}>
       <summary class="emp-card-head">${employeeCardSummaryHtml(employee)}</summary>
 
       <div class="emp-card-body">
+        <div class="emp-hero">
+          ${avatarSpanFor(employee.name, "emp-photo")}
+          <div class="emp-hero-text">
+            <strong>${name}</strong>
+            <span class="muted">${[employee.role, employee.department].filter(Boolean).map(escapeHtml).join(" · ") || "Rolle ikke satt"}</span>
+            <label class="secondary-btn admin-avatar-upload-label">
+              <span>${employeeAvatarCache[employee.name] ? "Bytt bilde" : "Last opp bilde"}</span>
+              <input type="file" accept="image/*" class="admin-avatar-upload-input" data-id="${employee.id}" data-name="${name}" hidden />
+            </label>
+            <p class="muted admin-avatar-upload-status" data-status-for="${employee.id}"></p>
+          </div>
+        </div>
+
         <section class="emp-group">
           <h4>Om personen</h4>
           <div class="emp-fields">
@@ -5959,15 +5984,6 @@ function employeeCardHtml(employee) {
               <span class="emp-label">Ansatt fra <span class="muted">(brukes til jubileum)</span></span>
               <input type="date" class="admin-field" data-id="${employee.id}" data-field="start_date" value="${employee.start_date || ""}" />
             </label>
-            <div class="emp-field">
-              <span class="emp-label">Profilbilde</span>
-              <label class="secondary-btn admin-avatar-upload-label">
-                ${avatarSpanFor(employee.name, "avatar-tiny")}
-                <span>Last opp</span>
-                <input type="file" accept="image/*" class="admin-avatar-upload-input" data-id="${employee.id}" data-name="${name}" hidden />
-              </label>
-              <p class="muted admin-avatar-upload-status" data-status-for="${employee.id}"></p>
-            </div>
           </div>
         </section>
 
@@ -7651,6 +7667,12 @@ async function adminUploadAvatarForEmployee(employeeId, employeeName, file, labe
   if (adminEntry) {
     adminEntry.avatar_url = publicUrl;
     refreshEmployeeCardSummary(employeeId);
+
+    const bigPhoto = document.querySelector(`.emp-card[data-emp-id="${employeeId}"] .emp-photo`);
+    if (bigPhoto) {
+      bigPhoto.style.backgroundImage = `url('${publicUrl}')`;
+      bigPhoto.textContent = "";
+    }
   }
 
   const avatarEl = labelEl?.querySelector(".avatar");
