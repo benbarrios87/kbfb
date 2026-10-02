@@ -4458,12 +4458,12 @@ async function saveEmployeeSettingField(name, field, value) {
 
 // Avspasering følger personen over nyttår (i motsetning til ferie, som
 // nullstilles hvert kalenderår) - saldoen regnes derfor over ALLE år.
-function getAvspaseringTotals(name) {
+function getAvspaseringTotals(name, excludeIds = []) {
   let opptjent = 0;
   let brukt = 0;
 
   absencesCache.forEach(record => {
-    if (record.name !== name) return;
+    if (record.name !== name || excludeIds.includes(record.id)) return;
     if (record.type === "Avspasering opptjent") opptjent += Number(record.hours || 0);
     brukt += getAvspaseringUsedHours(record);
   });
@@ -4734,7 +4734,7 @@ function renderOvertimeSummary() {
   overtimeSummary.innerHTML = `
     <div class="compact-item">
       <strong>${formatMonth(selectedMonth)}</strong>
-      <span>Totalt ${Math.round(totalHours * 100) / 100} timer · utbetal 50 % tillegg</span>
+      <span>Totalt ${formatHoursNo(totalHours)} t · legg inn med 50 % overtid</span>
     </div>
 
     ${Object.entries(grouped).map(([name, info]) => `
@@ -5280,12 +5280,12 @@ const PERSONALMOTE_NOTE = "Personalmøte";
 const FULL_DAY_HOURS = 7.5;
 
 const LEAVE_KINDS = {
-  personalmote: { title: "Personalmøte", hint: "2,5 t · avspasering + 50 % overtid" },
-  ekstra: { title: "Jobbet ekstra", hint: "Avspasering + 50 % overtid" },
-  avspasering: { title: "Ta ut avspasering", hint: "Søk om fri med timene dine" },
-  ferie: { title: "Ferie", hint: "Søk om ferie" },
+  personalmote: { title: "Personalmøte", hint: "Du får: + 2,5 t avspasering og 50 % overtid for 2,5 t" },
+  ekstra: { title: "Jobbet ekstra", hint: "Du får: + avspasering og 50 % overtid for timene" },
+  avspasering: { title: "Ta ut avspasering", hint: "Trekkes fra: avspaseringen din" },
+  ferie: { title: "Ferie", hint: "Trekkes fra: feriedagene dine" },
   syk: { title: "Syk", hint: "Egenmelding eller sykemelding" },
-  sykt_barn: { title: "Sykt barn", hint: "Omsorgsdager" },
+  sykt_barn: { title: "Sykt barn", hint: "Trekkes fra: omsorgsdagene dine" },
   annet: { title: "Annet", hint: "Tjenestefri, permisjon, velferd" }
 };
 
@@ -5330,14 +5330,14 @@ function formatHoursNo(hours) {
 }
 
 // Stats for én person i ett kalenderår (avspasering: alle år).
-function computeLeaveStats(name, year) {
+function computeLeaveStats(name, year, excludeIds = []) {
   const stats = {
     ferie: 0, tjenestefri: 0, omsorg: 0, egenmelding: 0, sykemelding: 0,
     permisjon: 0, overtid: 0
   };
 
   absencesCache.forEach(record => {
-    if (record.name !== name || record.status === "Avslått") return;
+    if (record.name !== name || record.status === "Avslått" || excludeIds.includes(record.id)) return;
     if (!record.start_date || Number(record.start_date.slice(0, 4)) !== year) return;
 
     const days = countWeekdays(record.start_date, record.end_date || record.start_date);
@@ -5355,7 +5355,7 @@ function computeLeaveStats(name, year) {
     }
   });
 
-  stats.avspasering = getAvspaseringTotals(name).saldo;
+  stats.avspasering = getAvspaseringTotals(name, excludeIds).saldo;
   return stats;
 }
 
@@ -5396,7 +5396,7 @@ function renderLeaveStats(container, name, year) {
   tiles.push(leaveStatTile("Egenmelding", s.egenmelding, " dager", `i ${year}`));
   if (s.sykemelding) tiles.push(leaveStatTile("Sykemelding", s.sykemelding, " dager", `i ${year}`));
   if (s.permisjon) tiles.push(leaveStatTile("Permisjon / velferd", s.permisjon, " dager", `i ${year}`));
-  tiles.push(leaveStatTile("Overtid", formatHoursNo(s.overtid), " t", `i ${year} · 50 % tillegg`));
+  tiles.push(leaveStatTile("50 % overtid", formatHoursNo(s.overtid), " t", `i ${year}`));
 
   container.innerHTML = tiles.join("");
 }
@@ -5415,7 +5415,7 @@ function leaveStatusChip(record) {
 function leaveAmountText(record) {
   if (record.type === "Overtid") {
     const hasPair = !!findLinkedAbsence(record);
-    return `${formatHoursNo(record.hours)} t · ${hasPair ? "avspasering + 50 % overtid" : "overtid (mangler avspasering)"}`;
+    return `${formatHoursNo(record.hours)} t · ${hasPair ? "avspasering og 50 % overtid" : "overtid (mangler avspasering)"}`;
   }
   if (record.type === "Avspasering opptjent") return `${formatHoursNo(record.hours)} t opptjent`;
 
@@ -5476,7 +5476,7 @@ function renderLeaveEntries(container, records, { showName = false } = {}) {
               <button type="button" class="secondary-btn" data-leave-edit="${record.id}">Endre</button>
               <button type="button" class="kitchen-delete" data-leave-delete="${record.id}">Slett</button>
             </div>
-          ` : ""}
+          ` : `<span class="leave-entry-locked">Feil? Spør styrer om å endre.</span>`}
         </div>
       `).join("")}
     </div>
@@ -5730,6 +5730,11 @@ function mountLeaveRegister(container, { getEmployeeName }) {
         <input type="text" name="note" />
       </label>
 
+      <div class="wide-field leave-effect" aria-live="polite">
+        <strong>Når du trykker Lagre:</strong>
+        <ul class="leave-effect-list"></ul>
+      </div>
+
       <div class="wide-field leave-form-buttons">
         <button type="submit" class="primary-btn">Lagre</button>
         <button type="button" class="secondary-btn" data-cancel>Avbryt</button>
@@ -5760,37 +5765,117 @@ function mountLeaveRegister(container, { getEmployeeName }) {
     return editing ? editing.name : getEmployeeName();
   }
 
+  // Kort forklaring øverst i skjemaet.
   function helpText() {
+    switch (kind) {
+      case "personalmote": return "2,5 t er fylt inn. Endre bare hvis møtet var lengre eller kortere.";
+      case "ekstra": return "Skriv hvor lenge du jobbet ekstra, og hvorfor.";
+      case "avspasering": return "Velg dagen(e) du vil ha fri.";
+      case "ferie": return "Velg dagen(e) du vil ha ferie.";
+      case "syk": return "Velg dagen(e) du var syk.";
+      case "sykt_barn": return "Velg dagen(e) du var hjemme med sykt barn.";
+      case "annet": return "Velg hva slags fri, og dagen(e).";
+      case "opptjent": return "Gammel føring av opptjent avspasering.";
+      default: return "";
+    }
+  }
+
+  // "Når du trykker Lagre:" - viser før -> etter med personens egne tall,
+  // og oppdateres mens skjemaet fylles ut, så det er helt tydelig hva
+  // føringen gjør.
+  function effectLines() {
     const name = currentName();
-    if (!name) return "";
-    const year = new Date().getFullYear();
-    const stats = computeLeaveStats(name, year);
-    const omsorgQuota = getOmsorgsdagerFor(name);
+    if (!name || !kind) return [];
+
+    const fields = LEAVE_KIND_FIELDS[kind] || [];
+    const start = field("start").value;
+    const end = (fields.includes("multi") && field("multi").checked && field("end").value) || start;
+    const hours = parseHoursInput(field("hours").value) || 0;
+    const year = start ? Number(start.slice(0, 4)) : new Date().getFullYear();
+
+    // Ved endring: regn "før" uten føringen som endres (og motparten dens).
+    const exclude = [];
+    if (editing) {
+      exclude.push(editing.id);
+      const pair = findLinkedAbsence(editing);
+      if (pair) exclude.push(pair.id);
+    }
+
+    const stats = computeLeaveStats(name, year, exclude);
+    const days = start && end >= start ? countWeekdays(start, end) : 0;
+    const dayText = n => `${n} ${n === 1 ? "dag" : "dager"}`;
+    const lines = [];
+    const arrow = (label, before, after, unit = "") => `${label}: <strong>${before}${unit} → ${after}${unit}</strong>`;
+
+    if ((kind === "avspasering" || kind === "ferie" || kind === "syk" || kind === "sykt_barn" || kind === "annet") && start && days === 0) {
+      lines.push(`<span class="leave-effect-warn">Datoene er bare lørdag/søndag - ingen dager telles.</span>`);
+    }
 
     switch (kind) {
       case "personalmote":
-        return "Du får timene som avspasering (time for time), og 50 % overtidstillegg utbetales. 2,5 t er fylt inn - endre bare hvis møtet var lengre eller kortere.";
       case "ekstra":
-        return "Du får timene som avspasering (time for time), og 50 % overtidstillegg utbetales.";
-      case "avspasering":
-        return `Du har ${formatHoursNo(stats.avspasering)} t til gode. Søknaden må godkjennes.`;
+      case "opptjent": {
+        const avs = stats.avspasering;
+        lines.push(arrow("Avspaseringen din", formatHoursNo(avs), formatHoursNo(avs + hours), " t"));
+        if (kind !== "opptjent") lines.push(`50 % overtid på lønn for <strong>${formatHoursNo(hours)} t</strong>`);
+        lines.push("Trenger ikke godkjenning - lagres med en gang.");
+        break;
+      }
+      case "avspasering": {
+        const avs = stats.avspasering;
+        const used = hours || days * FULL_DAY_HOURS;
+        lines.push(arrow("Avspaseringen din", formatHoursNo(avs), formatHoursNo(avs - used), " t"));
+        if (days) lines.push(`Fri: ${formatDateRange(start, end)} (${hours ? `${formatHoursNo(hours)} t` : `${dayText(days)} × ${formatHoursNo(FULL_DAY_HOURS)} t`})`);
+        if (avs - used < 0) lines.push(`<span class="leave-effect-warn">Du har ikke nok timer til gode. Snakk med styrer.</span>`);
+        lines.push("Må godkjennes. Du får beskjed.");
+        break;
+      }
       case "ferie": {
         const quota = getVacationDaysFor(name);
-        return `Du har ${quota - stats.ferie} av ${quota} feriedager igjen i ${year}. Søknaden må godkjennes.`;
+        const left = quota - stats.ferie;
+        lines.push(arrow(`Feriedager igjen i ${year}`, left, left - days));
+        if (left - days < 0) lines.push(`<span class="leave-effect-warn">Det er flere dager enn du har igjen. Snakk med styrer.</span>`);
+        lines.push("Må godkjennes. Du får beskjed.");
+        break;
       }
-      case "syk":
-        return "Registreres med en gang, og vises som SYK på vaktplanen.";
-      case "sykt_barn":
-        return omsorgQuota
-          ? `Du har brukt ${stats.omsorg} av ${omsorgQuota} omsorgsdager i ${year}. Vises som SB på vaktplanen.`
-          : "Du har ingen omsorgsdager registrert. Si ifra til styrer hvis det er feil.";
-      case "annet":
-        return "Må godkjennes.";
-      case "opptjent":
-        return "Gammel føring av opptjent avspasering.";
-      default:
-        return "";
+      case "syk": {
+        const type = form.querySelector('input[name="sickType"]:checked')?.value || "Egenmelding";
+        const key = type === "Sykemelding" ? "sykemelding" : "egenmelding";
+        lines.push(arrow(`${type} i ${year}`, stats[key], stats[key] + days, " dager"));
+        lines.push("Vises som SYK på vaktplanen med en gang.");
+        break;
+      }
+      case "sykt_barn": {
+        const quota = getOmsorgsdagerFor(name);
+        if (quota) {
+          lines.push(arrow(`Omsorgsdager brukt i ${year}`, `${stats.omsorg}/${quota}`, `${stats.omsorg + days}/${quota}`));
+          if (stats.omsorg + days > quota) lines.push(`<span class="leave-effect-warn">Det er flere enn du har igjen. Snakk med styrer.</span>`);
+        } else {
+          lines.push(arrow(`Omsorgsdager brukt i ${year}`, stats.omsorg, stats.omsorg + days));
+          lines.push(`<span class="leave-effect-warn">Du har ingen omsorgsdager registrert. Si ifra til styrer hvis det er feil.</span>`);
+        }
+        lines.push("Vises som SB på vaktplanen med en gang.");
+        break;
+      }
+      case "annet": {
+        const type = field("otherType").value;
+        if (type === "Tjenestefri") {
+          const quota = getTjenestefriDaysFor(name);
+          lines.push(arrow(`Tjenestefri brukt i ${year}`, `${stats.tjenestefri}/${quota}`, `${stats.tjenestefri + days}/${quota}`));
+        } else {
+          lines.push(`${type}: <strong>${dayText(days)}</strong>`);
+        }
+        lines.push("Må godkjennes. Du får beskjed.");
+        break;
+      }
     }
+
+    return lines;
+  }
+
+  function updateEffect() {
+    const list = form.querySelector(".leave-effect-list");
+    if (list) list.innerHTML = effectLines().map(line => `<li>${line}</li>`).join("");
   }
 
   function updateMultiVisibility() {
@@ -5826,6 +5911,7 @@ function mountLeaveRegister(container, { getEmployeeName }) {
     form.querySelector(".leave-form-help").textContent = helpText();
     tiles.querySelectorAll(".leave-tile").forEach(tile => tile.classList.toggle("active", tile.dataset.kind === kind));
     updateMultiVisibility();
+    updateEffect();
   }
 
   function resetFields() {
@@ -5885,7 +5971,9 @@ function mountLeaveRegister(container, { getEmployeeName }) {
     });
   });
 
-  field("multi").addEventListener("change", updateMultiVisibility);
+  field("multi").addEventListener("change", () => { updateMultiVisibility(); updateEffect(); });
+  form.addEventListener("input", updateEffect);
+  form.addEventListener("change", updateEffect);
   form.querySelector("[data-cancel]").addEventListener("click", close);
 
   form.addEventListener("submit", async event => {
@@ -5990,7 +6078,7 @@ function mountLeaveRegister(container, { getEmployeeName }) {
     const label = editing ? "Endret" : "Lagret";
     const days = countWeekdays(start, end);
     let detail;
-    if (type === "Overtid") detail = `${formatHoursNo(hours)} t avspasering + 50 % overtid.`;
+    if (type === "Overtid") detail = `+ ${formatHoursNo(hours)} t avspasering og 50 % overtid for ${formatHoursNo(hours)} t.`;
     else if (status === "Ønsket") detail = `${formatDateRange(start, end)}. Venter på godkjenning.`;
     else detail = `${formatDateRange(start, end)} (${days} ${days === 1 ? "dag" : "dager"}).`;
 
@@ -6005,7 +6093,7 @@ function mountLeaveRegister(container, { getEmployeeName }) {
   return {
     edit,
     refreshHelp() {
-      if (kind && !form.hidden) form.querySelector(".leave-form-help").textContent = helpText();
+      if (kind && !form.hidden) updateEffect();
     }
   };
 }
