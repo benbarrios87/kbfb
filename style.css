@@ -4429,3 +4429,99 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .leave-stat-warn .leave-stat-sub strong {
   color: #92400e;
 }
+
+/* ---------- Ferie og fravær: farger per valg (--kc settes per element) ---------- */
+.leave-tile[style*="--kc"] {
+  border-color: color-mix(in srgb, var(--kc) 35%, transparent);
+  border-left: 6px solid var(--kc);
+  background: color-mix(in srgb, var(--kc) 7%, var(--paper));
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.leave-tile[style*="--kc"] strong {
+  color: var(--kc);
+}
+
+.leave-tile[style*="--kc"]:hover {
+  background: color-mix(in srgb, var(--kc) 14%, var(--paper));
+  border-color: var(--kc);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--kc) 25%, transparent);
+}
+
+.leave-tile[style*="--kc"].active {
+  background: var(--kc);
+  border-color: var(--kc);
+}
+
+.leave-tile[style*="--kc"].active strong,
+.leave-tile[style*="--kc"].active .leave-tile-hint,
+.leave-tile[style*="--kc"].active .leave-tile-icon {
+  color: #fff;
+}
+
+.leave-tile-icon {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--kc) 15%, transparent);
+  color: var(--kc);
+  margin-bottom: 4px;
+}
+
+.leave-tile.active .leave-tile-icon {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.leave-tile-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Skjemaet får fargen til valget */
+.leave-form {
+  border-color: var(--kc, var(--green));
+  border-top-width: 6px;
+}
+
+.leave-form .leave-form-title {
+  color: var(--kc, var(--green-dark));
+}
+
+.leave-form .leave-effect {
+  border-color: var(--kc, var(--green));
+  background: color-mix(in srgb, var(--kc, var(--green)) 8%, var(--paper));
+  color: var(--text);
+}
+
+.leave-form .primary-btn {
+  background: var(--kc, var(--green));
+  border-color: var(--kc, var(--green));
+}
+
+/* Flisene i Min oversikt */
+.leave-stat-kind {
+  border-top: 5px solid var(--kc);
+  background: color-mix(in srgb, var(--kc) 5%, var(--paper));
+}
+
+.leave-stat-kind .leave-stat-value {
+  color: var(--kc);
+}
+
+.leave-stat-kind.leave-stat-warn {
+  background: #fef3c7;
+}
+
+/* Mine føringer: fargestripe til venstre */
+.leave-entry-kind {
+  border-left: 5px solid var(--kc);
+}

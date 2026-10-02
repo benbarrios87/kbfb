@@ -5279,6 +5279,31 @@ const PERSONALMOTE_HOURS = 2.5;
 const PERSONALMOTE_NOTE = "Personalmøte";
 const FULL_DAY_HOURS = 7.5;
 
+// Farge per valg (fra KBFB-paletten): det man FÅR er grønt, det man
+// BRUKER har hver sin farge. Samme farge brukes på knappen, skjemaet,
+// flisene i Min oversikt og i Mine føringer, så alt henger sammen.
+const LEAVE_KIND_COLORS = {
+  personalmote: "#4C6C4B",
+  ekstra: "#6E8F5C",
+  opptjent: "#6E8F5C",
+  avspasering: "#3E6E86",
+  ferie: "#C97A3F",
+  syk: "#B5452E",
+  sykt_barn: "#B5577A",
+  annet: "#5B4432"
+};
+
+// Enkle strek-ikoner (ingen emojier), arver fargen via currentColor.
+const LEAVE_KIND_ICONS = {
+  personalmote: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M15 14.5c.6-.3 1.3-.5 2-.5 2.8 0 4 2.2 4 5"/></svg>',
+  ekstra: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9 2h6"/></svg>',
+  avspasering: '<svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M6 20v-6a6 6 0 0 1 12 0v6"/><path d="M12 4v2M5 7l1.4 1.4M19 7l-1.4 1.4"/></svg>',
+  ferie: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+  syk: '<svg viewBox="0 0 24 24"><path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/></svg>',
+  sykt_barn: '<svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>',
+  annet: '<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>'
+};
+
 const LEAVE_KINDS = {
   personalmote: { title: "Personalmøte", hint: "Du får: + 2,5 t avspasering og 50 % overtid for 2,5 t" },
   ekstra: { title: "Jobbet ekstra", hint: "Du får: + avspasering og 50 % overtid for timene" },
@@ -5288,6 +5313,11 @@ const LEAVE_KINDS = {
   sykt_barn: { title: "Sykt barn", hint: "Trekkes fra: omsorgsdagene dine" },
   annet: { title: "Annet", hint: "Tjenestefri, permisjon, velferd" }
 };
+
+function kindColorStyle(kind) {
+  const color = LEAVE_KIND_COLORS[kind];
+  return color ? `style="--kc: ${color};"` : "";
+}
 
 const OTHER_LEAVE_TYPES = ["Tjenestefri", "Velferdspermisjon", "Permisjon med lønn", "Permisjon uten lønn"];
 
@@ -5359,9 +5389,9 @@ function computeLeaveStats(name, year, excludeIds = []) {
   return stats;
 }
 
-function leaveStatTile(label, value, unit, sub) {
+function leaveStatTile(label, value, unit, sub, kind) {
   return `
-    <div class="leave-stat">
+    <div class="leave-stat${kind ? " leave-stat-kind" : ""}" ${kindColorStyle(kind)}>
       <span class="leave-stat-label">${label}</span>
       <span class="leave-stat-value">${value}<small>${unit}</small></span>
       ${sub ? `<span class="leave-stat-sub">${sub}</span>` : ""}
@@ -5461,7 +5491,7 @@ function egenmeldingAdminTile(name) {
     : "Ingen siste 12 mnd";
 
   return `
-    <div class="leave-stat${warnings.length ? " leave-stat-warn" : ""}">
+    <div class="leave-stat leave-stat-kind${warnings.length ? " leave-stat-warn" : ""}" ${kindColorStyle("syk")}>
       <span class="leave-stat-label">Egenmelding siste 12 mnd</span>
       <span class="leave-stat-value">${e.days}/${EGENMELDING_DAYS_PER_12_MONTHS}<small> dager</small></span>
       <span class="leave-stat-sub">${sub}${warnings.length ? `<br><strong>${warnings.join(" · ")}</strong>` : ""}</span>
@@ -5482,23 +5512,23 @@ function renderLeaveStats(container, name, year, { showSickStreak = false, admin
   const omsorgQuota = getOmsorgsdagerFor(name);
 
   const tiles = [
-    leaveStatTile("Ferie igjen", ferieQuota - s.ferie, " dager", `av ${ferieQuota} · ${s.ferie} brukt eller søkt`),
-    leaveStatTile("Avspasering", formatHoursNo(s.avspasering), " t", "til gode (følger med over nyttår)")
+    leaveStatTile("Ferie igjen", ferieQuota - s.ferie, " dager", `av ${ferieQuota} · ${s.ferie} brukt eller søkt`, "ferie"),
+    leaveStatTile("Avspasering", formatHoursNo(s.avspasering), " t", "til gode (følger med over nyttår)", "avspasering")
   ];
 
   if (omsorgQuota || s.omsorg) {
     tiles.push(omsorgQuota
-      ? leaveStatTile("Omsorgsdager", `${s.omsorg}/${omsorgQuota}`, "", `brukt · ${Math.max(0, omsorgQuota - s.omsorg)} igjen`)
-      : leaveStatTile("Omsorgsdager", s.omsorg, " dager", "brukt (ingen kvote satt)"));
+      ? leaveStatTile("Omsorgsdager", `${s.omsorg}/${omsorgQuota}`, "", `brukt · ${Math.max(0, omsorgQuota - s.omsorg)} igjen`, "sykt_barn")
+      : leaveStatTile("Omsorgsdager", s.omsorg, " dager", "brukt (ingen kvote satt)", "sykt_barn"));
   }
 
-  tiles.push(leaveStatTile("Tjenestefri", `${s.tjenestefri}/${tjQuota}`, "", "dager brukt"));
+  tiles.push(leaveStatTile("Tjenestefri", `${s.tjenestefri}/${tjQuota}`, "", "dager brukt", "annet"));
   tiles.push(adminDetails
     ? egenmeldingAdminTile(name)
-    : leaveStatTile("Egenmelding", s.egenmelding, " dager", `i ${year}`));
-  if (s.sykemelding) tiles.push(leaveStatTile("Sykemelding", s.sykemelding, " dager", `i ${year}`));
-  if (s.permisjon) tiles.push(leaveStatTile("Permisjon / velferd", s.permisjon, " dager", `i ${year}`));
-  tiles.push(leaveStatTile("50 % overtid", formatHoursNo(s.overtid), " t", `i ${year}`));
+    : leaveStatTile("Egenmelding", s.egenmelding, " dager", `i ${year}`, "syk"));
+  if (s.sykemelding) tiles.push(leaveStatTile("Sykemelding", s.sykemelding, " dager", `i ${year}`, "syk"));
+  if (s.permisjon) tiles.push(leaveStatTile("Permisjon / velferd", s.permisjon, " dager", `i ${year}`, "annet"));
+  tiles.push(leaveStatTile("50 % overtid", formatHoursNo(s.overtid), " t", `i ${year}`, "ekstra"));
 
   if (showSickStreak) tiles.unshift(sickStreakTile(name));
   container.innerHTML = tiles.join("");
@@ -5566,7 +5596,7 @@ function renderLeaveEntries(container, records, { showName = false } = {}) {
     <div class="leave-month">
       <h3 class="leave-month-title">${month === "ukjent" ? "Uten dato" : formatMonth(month)}</h3>
       ${list.map(record => `
-        <div class="leave-entry">
+        <div class="leave-entry leave-entry-kind" ${kindColorStyle(leaveKindForRecord(record))}>
           <div class="leave-entry-main">
             <strong>${escapeHtml(friendlyLeaveLabel(record))}${showName ? ` <span class="muted">· ${escapeHtml(record.name)}</span>` : ""}</strong>
             <span class="muted">${formatDateRange(record.start_date, record.end_date)} · ${leaveAmountText(record)}</span>
@@ -5783,9 +5813,10 @@ function mountLeaveRegister(container, { getEmployeeName }) {
   container.innerHTML = `
     <div class="leave-tiles">
       ${Object.entries(LEAVE_KINDS).map(([kind, info]) => `
-        <button type="button" class="leave-tile" data-kind="${kind}">
+        <button type="button" class="leave-tile" data-kind="${kind}" ${kindColorStyle(kind)}>
+          <span class="leave-tile-icon" aria-hidden="true">${LEAVE_KIND_ICONS[kind]}</span>
           <strong>${info.title}</strong>
-          <span>${info.hint}</span>
+          <span class="leave-tile-hint">${info.hint}</span>
         </button>
       `).join("")}
     </div>
@@ -5990,6 +6021,7 @@ function mountLeaveRegister(container, { getEmployeeName }) {
 
   function setKind(newKind) {
     kind = newKind;
+    form.style.setProperty("--kc", LEAVE_KIND_COLORS[kind] || "var(--green)");
     const fields = LEAVE_KIND_FIELDS[kind] || [];
 
     form.querySelectorAll("[data-f]").forEach(el => {
