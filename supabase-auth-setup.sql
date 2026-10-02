@@ -1789,3 +1789,14 @@ CREATE POLICY "kbfb_hero_photos_insert_own" ON public.kbfb_hero_photos
     uploaded_by = public.kbfb_current_employee_name()
     AND public.kbfb_current_employee_role() IS DISTINCT FROM 'Gjest'
   );
+
+-- =========================================================
+-- STEP 56: kbfb_hero_photos.pinned
+--   Admin can override the rotation and lock one specific photo.
+--   Partial unique index = at most one pinned photo at a time.
+-- =========================================================
+
+ALTER TABLE public.kbfb_hero_photos ADD COLUMN IF NOT EXISTS pinned boolean NOT NULL DEFAULT false;
+
+CREATE UNIQUE INDEX IF NOT EXISTS kbfb_hero_photos_one_pinned
+  ON public.kbfb_hero_photos (pinned) WHERE pinned;

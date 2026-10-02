@@ -1213,10 +1213,44 @@ function renderHeroPhotoList() {
         <div class="compact-item">
           <img src="${photo.photo_url}" alt="" style="width: 160px; height: 90px; object-fit: cover; border-radius: 10px; display: block;" />
           ${photo.uploaded_by ? `<span class="muted">Fra ${escapeHtml(photo.uploaded_by)}</span>` : ""}
-          <button class="kitchen-delete" data-hero-photo-id="${photo.id}" style="margin-top: 6px;">Slett</button>
+          ${photo.pinned ? `<strong>📌 Vises nå (overstyrt)</strong>` : ""}
+          <div style="display: flex; gap: 6px; margin-top: 6px;">
+            <button class="secondary-btn" data-hero-pin-id="${photo.id}" data-hero-pinned="${photo.pinned ? "1" : ""}">${photo.pinned ? "Fjern overstyring" : "Vis dette nå"}</button>
+            <button class="kitchen-delete" data-hero-photo-id="${photo.id}">Slett</button>
+          </div>
         </div>
       `).join("")
     : `<p class="muted">Ingen bilder lagt til ennå.</p>`;
+
+  document.querySelectorAll("[data-hero-pin-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const unpinning = !!button.dataset.heroPinned;
+      button.disabled = true;
+
+      // Kun ett bilde kan være overstyrt om gangen - fjern eventuell
+      // eksisterende overstyring først (unik indeks tillater bare én).
+      const { error: clearError } = await supabaseClient
+        .from("kbfb_hero_photos")
+        .update({ pinned: false })
+        .eq("pinned", true);
+
+      let error = clearError;
+      if (!error && !unpinning) {
+        ({ error } = await supabaseClient
+          .from("kbfb_hero_photos")
+          .update({ pinned: true })
+          .eq("id", button.dataset.heroPinId));
+      }
+
+      if (error) {
+        console.error("Kunne ikke endre overstyring:", error);
+        alert("Kunne ikke endre forsidebilde: " + describeSupabaseError(error));
+      }
+
+      await loadHeroPhotosFromSupabase();
+      renderHeroPhotoList();
+    });
+  });
 
   document.querySelectorAll("[data-hero-photo-id]").forEach(button => {
     button.addEventListener("click", async () => {
@@ -1301,6 +1335,13 @@ async function startHeroPhotoRotation() {
 
   await loadHeroPhotosFromSupabase();
   if (!heroPhotosCache.length) return;
+
+  // Admin kan overstyre rotasjonen og låse ett bestemt bilde.
+  const pinnedPhoto = heroPhotosCache.find(p => p.pinned);
+  if (pinnedPhoto) {
+    hero.style.setProperty("--hero-photo-url", `url("${pinnedPhoto.photo_url}")`);
+    return;
+  }
 
   const now = new Date();
   const dayNumber = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
