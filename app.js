@@ -5418,7 +5418,58 @@ function sickStreakTile(name) {
   `;
 }
 
-function renderLeaveStats(container, name, year, { showSickStreak = false } = {}) {
+// Egenmelding etter personalhåndboka: 24 kalenderdager i løpet av 12
+// måneder, maks 8 dager per gang. Kvoten vises BARE for admin (Fravær per
+// ansatt) - ansatte ser bare hvor mange dager de har hatt, ikke hvor mange
+// de har "igjen".
+const EGENMELDING_DAYS_PER_12_MONTHS = 24;
+const EGENMELDING_MAX_DAYS_PER_TIME = 8;
+
+function egenmeldingLast12Months(name) {
+  const today = new Date();
+  const todayKey = toDateKey(today);
+  const fromKey = toDateKey(new Date(today.getFullYear() - 1, today.getMonth(), today.getDate() + 1));
+
+  let days = 0;
+  let times = 0;
+  let longest = 0;
+
+  absencesCache.forEach(record => {
+    if (record.name !== name || record.type !== "Egenmelding" || record.status === "Avslått") return;
+    const start = record.start_date;
+    const end = record.end_date || start;
+    if (!start || end < fromKey || start > todayKey) return;
+
+    // Kalenderdager (helg mellom to sykedager teller med, som i håndboka).
+    const length = daysBetweenInclusive(start, end);
+    days += length;
+    times += 1;
+    longest = Math.max(longest, length);
+  });
+
+  return { days, times, longest };
+}
+
+function egenmeldingAdminTile(name) {
+  const e = egenmeldingLast12Months(name);
+  const warnings = [];
+  if (e.days > EGENMELDING_DAYS_PER_12_MONTHS) warnings.push(`Over ${EGENMELDING_DAYS_PER_12_MONTHS} dager`);
+  if (e.longest > EGENMELDING_MAX_DAYS_PER_TIME) warnings.push(`Én gang over ${EGENMELDING_MAX_DAYS_PER_TIME} dager`);
+
+  const sub = e.times
+    ? `${e.times} ${e.times === 1 ? "gang" : "ganger"} · lengste ${e.longest} ${e.longest === 1 ? "dag" : "dager"}`
+    : "Ingen siste 12 mnd";
+
+  return `
+    <div class="leave-stat${warnings.length ? " leave-stat-warn" : ""}">
+      <span class="leave-stat-label">Egenmelding siste 12 mnd</span>
+      <span class="leave-stat-value">${e.days}/${EGENMELDING_DAYS_PER_12_MONTHS}<small> dager</small></span>
+      <span class="leave-stat-sub">${sub}${warnings.length ? `<br><strong>${warnings.join(" · ")}</strong>` : ""}</span>
+    </div>
+  `;
+}
+
+function renderLeaveStats(container, name, year, { showSickStreak = false, adminDetails = false } = {}) {
   if (!container) return;
   if (!name) {
     container.innerHTML = `<p class="muted">Velg en ansatt.</p>`;
@@ -5442,7 +5493,9 @@ function renderLeaveStats(container, name, year, { showSickStreak = false } = {}
   }
 
   tiles.push(leaveStatTile("Tjenestefri", `${s.tjenestefri}/${tjQuota}`, "", "dager brukt"));
-  tiles.push(leaveStatTile("Egenmelding", s.egenmelding, " dager", `i ${year}`));
+  tiles.push(adminDetails
+    ? egenmeldingAdminTile(name)
+    : leaveStatTile("Egenmelding", s.egenmelding, " dager", `i ${year}`));
   if (s.sykemelding) tiles.push(leaveStatTile("Sykemelding", s.sykemelding, " dager", `i ${year}`));
   if (s.permisjon) tiles.push(leaveStatTile("Permisjon / velferd", s.permisjon, " dager", `i ${year}`));
   tiles.push(leaveStatTile("50 % overtid", formatHoursNo(s.overtid), " t", `i ${year}`));
@@ -5623,7 +5676,7 @@ function renderAdminLeaveOverview() {
   const registerCard = document.getElementById("adminLeaveRegisterWrap");
   if (registerCard) registerCard.style.display = name ? "" : "none";
 
-  renderLeaveStats(statsEl, name, year);
+  renderLeaveStats(statsEl, name, year, { adminDetails: true });
   if (entriesEl) {
     if (name) renderLeaveEntries(entriesEl, recordsForYear(name, year));
     else entriesEl.innerHTML = "";

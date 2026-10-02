@@ -4419,3 +4419,13 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   color: var(--green-dark);
   font-weight: 700;
 }
+
+/* Egenmelding over grensen (kun synlig for admin) */
+.leave-stat-warn {
+  border-color: #b45309;
+  background: #fef3c7;
+}
+
+.leave-stat-warn .leave-stat-sub strong {
+  color: #92400e;
+}
