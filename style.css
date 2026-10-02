@@ -3747,3 +3747,81 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   padding-bottom: 16px;
   border-bottom: 2px dashed var(--line);
 }
+
+/* Tydelig bekreftelse under "Lagre vakt" på vikarer.html - mange vikarer
+   har lite norsk, så meldingen er stor, kort og blir stående en stund. */
+.sub-save-status {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+
+.sub-save-status.ok {
+  background: #dcfce7;
+  border: 2px solid #2e7d32;
+  color: #14532d;
+}
+
+.sub-save-status.warn {
+  background: #fef3c7;
+  border: 2px solid #b45309;
+  color: #78350f;
+}
+
+/* "Hvor lenge jobbet du?" på vikarer.html - standardvalget skal synes
+   tydelig som valgt, og "Annen tid" åpner timer/minutter. */
+.sub-length-choice {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.sub-length-choice legend {
+  font-weight: 850;
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+.sub-length-option,
+.form-grid .sub-length-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 2px solid #d6dccf;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.sub-length-option input {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.sub-length-option:has(input:checked) {
+  border-color: #2e7d32;
+  background: #e8f5e9;
+}
+
+.sub-other-length {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-left: 4px;
+}
+
+.sub-other-length label {
+  flex: 1 1 140px;
+}
+
+.sub-length-option .muted {
+  font-weight: 500;
+}

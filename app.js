@@ -3647,8 +3647,70 @@ initializeEvents();
 const subForm = document.getElementById("subForm");
 const subName = document.getElementById("subName");
 const subDate = document.getElementById("subDate");
-const subStart = document.getElementById("subStart");
-const subEnd = document.getElementById("subEnd");
+const subHours = document.getElementById("subHours");
+const subMinutes = document.getElementById("subMinutes");
+
+// Vikarene registrerer bare antall timer + minutter (ikke klokkeslett) -
+// de brukte mye tid på å få eksakt riktig tid, mens det bare er timene som
+// teller. Klokkeslett finnes på vaktlista. Standard: 7 t 30 min.
+const SUB_DEFAULT_HOURS = 7;
+const SUB_DEFAULT_MINUTES = 30;
+
+function hourOptionsHtml(selected) {
+  return Array.from({ length: 13 }, (_, h) =>
+    `<option value="${h}" ${h === selected ? "selected" : ""}>${h} timer</option>`
+  ).join("");
+}
+
+function minuteOptionsHtml(selected) {
+  // Eldre vakter (registrert med klokkeslett) kan ha f.eks. 20 min - ta
+  // med den verdien så "Endre" ikke stille runder den bort.
+  const minutes = [0, 15, 30, 45];
+  if (!minutes.includes(selected)) minutes.push(selected);
+  return minutes.sort((a, b) => a - b).map(m =>
+    `<option value="${m}" ${m === selected ? "selected" : ""}>${m} min</option>`
+  ).join("");
+}
+
+function splitHours(hours) {
+  const totalMinutes = Math.round(Number(hours || 0) * 60);
+  return { h: Math.floor(totalMinutes / 60), m: totalMinutes % 60 };
+}
+
+function formatHoursMinutes(hours) {
+  const { h, m } = splitHours(hours);
+  return m ? `${h} t ${m} min` : `${h} t`;
+}
+
+// "Vanlig dag: 7 t 30 min" er forhåndsvalgt; "Annen tid" viser timer/minutter.
+const subLengthNormal = document.getElementById("subLengthNormal");
+const subLengthOther = document.getElementById("subLengthOther");
+const subOtherLengthFields = document.getElementById("subOtherLengthFields");
+
+function updateSubLengthVisibility() {
+  const other = !!(subLengthOther && subLengthOther.checked);
+  if (subOtherLengthFields) subOtherLengthFields.style.display = other ? "" : "none";
+}
+
+[subLengthNormal, subLengthOther].forEach(radio => {
+  if (radio) radio.addEventListener("change", updateSubLengthVisibility);
+});
+
+function getSubFormHours() {
+  if (!subLengthOther || !subLengthOther.checked) {
+    return SUB_DEFAULT_HOURS + SUB_DEFAULT_MINUTES / 60;
+  }
+  return Number(subHours.value) + Number(subMinutes.value) / 60;
+}
+
+function resetSubHoursFields() {
+  if (subHours) subHours.innerHTML = hourOptionsHtml(SUB_DEFAULT_HOURS);
+  if (subMinutes) subMinutes.value = String(SUB_DEFAULT_MINUTES);
+  if (subLengthNormal) subLengthNormal.checked = true;
+  updateSubLengthVisibility();
+}
+
+resetSubHoursFields();
 const subDepartment = document.getElementById("subDepartment");
 const subNote = document.getElementById("subNote");
 const subTableBody = document.getElementById("subTableBody");
@@ -3711,17 +3773,17 @@ function renderSubPeople() {
       option.textContent = name;
       subName.appendChild(option);
     });
+
+    // Lista bygges på nytt når employeesCache kommer inn - da forsvant
+    // vikarens eget (låste) navn, så det må settes tilbake.
+    applySubFormVisibility();
   }
 
   if (subPersonList) {
     subPersonList.innerHTML = subPeopleCache.length
       ? subPeopleCache.map(person => `
           <div class="compact-item">
-            <strong>
-  <span class="vikar-badge" style="background:${person.color || '#f3f4f6'}">
-    ${escapeHtml(person.name)}
-  </span>
-</strong>
+            <strong>${renderVikarBadge(person.name)}</strong>
 <span>Aktiv vikar</span>
           </div>
         `).join("")
@@ -3757,18 +3819,6 @@ if (subPersonForm) {
     subPersonName.value = "";
     renderSubPeople();
   });
-}
-
-function calculateHours(start, end) {
-  if (!start || !end) return 0;
-
-  const [startHour, startMinute] = start.split(":").map(Number);
-  const [endHour, endMinute] = end.split(":").map(Number);
-
-  const startTotal = startHour * 60 + startMinute;
-  const endTotal = endHour * 60 + endMinute;
-
-  return Math.max(0, Math.round(((endTotal - startTotal) / 60) * 100) / 100);
 }
 
 async function loadSubsFromSupabase() {
@@ -3847,14 +3897,16 @@ function renderSubs() {
 
   subTableBody.innerHTML = "";
 
-  if (!subsCache.length) {
+  const visibleSubs = getVisibleSubs();
+
+  if (!visibleSubs.length) {
     subSummary.innerHTML = `<p class="muted">Ingen vakter registrert ennå.</p>`;
     return;
   }
 
   const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
 
-  subsCache.forEach(sub => {
+  visibleSubs.forEach(sub => {
     const row = document.createElement("tr");
 
     if (isAdmin && sub.id === editingSubId) {
@@ -3871,11 +3923,9 @@ function renderSubs() {
           </select>
         </td>
         <td>
-          <input type="time" class="sub-edit-start" value="${sub.start_time || ""}" style="width: 90px;" />
-          –
-          <input type="time" class="sub-edit-end" value="${sub.end_time || ""}" style="width: 90px;" />
+          <select class="sub-edit-hours">${hourOptionsHtml(splitHours(sub.hours).h)}</select>
+          <select class="sub-edit-minutes">${minuteOptionsHtml(splitHours(sub.hours).m)}</select>
         </td>
-        <td>${sub.hours || 0}</td>
         <td><input type="text" class="sub-edit-note" value="${escapeHtml(sub.note)}" /></td>
         <td>
           <div style="display: flex; gap: 6px;">
@@ -3888,9 +3938,8 @@ function renderSubs() {
       row.innerHTML = `
         <td>${formatNorwegianDate(sub.date)}</td>
         <td>${renderVikarBadge(sub.name)}</td>
-        <td>${sub.is_sick ? `🤒 Syk${sub.start_time ? ` (${escapeHtml(sub.department)})` : ""}` : escapeHtml(sub.department)}</td>
-        <td>${sub.start_time && sub.end_time ? `${sub.start_time}–${sub.end_time}` : "–"}</td>
-        <td>${sub.hours || 0}</td>
+        <td>${sub.is_sick ? `🤒 Syk${sub.hours ? ` (${escapeHtml(sub.department)})` : ""}` : escapeHtml(sub.department)}</td>
+        <td>${formatHoursMinutes(sub.hours)}</td>
         <td>${escapeHtml(sub.note)}</td>
         <td>${isAdmin ? `
           <div style="display: flex; gap: 6px;">
@@ -3931,17 +3980,13 @@ function renderSubs() {
   document.querySelectorAll("[data-sub-save-id]").forEach(button => {
     button.addEventListener("click", async () => {
       const row = button.closest("tr");
-      const hours = calculateHours(
-        row.querySelector(".sub-edit-start").value,
-        row.querySelector(".sub-edit-end").value
-      );
+      const hours = Number(row.querySelector(".sub-edit-hours").value) +
+        Number(row.querySelector(".sub-edit-minutes").value) / 60;
 
       const saved = await updateSubToSupabase(button.dataset.subSaveId, {
         date: row.querySelector(".sub-edit-date").value,
         name: row.querySelector(".sub-edit-name").value,
         department: row.querySelector(".sub-edit-department").value,
-        start_time: row.querySelector(".sub-edit-start").value,
-        end_time: row.querySelector(".sub-edit-end").value,
         hours,
         note: row.querySelector(".sub-edit-note").value.trim()
       });
@@ -3963,14 +4008,50 @@ function getSubPersonColor(name) {
   return person?.color || "#f3f4f6";
 }
 
+// Noen vikarer har fått en mørk farge (f.eks. Sharlene, mørkeblå) - med
+// fast mørk tekst ble navnet nesten uleselig. Velger hvit eller mørk tekst
+// ut fra hvor lys bakgrunnsfargen er.
+function readableTextColor(hex) {
+  const match = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(String(hex || "").trim());
+  if (!match) return "#243225";
+
+  let value = match[1];
+  if (value.length === 3) value = value.split("").map(c => c + c).join("");
+
+  const r = parseInt(value.slice(0, 2), 16);
+  const g = parseInt(value.slice(2, 4), 16);
+  const b = parseInt(value.slice(4, 6), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+  return brightness < 150 ? "#ffffff" : "#243225";
+}
+
 function renderVikarBadge(name) {
-  return `<span class="vikar-badge" style="background:${getSubPersonColor(name)}">${escapeHtml(name)}</span>`;
+  const color = getSubPersonColor(name);
+  return `<span class="vikar-badge" style="background:${escapeHtml(color)}; color:${readableTextColor(color)}">${escapeHtml(name)}</span>`;
+}
+
+// En vikar (som ikke er admin) skal bare se sine egne vakter i loggen og
+// oppsummeringen - ikke timene til de andre vikarene.
+function isVikarOnlyUser() {
+  return typeof currentEmployee !== "undefined" && !!currentEmployee &&
+    currentEmployee.role === "Vikar" && !currentEmployee.is_admin;
+}
+
+function getVisibleSubs() {
+  // Før innloggingen er kjent vet vi ikke om dette er en vikar - vis ingenting
+  // heller enn å blinke alles timer. auth.js kaller renderSubs() igjen etterpå.
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return [];
+  if (!isVikarOnlyUser()) return subsCache;
+  return subsCache.filter(sub => sub.name === currentEmployee.name);
 }
 
 function renderSubSummary() {
   if (!subSummary) return;
 
-  if (!subsCache.length) {
+  const visibleSubs = getVisibleSubs();
+
+  if (!visibleSubs.length) {
     subSummary.innerHTML = `<p class="muted">Ingen vakter registrert ennå.</p>`;
     return;
   }
@@ -3979,7 +4060,7 @@ function renderSubSummary() {
 
   const selectedMonth = subMonthFilter?.value || getCurrentMonthKey();
 
-  const monthSubs = subsCache.filter(sub =>
+  const monthSubs = visibleSubs.filter(sub =>
     sub.date && sub.date.slice(0, 7) === selectedMonth
   );
 
@@ -4009,13 +4090,13 @@ function renderSubSummary() {
   subSummary.innerHTML = `
     <div class="compact-item">
       <strong>${formatMonth(selectedMonth)}</strong>
-      <span>Totalt ${Math.round(totalHours * 100) / 100} timer</span>
+      <span>Totalt ${formatHoursMinutes(totalHours)}</span>
     </div>
 
     ${Object.values(grouped).map(item => `
       <div class="compact-item">
         <strong>${renderVikarBadge(item.name)}</strong>
-        <span>${item.days.size} dager · ${Math.round(item.hours * 100) / 100} timer</span>
+        <span>${item.days.size} dager · ${formatHoursMinutes(item.hours)}</span>
       </div>
     `).join("")}
   `;
@@ -4038,7 +4119,7 @@ function populateSubMonthFilter() {
   const currentValue = subMonthFilter.value || getCurrentMonthKey();
 
   const months = [...new Set(
-    subsCache
+    getVisibleSubs()
       .filter(sub => sub.date)
       .map(sub => sub.date.slice(0, 7))
   )].sort((a, b) => b.localeCompare(a));
@@ -4078,8 +4159,51 @@ if (subDate) {
   subDate.value = toDateKey(new Date());
 }
 
+// "Til dato" forvirret vikarene - de fleste jobber bare én dag. Feltet er
+// derfor skjult til man krysser av for "flere dager på rad".
+const subMultiDay = document.getElementById("subMultiDay");
+const subEndDateField = document.getElementById("subEndDateField");
+const subOneDayHint = document.getElementById("subOneDayHint");
+const subSaveStatus = document.getElementById("subSaveStatus");
+let subSaveStatusTimer = null;
+
+function updateSubMultiDayVisibility() {
+  const multi = !!(subMultiDay && subMultiDay.checked);
+  if (subEndDateField) subEndDateField.style.display = multi ? "" : "none";
+  if (subOneDayHint) subOneDayHint.style.display = multi ? "none" : "";
+  if (subEndDate) {
+    subEndDate.required = multi;
+    if (!multi) subEndDate.value = "";
+  }
+}
+
+if (subMultiDay) {
+  subMultiDay.addEventListener("change", updateSubMultiDayVisibility);
+}
+
+function showSubSaveStatus(message, kind) {
+  if (!subSaveStatus) return;
+  subSaveStatus.textContent = message;
+  subSaveStatus.className = `sub-save-status ${kind}`;
+  subSaveStatus.style.display = "";
+  subSaveStatus.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+  clearTimeout(subSaveStatusTimer);
+  subSaveStatusTimer = setTimeout(() => {
+    subSaveStatus.style.display = "none";
+  }, 12000);
+}
+
+function formatShortNorwegianDate(dateKey) {
+  return new Date(dateKey + "T12:00:00").toLocaleDateString("no-NO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long"
+  });
+}
+
 // Syk-avkrysningen er bare en logg for sykedage-oversikten til vikarer
-// (loadVikarSickDaysFromSupabase) - Fra/Til/Avdeling fylles ut som
+// (loadVikarSickDaysFromSupabase) - Timer/Avdeling fylles ut som
 // normalt uansett, siden vikaren skal ha betalt for den avtalte vakten
 // sin selv om hun ble syk samme dag.
 if (subForm) {
@@ -4087,11 +4211,24 @@ if (subForm) {
     event.preventDefault();
 
     const isSick = !!(subIsSick && subIsSick.checked);
-    const hours = calculateHours(subStart.value, subEnd.value);
+    const hours = getSubFormHours();
+    const hoursText = formatHoursMinutes(hours);
+
+    if (hours <= 0) {
+      showSubSaveStatus("Velg hvor mange timer du jobbet.", "warn");
+      return;
+    }
 
     const startDate = subDate.value;
-    const endDate = subEndDate.value || subDate.value;
+    const endDate = (subMultiDay?.checked && subEndDate.value) || subDate.value;
+
+    if (endDate < startDate) {
+      showSubSaveStatus("Siste dag kan ikke være før første dag. Sjekk datoene.", "warn");
+      return;
+    }
+
     const dates = getWeekdaysBetween(startDate, endDate);
+    const savedDates = [];
     let anyFailed = false;
     let anyDuplicate = false;
 
@@ -4100,8 +4237,8 @@ if (subForm) {
         name: subName.value,
         date,
         department: subDepartment.value,
-        start_time: subStart.value,
-        end_time: subEnd.value,
+        start_time: null,
+        end_time: null,
         hours,
         note: subNote.value.trim(),
         is_sick: isSick
@@ -4121,27 +4258,43 @@ if (subForm) {
       }
 
       const result = await saveSubToSupabase(sub);
-      if (!result.ok) {
-        if (result.duplicate) anyDuplicate = true;
-        else anyFailed = true;
+      if (result.ok) {
+        savedDates.push(date);
+      } else if (result.duplicate) {
+        anyDuplicate = true;
+      } else {
+        anyFailed = true;
       }
     }
 
+    // Kort og enkel norsk - mange vikarer leser lite norsk.
+    const messages = [];
+    if (savedDates.length === 1) {
+      messages.push(`Lagret! ${formatShortNorwegianDate(savedDates[0])}: ${hoursText}.`);
+    } else if (savedDates.length > 1) {
+      messages.push(`Lagret! ${savedDates.length} dager, ${hoursText} hver dag.`);
+    } else if (!dates.length) {
+      messages.push("Ingen hverdager valgt (lørdag og søndag blir ikke lagret).");
+    }
     if (anyDuplicate) {
-      alert(`${subName.value} har allerede en vakt registrert på minst én av disse dagene - den ble ikke lagt til på nytt. Slett den gamle først hvis du vil endre den.`);
+      messages.push("Noen dager var allerede lagret fra før. De ble ikke lagret to ganger.");
+    }
+    if (anyFailed) {
+      messages.push("Noe gikk galt. Prøv igjen, eller si ifra til styrer.");
     }
 
-    if (anyFailed) {
-      alert("Noen vikarvakter kunne ikke lagres. Prøv igjen.");
-    }
+    const allOk = savedDates.length > 0 && !anyDuplicate && !anyFailed;
+    showSubSaveStatus(messages.join(" "), allOk ? "ok" : "warn");
 
     await loadSubsFromSupabase();
 
     subForm.reset();
     subDate.value = toDateKey(new Date());
     subEndDate.value = "";
-    subStart.value = "08:30";
-    subEnd.value = "16:00";
+    resetSubHoursFields();
+    updateSubMultiDayVisibility();
+    // reset() tømte også det låste vikarnavnet - sett det tilbake.
+    applySubFormVisibility();
 
     renderSubs();
   });
@@ -4463,6 +4616,17 @@ async function applyApprovedAbsenceToShifts(record) {
 
     await upsertShiftForApproval(weekStart, employee.department, record.name, dayIndex, shiftValue);
   }
+}
+
+// Felles regel for "hvor mange avspaseringstimer er brukt" - brukes av
+// Ferie/avspasering-siden, avdelingsoversikten og Nøkkeltall, så tallene
+// alltid stemmer overens. Føringer uten timer (bare datoer) teller 7,5 t
+// per hverdag. Avslåtte ønsker teller ikke.
+function getAvspaseringUsedHours(record) {
+  if (record.type !== "Avspasering brukt" && record.type !== "Ønsker å avspasere") return 0;
+  if (record.status === "Avslått") return 0;
+  const hours = Number(record.hours || 0);
+  return hours || countWeekdays(record.start_date, record.end_date) * 7.5;
 }
 
 function countWeekdays(startDate, endDate) {
@@ -5054,7 +5218,7 @@ function renderAbsenceSummary(records) {
 
       case "Avspasering brukt":
       case "Ønsker å avspasere":
-        grouped[record.name].avsBrukt += hours || (days * 7.5);
+        grouped[record.name].avsBrukt += getAvspaseringUsedHours(record);
         break;
 
       case "Overtid":
@@ -5171,7 +5335,7 @@ function renderDepartmentAbsenceOverview() {
       if (record.type === "Ferie") ensureEntry(record.name).ferie += days;
       if (record.type === "Avspasering opptjent") ensureEntry(record.name).avsOpptjent += hours;
       if (record.type === "Avspasering brukt" || record.type === "Ønsker å avspasere") {
-        ensureEntry(record.name).avsBrukt += hours || (days * 7.5);
+        ensureEntry(record.name).avsBrukt += getAvspaseringUsedHours(record);
       }
     }
 
@@ -6001,8 +6165,12 @@ function computeAbsenceStats(absences, periodStart, periodEnd) {
   const stats = {};
 
   absences.forEach(absence => {
-    if (!countedAbsenceStatuses.includes(absence.status)) return;
     if (!absence.start_date || absence.start_date > periodEnd || absence.start_date < periodStart) return;
+
+    // Avspasering lagres som "Registrert" (ingen godkjenning), så den kan
+    // ikke filtreres på countedAbsenceStatuses - da ble kolonnen alltid "–".
+    const usedAvspasering = getAvspaseringUsedHours(absence);
+    if (!usedAvspasering && !countedAbsenceStatuses.includes(absence.status)) return;
 
     if (!stats[absence.name]) {
       stats[absence.name] = { sickDays: 0, vacationDays: 0, avspaseringHours: 0, permisjonDays: 0 };
@@ -6015,8 +6183,8 @@ function computeAbsenceStats(absences, periodStart, periodEnd) {
       entry.sickDays += days;
     } else if (absence.type === "Ferie") {
       entry.vacationDays += days;
-    } else if (absence.type === "Avspasering brukt") {
-      entry.avspaseringHours += absence.hours || 0;
+    } else if (usedAvspasering) {
+      entry.avspaseringHours += usedAvspasering;
     } else if ((absence.type || "").startsWith("Permisjon")) {
       entry.permisjonDays += days;
     }
@@ -6041,7 +6209,7 @@ function renderAbsenceStatsTable(period) {
             <td><strong>${escapeHtml(name)}</strong></td>
             <td>${s.sickDays || "–"}</td>
             <td>${s.vacationDays || "–"}</td>
-            <td>${s.avspaseringHours || "–"}</td>
+            <td>${s.avspaseringHours ? Number(s.avspaseringHours.toFixed(1)) : "–"}</td>
             <td>${s.permisjonDays || "–"}</td>
           </tr>
         `;
@@ -6087,9 +6255,9 @@ function computeAvspaseringAndFerieBalance() {
     if (!absence.start_date || Number(absence.start_date.slice(0, 4)) !== currentYear) return;
 
     if (absence.type === "Avspasering opptjent") {
-      ensure(absence.name).avsOpptjent += absence.hours || 0;
-    } else if (absence.type === "Avspasering brukt") {
-      ensure(absence.name).avsBrukt += absence.hours || 0;
+      ensure(absence.name).avsOpptjent += Number(absence.hours || 0);
+    } else if (absence.type === "Avspasering brukt" || absence.type === "Ønsker å avspasere") {
+      ensure(absence.name).avsBrukt += getAvspaseringUsedHours(absence);
     } else if (absence.type === "Ferie" && countedAbsenceStatuses.includes(absence.status)) {
       ensure(absence.name).ferieDays += daysBetweenInclusive(absence.start_date, absence.end_date);
     }
@@ -6576,7 +6744,7 @@ function setupNokkeltallExports() {
       const rows = [["Ansatt", "Sykefravær (dager)", "Ferie (dager)", "Avspasering brukt (timer)", "Permisjon (dager)"]];
 
       Object.entries(stats).forEach(([name, s]) => {
-        rows.push([name, s.sickDays, s.vacationDays, s.avspaseringHours, s.permisjonDays]);
+        rows.push([name, s.sickDays, s.vacationDays, Number(s.avspaseringHours.toFixed(1)), s.permisjonDays]);
       });
 
       downloadWorkbook(rows, "Fraværsstatistikk", `fravaersstatistikk-${toDateKey(new Date())}.xlsx`);

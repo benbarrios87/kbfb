@@ -120,28 +120,58 @@
           </label>
 
           <label>
-            Dato
+            Dato du jobbet
             <input id="subDate" type="date" required />
           </label>
-<label>
-  Til dato
-  <input id="subEndDate" type="date" />
-</label>
+
+          <label class="wide-field checkbox-field">
+            <input type="checkbox" id="subMultiDay" />
+            Jobbet du flere dager på rad? Kryss av her.
+          </label>
+          <p class="muted wide-field" id="subOneDayHint" style="margin: -6px 0 0;">
+            1 dag: Velg bare dato over. Det er nok.
+          </p>
+
+          <label id="subEndDateField" style="display: none;">
+            Siste dag du jobbet
+            <input id="subEndDate" type="date" />
+          </label>
 
           <label class="wide-field checkbox-field">
             <input type="checkbox" id="subIsSick" />
             🤒 Syk (men får fortsatt betalt vakten sin)
           </label>
 
-          <label id="subStartField">
-            Fra
-            <input id="subStart" type="time" value="08:30" required />
-          </label>
+          <fieldset class="wide-field sub-length-choice">
+            <legend>Hvor lenge jobbet du?</legend>
 
-          <label id="subEndField">
-            Til
-            <input id="subEnd" type="time" value="16:00" required />
-          </label>
+            <label class="sub-length-option">
+              <input type="radio" name="subLength" id="subLengthNormal" value="normal" checked />
+              <span><strong>Vanlig dag: 7 t 30 min</strong><br /><span class="muted">Valgt. Trykk bare "Lagre vakt".</span></span>
+            </label>
+
+            <label class="sub-length-option">
+              <input type="radio" name="subLength" id="subLengthOther" value="other" />
+              <span><strong>Annen tid</strong><br /><span class="muted">Jobbet du kortere eller lengre?</span></span>
+            </label>
+
+            <div id="subOtherLengthFields" class="sub-other-length" style="display: none;">
+              <label>
+                Timer
+                <select id="subHours"></select>
+              </label>
+
+              <label>
+                Minutter
+                <select id="subMinutes">
+                  <option value="0">0 min</option>
+                  <option value="15">15 min</option>
+                  <option value="30">30 min</option>
+                  <option value="45">45 min</option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
 
           <label id="subDepartmentField">
             Avdeling
@@ -160,6 +190,8 @@
 
           <button class="primary-btn form-button" type="submit">Lagre vakt</button>
         </form>
+
+        <div id="subSaveStatus" class="sub-save-status" role="status" aria-live="polite" style="display: none;"></div>
       </section>
 
       <details class="card">
@@ -180,7 +212,6 @@
                 <th>Dato</th>
                 <th>Vikar</th>
                 <th>Avdeling</th>
-                <th>Tid</th>
                 <th>Timer</th>
                 <th>Notat</th>
                 <th></th>
