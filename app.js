@@ -5864,6 +5864,13 @@ async function loadAllEmployeesForAdmin() {
   }
 
   adminEmployeesCache = data || [];
+
+  // Lista har allerede avatar_url (select *) - fyll bildecachen direkte, så
+  // ansattkortene viser bilder med en gang i stedet for bare forbokstaver.
+  adminEmployeesCache.forEach(employee => {
+    if (employee.avatar_url) employeeAvatarCache[employee.name] = employee.avatar_url;
+  });
+
   return adminEmployeesCache;
 }
 
@@ -7638,6 +7645,13 @@ async function adminUploadAvatarForEmployee(employeeId, employeeName, file, labe
 
   employeeAvatarCache[employeeName] = publicUrl;
   applyEmployeeAvatarsToGrid();
+
+  // Oppdater også bildet i toppen av ansattkortet på Admin.
+  const adminEntry = adminEmployeesCache.find(e => String(e.id) === String(employeeId));
+  if (adminEntry) {
+    adminEntry.avatar_url = publicUrl;
+    refreshEmployeeCardSummary(employeeId);
+  }
 
   const avatarEl = labelEl?.querySelector(".avatar");
   if (avatarEl) {
