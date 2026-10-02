@@ -4408,3 +4408,14 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .admin-group-title p {
   margin: 4px 0 0;
 }
+
+/* "Dager siden sist syk" - motivasjonsflis på Ferie og fravær */
+.leave-stat-streak {
+  background: var(--green-soft);
+  border-color: var(--green);
+}
+
+.leave-stat-streak .leave-stat-sub {
+  color: var(--green-dark);
+  font-weight: 700;
+}

@@ -5369,7 +5369,56 @@ function leaveStatTile(label, value, unit, sub) {
   `;
 }
 
-function renderLeaveStats(container, name, year) {
+// "Dager siden sist syk" - liten motivasjon, vises KUN for personen selv
+// (ikke på Admin). Teller bare egen sykdom, ikke sykt barn.
+function daysSinceLastSick(name) {
+  const todayKey = toDateKey(new Date());
+  let last = null;
+
+  absencesCache.forEach(record => {
+    if (record.name !== name || !sickAbsenceTypes.includes(record.type) || record.type === "Omsorgsdager") return;
+    const end = record.end_date || record.start_date;
+    if (!end || record.start_date > todayKey) return;
+    const until = end > todayKey ? todayKey : end;
+    if (!last || until > last) last = until;
+  });
+
+  if (!last) return null;
+  const ms = new Date(todayKey + "T12:00:00") - new Date(last + "T12:00:00");
+  return Math.max(0, Math.round(ms / 86400000));
+}
+
+function sickStreakTile(name) {
+  const days = daysSinceLastSick(name);
+
+  if (days === null) {
+    return `
+      <div class="leave-stat leave-stat-streak">
+        <span class="leave-stat-label">Dager siden sist syk</span>
+        <span class="leave-stat-value">Ingen<small> sykedager</small></span>
+        <span class="leave-stat-sub">Ikke registrert noen ennå. Flott!</span>
+      </div>
+    `;
+  }
+
+  let cheer;
+  if (days < 7) cheer = "God bedring!";
+  else if (days < 30) cheer = "Godt jobba!";
+  else if (days < 90) cheer = "Sterkt!";
+  else if (days < 180) cheer = "Over tre måneder - kjempebra!";
+  else if (days < 365) cheer = "Over et halvt år - imponerende!";
+  else cheer = "Over et år - helt rått!";
+
+  return `
+    <div class="leave-stat leave-stat-streak">
+      <span class="leave-stat-label">Dager siden sist syk</span>
+      <span class="leave-stat-value">${days}<small> ${days === 1 ? "dag" : "dager"}</small></span>
+      <span class="leave-stat-sub">${cheer}</span>
+    </div>
+  `;
+}
+
+function renderLeaveStats(container, name, year, { showSickStreak = false } = {}) {
   if (!container) return;
   if (!name) {
     container.innerHTML = `<p class="muted">Velg en ansatt.</p>`;
@@ -5398,6 +5447,7 @@ function renderLeaveStats(container, name, year) {
   if (s.permisjon) tiles.push(leaveStatTile("Permisjon / velferd", s.permisjon, " dager", `i ${year}`));
   tiles.push(leaveStatTile("50 % overtid", formatHoursNo(s.overtid), " t", `i ${year}`));
 
+  if (showSickStreak) tiles.unshift(sickStreakTile(name));
   container.innerHTML = tiles.join("");
 }
 
@@ -5545,7 +5595,7 @@ function renderMyLeavePage() {
   populateLeaveYearSelect(leaveYearSelect, name);
   const year = Number(leaveYearSelect?.value) || new Date().getFullYear();
 
-  renderLeaveStats(statsEl, name, year);
+  renderLeaveStats(statsEl, name, year, { showSickStreak: true });
   renderLeaveEntries(entriesEl, recordsForYear(name, year));
   activeLeaveRegister?.refreshHelp();
 }
