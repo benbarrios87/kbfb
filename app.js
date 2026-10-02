@@ -4672,12 +4672,29 @@ async function upsertShiftForApproval(week_start, department, employee, day_inde
   }
 }
 
+// Hvilken avdeling personen faktisk står under i vaktplanen. Raden i
+// vaktplanen er det som teller (der vises SYK/F) - personallista kan ha
+// tom eller annen avdeling (f.eks. styrer), så den brukes bare som reserve.
+async function findScheduleDepartment(name) {
+  const { data } = await supabaseClient
+    .from("kbfb_shifts")
+    .select("department, week_start")
+    .eq("employee", name)
+    .order("week_start", { ascending: false })
+    .limit(1);
+
+  const fromSchedule = data?.[0]?.department;
+  if (fromSchedule) return fromSchedule;
+
+  return employeesCache.find(e => e.name === name)?.department || null;
+}
+
 async function applyApprovedAbsenceToShifts(record) {
   const shiftValue = shiftTypesFromAbsence[record.type];
   if (!shiftValue) return;
 
-  const employee = employeesCache.find(e => e.name === record.name);
-  if (!employee || !employee.department) {
+  const department = await findScheduleDepartment(record.name);
+  if (!department) {
     console.error("Fant ikke avdeling for", record.name, "- kan ikke oppdatere vaktplanen automatisk.");
     return;
   }
@@ -4689,7 +4706,7 @@ async function applyApprovedAbsenceToShifts(record) {
     const weekStart = toDateKey(getMonday(date));
     const dayIndex = date.getDay() - 1;
 
-    await upsertShiftForApproval(weekStart, employee.department, record.name, dayIndex, shiftValue);
+    await upsertShiftForApproval(weekStart, department, record.name, dayIndex, shiftValue);
   }
 }
 

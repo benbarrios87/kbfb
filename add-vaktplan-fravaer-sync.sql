@@ -141,7 +141,16 @@ BEGIN
      AND public.kbfb_absence_on_schedule(NEW.type, NEW.status)
      AND NEW.start_date IS NOT NULL THEN
 
-    SELECT department INTO dept FROM public.kbfb_employees WHERE name = NEW.name LIMIT 1;
+    -- Avdelingen der personen faktisk står i vaktplanen (siste uke de har
+    -- en rad). Personallista brukes bare hvis de aldri har stått der.
+    SELECT department INTO dept FROM public.kbfb_shifts
+      WHERE employee = NEW.name AND COALESCE(department, '') <> ''
+      ORDER BY week_start DESC
+      LIMIT 1;
+
+    IF dept IS NULL OR dept = '' THEN
+      SELECT department INTO dept FROM public.kbfb_employees WHERE name = NEW.name LIMIT 1;
+    END IF;
 
     IF dept IS NOT NULL AND dept <> '' THEN
       FOR d IN
