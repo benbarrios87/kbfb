@@ -1220,7 +1220,19 @@ function renderHeroPhotoList() {
 
   document.querySelectorAll("[data-hero-photo-id]").forEach(button => {
     button.addEventListener("click", async () => {
-      await supabaseClient.from("kbfb_hero_photos").delete().eq("id", button.dataset.heroPhotoId);
+      if (!confirm("Fjerne dette bildet fra forsidebilde-rotasjonen?")) return;
+
+      const { error } = await supabaseClient
+        .from("kbfb_hero_photos")
+        .delete()
+        .eq("id", button.dataset.heroPhotoId);
+
+      if (error) {
+        console.error("Kunne ikke fjerne forsidebilde:", error);
+        alert("Kunne ikke fjerne bildet: " + describeSupabaseError(error));
+        return;
+      }
+
       await loadHeroPhotosFromSupabase();
       renderHeroPhotoList();
     });
