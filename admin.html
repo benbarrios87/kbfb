@@ -150,18 +150,20 @@
             <h2 style="display: inline;">Overtid til lønn</h2>
           </div>
         </summary>
-        <p class="muted">Timene er også gitt som avspasering. Legg dem inn i lønnssystemet med 50 % overtid.</p>
+        <p class="muted">Timene er også gitt som avspasering. Legg dem inn i lønnssystemet med 50 % overtid, og trykk så "Marker som ført". Overtid som registreres sent (f.eks. et augustmøte ført i oktober) dukker opp her til den er ført - den kan ikke bli glemt.</p>
 
+        <div id="overtimeSummary">
+          <p class="muted">Laster...</p>
+        </div>
+
+        <h3 style="margin-top: 26px;">Allerede ført i lønn</h3>
         <label class="compact-filter">
           Måned
           <select id="overtimeMonthFilter"></select>
         </label>
+        <div id="overtimePaidHistory"></div>
 
-        <div id="overtimeSummary" class="summary-list">
-          <p class="muted">Ingen overtid registrert denne måneden.</p>
-        </div>
-
-        <h3 style="margin-top: 22px;">Sykedager (vikarer)</h3>
+        <h3 style="margin-top: 26px;">Sykedager (vikarer)</h3>
         <div id="vikarSickDaysSummary" class="summary-list">
           <p class="muted">Ingen registrerte sykedager for vikarer.</p>
         </div>

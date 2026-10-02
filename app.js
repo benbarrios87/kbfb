@@ -4726,32 +4726,74 @@ function countWeekdays(startDate, endDate) {
   return dates.length;
 }
 
-// Payroll needs to look at whatever month it's currently running (often
-// the month before "now", or any earlier one) - not just "this month" -
-// so this mirrors populateSubMonthFilter/renderSubSummary's month-picker
-// pattern instead of hardcoding to the current calendar month.
+// Overtid til lønn: alt som ikke er markert "ført i lønn" vises, uansett
+// hvilken dato overtiden gjelder - et augustmøte som registreres i
+// oktober dukker altså opp i neste lønnskjøring i stedet for å forsvinne
+// i en august-visning som allerede er ferdig. Måned-velgeren under brukes
+// til historikk (hva som ble ført når) og vikarenes sykedager.
+function overtimePayrollColumnMissing() {
+  const overtime = absencesCache.filter(record => record.type === "Overtid");
+  return overtime.length > 0 && !overtime.some(record => "payroll_done_on" in record);
+}
+
 function populateOvertimeMonthFilter() {
   if (!overtimeMonthFilter) return;
 
   const currentValue = overtimeMonthFilter.value || getCurrentMonthKey();
 
-  const months = [...new Set(
-    absencesCache
-      .filter(record => record.type === "Overtid" && record.start_date)
-      .map(record => record.start_date.slice(0, 7))
-  )].sort((a, b) => b.localeCompare(a));
-
-  if (!months.includes(getCurrentMonthKey())) {
-    months.unshift(getCurrentMonthKey());
-  }
+  const months = [...new Set([
+    getCurrentMonthKey(),
+    ...absencesCache
+      .filter(record => record.type === "Overtid" && record.payroll_done_on)
+      .map(record => String(record.payroll_done_on).slice(0, 7)),
+    ...vikarSickDaysCache.filter(r => r.date).map(r => r.date.slice(0, 7))
+  ])].sort((a, b) => b.localeCompare(a));
 
   overtimeMonthFilter.innerHTML = months.map(month => `
     <option value="${month}">${formatMonth(month)}</option>
   `).join("");
 
-  overtimeMonthFilter.value = months.includes(currentValue)
-    ? currentValue
-    : getCurrentMonthKey();
+  overtimeMonthFilter.value = months.includes(currentValue) ? currentValue : getCurrentMonthKey();
+}
+
+function overtimeLineHtml(entry, { undo = false } = {}) {
+  const registered = entry.created_at ? toDateKey(new Date(entry.created_at)) : null;
+  const late = registered && registered.slice(0, 7) !== (entry.start_date || "").slice(0, 7);
+
+  return `
+    <li>
+      <strong>${formatHoursNo(entry.hours)} t</strong> · ${formatDateRange(entry.start_date, entry.end_date)}${entry.note ? ` · ${escapeHtml(entry.note)}` : ""}
+      ${late ? `<span class="overtime-late">Registrert ${formatNorwegianDate(registered)}</span>` : ""}
+      ${undo ? `<button type="button" class="link-btn" data-overtime-undo="${entry.id}">Angre</button>` : ""}
+    </li>
+  `;
+}
+
+function groupOvertimeByName(records) {
+  const grouped = {};
+  records
+    .sort((a, b) => (a.start_date || "").localeCompare(b.start_date || ""))
+    .forEach(record => {
+      if (!grouped[record.name]) grouped[record.name] = { hours: 0, entries: [] };
+      grouped[record.name].hours += Number(record.hours) || 0;
+      grouped[record.name].entries.push(record);
+    });
+  return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+}
+
+async function markOvertimePaid(ids, value) {
+  if (!ids.length) return true;
+  const { error } = await supabaseClient
+    .from("kbfb_absences")
+    .update({ payroll_done_on: value })
+    .in("id", ids);
+
+  if (error) {
+    console.error("Kunne ikke markere overtid:", error);
+    alert("Kunne ikke lagre. Har du kjørt add-lonn-overtid.sql i Supabase?");
+    return false;
+  }
+  return true;
 }
 
 function renderOvertimeSummary() {
@@ -4760,42 +4802,83 @@ function renderOvertimeSummary() {
   populateOvertimeMonthFilter();
   renderVikarSickDaysSummary();
 
-  const selectedMonth = overtimeMonthFilter?.value || getCurrentMonthKey();
-
-  const overtimeRecords = absencesCache.filter(record =>
-    record.type === "Overtid" && record.start_date && record.start_date.slice(0, 7) === selectedMonth
-  );
-
-  if (!overtimeRecords.length) {
-    overtimeSummary.innerHTML = `<p class="muted">Ingen overtid registrert i ${formatMonth(selectedMonth)}.</p>`;
-    return;
-  }
-
-  const grouped = {};
-
-  overtimeRecords.forEach(record => {
-    if (!grouped[record.name]) grouped[record.name] = { hours: 0, entries: [] };
-    grouped[record.name].hours += Number(record.hours) || 0;
-    grouped[record.name].entries.push(record);
-  });
-
-  const totalHours = Object.values(grouped).reduce((sum, item) => sum + item.hours, 0);
+  const missingColumn = overtimePayrollColumnMissing();
+  const unpaid = absencesCache.filter(record => record.type === "Overtid" && !record.payroll_done_on);
+  const unpaidGroups = groupOvertimeByName(unpaid);
+  const unpaidTotal = unpaid.reduce((sum, r) => sum + (Number(r.hours) || 0), 0);
 
   overtimeSummary.innerHTML = `
-    <div class="compact-item">
-      <strong>${formatMonth(selectedMonth)}</strong>
-      <span>Totalt ${formatHoursNo(totalHours)} t · legg inn med 50 % overtid</span>
+    ${missingColumn ? `<p class="overtime-warning">Kjør <strong>add-lonn-overtid.sql</strong> i Supabase for å kunne markere overtid som ført i lønn.</p>` : ""}
+
+    <div class="overtime-head">
+      <div>
+        <h3>Ikke ført i lønn ennå</h3>
+        <p class="muted">${unpaid.length
+          ? `${formatHoursNo(unpaidTotal)} t totalt · legg inn med 50 % overtid`
+          : "Alt er ført. Bra!"}</p>
+      </div>
+      ${unpaid.length ? `<button type="button" class="primary-btn" data-overtime-mark-all>Marker alt som ført i lønn</button>` : ""}
     </div>
 
-    ${Object.entries(grouped).map(([name, info]) => `
-      <div class="summary-item">
-        <strong>${escapeHtml(name)} · ${Math.round(info.hours * 100) / 100} t</strong>
-        <span>${info.entries
-          .map(entry => `${formatDateRange(entry.start_date, entry.end_date)}${entry.note ? ` · ${escapeHtml(entry.note)}` : ""}`)
-          .join(" · ")}</span>
+    ${unpaidGroups.map(([name, info]) => `
+      <div class="overtime-person">
+        <div class="overtime-person-head">
+          <strong>${escapeHtml(name)} · ${formatHoursNo(info.hours)} t</strong>
+          <button type="button" class="secondary-btn" data-overtime-mark-person="${escapeHtml(name)}">Marker som ført</button>
+        </div>
+        <ul class="overtime-lines">${info.entries.map(entry => overtimeLineHtml(entry)).join("")}</ul>
       </div>
     `).join("")}
   `;
+
+  const historyEl = document.getElementById("overtimePaidHistory");
+  if (historyEl) {
+    const month = overtimeMonthFilter?.value || getCurrentMonthKey();
+    const paid = absencesCache.filter(record =>
+      record.type === "Overtid" && record.payroll_done_on && String(record.payroll_done_on).slice(0, 7) === month
+    );
+
+    historyEl.innerHTML = paid.length
+      ? groupOvertimeByName(paid).map(([name, info]) => `
+          <div class="overtime-person overtime-person-done">
+            <strong>${escapeHtml(name)} · ${formatHoursNo(info.hours)} t</strong>
+            <ul class="overtime-lines">${info.entries.map(entry => `${overtimeLineHtml(entry, { undo: true }).replace("</li>", ` <span class="muted">· ført ${formatNorwegianDate(String(entry.payroll_done_on).slice(0, 10))}</span></li>`)}`).join("")}</ul>
+          </div>
+        `).join("")
+      : `<p class="muted">Ingenting markert som ført i ${formatMonth(month)}.</p>`;
+
+    historyEl.querySelectorAll("[data-overtime-undo]").forEach(button => {
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        if (await markOvertimePaid([button.dataset.overtimeUndo], null)) {
+          await loadAbsencesFromSupabase();
+          renderAbsences();
+        }
+      });
+    });
+  }
+
+  const today = toDateKey(new Date());
+
+  overtimeSummary.querySelector("[data-overtime-mark-all]")?.addEventListener("click", async event => {
+    if (!confirm(`Markere alt (${formatHoursNo(unpaidTotal)} t) som ført i lønn i dag?`)) return;
+    event.currentTarget.disabled = true;
+    if (await markOvertimePaid(unpaid.map(r => r.id), today)) {
+      await loadAbsencesFromSupabase();
+      renderAbsences();
+    }
+  });
+
+  overtimeSummary.querySelectorAll("[data-overtime-mark-person]").forEach(button => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      const ids = unpaid.filter(r => r.name === button.dataset.overtimeMarkPerson).map(r => r.id);
+      if (await markOvertimePaid(ids, today)) {
+        await loadAbsencesFromSupabase();
+        renderAbsences();
+      }
+    });
+  });
 }
 
 let vikarSickDaysCache = [];
@@ -5610,9 +5693,19 @@ function leaveAmountText(record) {
   return dayText;
 }
 
+// Overtid som er ført i lønn (eller avspaseringen som hører til den) er
+// låst for den ansatte - ellers kan timene endres etter at lønna er kjørt,
+// uten at noen merker det.
+function isPaidOvertimeRecord(record) {
+  if (record.type === "Overtid") return !!record.payroll_done_on;
+  if (record.type === "Avspasering opptjent") return !!findLinkedAbsence(record)?.payroll_done_on;
+  return false;
+}
+
 function canModifyLeave(record) {
   if (typeof currentEmployee === "undefined" || !currentEmployee) return false;
   if (currentEmployee.is_admin) return true;
+  if (isPaidOvertimeRecord(record)) return false;
   return record.name === currentEmployee.name && (record.status === "Ønsket" || record.status === "Registrert" || !record.status);
 }
 
@@ -5691,7 +5784,7 @@ function renderLeaveEntries(container, records, { showName = false } = {}) {
               <button type="button" class="secondary-btn" data-leave-edit="${record.id}">Endre</button>
               <button type="button" class="kitchen-delete" data-leave-delete="${record.id}">Slett</button>
             </div>
-          ` : `<span class="leave-entry-locked">Feil? Spør styrer om å endre.</span>`}
+          ` : `<span class="leave-entry-locked">${isPaidOvertimeRecord(record) ? "Ført i lønn. Feil? Spør styrer." : "Feil? Spør styrer om å endre."}</span>`}
         </div>
       `).join("")}
     </div>

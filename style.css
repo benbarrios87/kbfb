@@ -4734,3 +4734,78 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   padding-top: 12px !important;
 }
+
+/* Overtid til lønn (Admin) */
+.overtime-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.overtime-head h3 {
+  margin: 0;
+}
+
+.overtime-head p {
+  margin: 2px 0 0;
+}
+
+.overtime-person {
+  border: 1px solid var(--line);
+  border-left: 5px solid #6E8F5C;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--paper);
+}
+
+.overtime-person-done {
+  border-left-color: #cbd5e1;
+}
+
+.overtime-person-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.overtime-lines {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 3px;
+}
+
+.overtime-late {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #78350f;
+}
+
+.overtime-warning {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fef3c7;
+  color: #78350f;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0 4px;
+  color: var(--green-dark);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+}
