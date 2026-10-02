@@ -4100,3 +4100,263 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   border-color: var(--emp-color-dark);
   border-width: 4px;
 }
+
+/* ---------- Ferie og fravær (personlig side + Admin-oversikt) ---------- */
+.leave-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.leave-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.leave-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+}
+
+.leave-stat-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.leave-stat-value {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: var(--green-dark);
+  line-height: 1.15;
+}
+
+.leave-stat-value small {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.leave-stat-sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.leave-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.leave-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.leave-tile strong {
+  font-size: 1.05rem;
+}
+
+.leave-tile span {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.leave-tile:hover,
+.leave-tile.active {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+
+.leave-form {
+  margin-top: 16px;
+  padding: 16px;
+  border: 2px solid var(--green);
+  border-radius: 14px;
+  background: var(--paper);
+}
+
+.leave-form [hidden] {
+  display: none !important;
+}
+
+.leave-form-title {
+  margin: 0;
+}
+
+.leave-form-help {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--green-soft);
+  color: var(--green-dark);
+  font-weight: 600;
+}
+
+.leave-choice {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.leave-choice legend {
+  font-weight: 800;
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.form-grid .leave-choice-option,
+.leave-choice-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1 1 200px;
+  padding: 10px 12px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.leave-choice-option input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.leave-choice-option:has(input:checked) {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+
+.leave-form-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.leave-save-status {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.leave-save-status.ok {
+  background: #dcfce7;
+  border: 2px solid #2e7d32;
+  color: #14532d;
+}
+
+.leave-save-status.warn {
+  background: #fef3c7;
+  border: 2px solid #b45309;
+  color: #78350f;
+}
+
+.leave-entries {
+  display: grid;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.leave-month-title {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  text-transform: capitalize;
+  color: var(--muted);
+}
+
+.leave-month {
+  display: grid;
+  gap: 8px;
+}
+
+.leave-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+}
+
+.leave-entry-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.leave-entry-note {
+  font-size: 0.85rem;
+}
+
+.leave-entry-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.leave-status {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: #ececec;
+  color: #444;
+}
+
+.leave-status-ok {
+  background: #dcfce7;
+  color: #14532d;
+}
+
+.leave-status-wait {
+  background: #fef3c7;
+  color: #78350f;
+}
+
+.leave-status-no {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+
+.leave-subheading {
+  margin: 20px 0 6px;
+  font-size: 1rem;
+}
+
+/* .form-grid / grid-oppsett overstyrer ellers hidden-attributtet */
+.leave-form[hidden],
+.leave-tiles[hidden],
+.leave-save-status[hidden] {
+  display: none !important;
+}

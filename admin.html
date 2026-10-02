@@ -33,7 +33,7 @@
           <div class="nav-folder-links">
             <a data-hide-from-vikar href="datoer.html">📆 Datoer</a>
             <a href="vikarer.html">🕒 Vikarer</a>
-            <a data-hide-from-vikar data-hide-from-guest href="ferieogavspasering.html">🌴 Ferie/avsp/overtid</a>
+            <a data-hide-from-vikar data-hide-from-guest href="ferieogavspasering.html">🌴 Ferie og fravær</a>
             <a data-hide-from-vikar data-hide-from-guest href="kjorebok.html">🚗 Kjørebok</a>
             <a data-hide-from-guest href="personalhandbok.html">📕 Personalhåndbok</a>
           </div>
@@ -93,17 +93,109 @@
         <div class="hero-badge">⚙️ Ansattstyring</div>
       </section>
 
-      <details class="card dates-highlight">
+      <details class="card dates-highlight" id="pendingApprovalCard" data-context="admin" style="display: none;">
         <summary class="section-heading">
           <div>
             <span class="details-toggle-icon">▸</span>
             <p class="eyebrow">Venter på deg</p>
-            <h2 style="display: inline;">⏳ Ubehandlede søknader <span class="nav-badge" id="pendingApprovalsBadge" style="display: none;"></span></h2>
+            <h2 style="display: inline;">Til godkjenning <span class="nav-badge" id="pendingApprovalsBadge" style="display: none;"></span></h2>
           </div>
-          <a class="mini-link" href="ferieogavspasering.html">Åpne</a>
         </summary>
-        <div id="pendingApprovalsSummary" class="summary-list">
+        <p class="muted">Ferie, avspasering, tjenestefri og permisjon som ansatte har søkt om.</p>
+        <div id="pendingApprovalList" class="summary-list">
           <p class="muted">Sjekker...</p>
+        </div>
+      </details>
+
+      <details class="card">
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
+            <p class="eyebrow">Ferie og fravær</p>
+            <h2 style="display: inline;">Ansattoversikt</h2>
+          </div>
+        </summary>
+        <p class="muted">Velg en ansatt for å se tallene og føringene deres, rette feil eller registrere noe for dem. Søknader du registrerer for andre blir godkjent med en gang.</p>
+
+        <div class="emp-toolbar">
+          <select id="adminLeaveEmployee" aria-label="Ansatt"></select>
+          <label class="compact-filter">
+            År
+            <select id="adminLeaveYear"></select>
+          </label>
+        </div>
+
+        <div id="adminLeaveStats" class="leave-stats"></div>
+
+        <div id="adminLeaveRegisterWrap" style="display: none;">
+          <h3 class="leave-subheading">Registrer for denne ansatte</h3>
+          <div id="adminLeaveRegister"></div>
+        </div>
+
+        <h3 class="leave-subheading">Føringer</h3>
+        <div id="adminLeaveEntries" class="leave-entries"></div>
+      </details>
+
+      <details class="card">
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
+            <p class="eyebrow">Lønn</p>
+            <h2 style="display: inline;">Overtid til lønn (50 % tillegg)</h2>
+          </div>
+        </summary>
+        <p class="muted">Timene er allerede gitt som avspasering time for time. Her betales bare 50 % overtidstillegg.</p>
+
+        <label class="compact-filter">
+          Måned
+          <select id="overtimeMonthFilter"></select>
+        </label>
+
+        <div id="overtimeSummary" class="summary-list">
+          <p class="muted">Ingen overtid registrert denne måneden.</p>
+        </div>
+
+        <h3 style="margin-top: 22px;">Sykedager (vikarer)</h3>
+        <div id="vikarSickDaysSummary" class="summary-list">
+          <p class="muted">Ingen registrerte sykedager for vikarer.</p>
+        </div>
+      </details>
+
+      <details class="card">
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
+            <p class="eyebrow">Sjekk</p>
+            <h2 style="display: inline;">Avspasering uten overtid</h2>
+          </div>
+        </summary>
+        <p class="muted">Føringer der noen har fått avspasering, men ingen 50 % overtid, f.eks. et personalmøte registrert som "Avspasering opptjent" på den gamle siden. Trykk "Legg til 50 % overtid" hvis de skulle hatt overtid, eller "Ikke overtid" for å skjule den.</p>
+        <div id="unlinkedOpptjentList" class="leave-entries"></div>
+      </details>
+
+      <details class="card">
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
+            <p class="eyebrow">Planlegging</p>
+            <h2 style="display: inline;">Ferieønsker: jul, påske og sommer</h2>
+          </div>
+        </summary>
+        <p class="muted">Ferie og avspasering gruppert etter de store periodene.</p>
+
+        <div class="holiday-request-groups">
+          <details class="holiday-request-group">
+            <summary><h3>Jul <span class="muted" id="holidayRequestsJulCount"></span></h3></summary>
+            <div id="holidayRequestsJul" class="summary-list"><p class="muted">Ingen ønsker registrert.</p></div>
+          </details>
+          <details class="holiday-request-group">
+            <summary><h3>Påske <span class="muted" id="holidayRequestsPaskeCount"></span></h3></summary>
+            <div id="holidayRequestsPaske" class="summary-list"><p class="muted">Ingen ønsker registrert.</p></div>
+          </details>
+          <details class="holiday-request-group">
+            <summary><h3>Sommer (uke 27 og 31) <span class="muted" id="holidayRequestsSommerCount"></span></h3></summary>
+            <div id="holidayRequestsSommer" class="summary-list"><p class="muted">Ingen ønsker registrert.</p></div>
+          </details>
         </div>
       </details>
 

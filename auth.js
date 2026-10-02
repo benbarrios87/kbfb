@@ -67,20 +67,10 @@ async function requireAuth() {
     renderEvents();
   }
 
-  if (typeof lockAbsenceNameToSelf === "function") {
-    lockAbsenceNameToSelf();
-  }
-
-  if (typeof lockAbsenceFilterToSelf === "function") {
-    lockAbsenceFilterToSelf();
-  }
-
-  if (typeof updateAbsenceStatusVisibility === "function") {
-    updateAbsenceStatusVisibility();
-  }
-
-  if (typeof renderVacationQuotaEditor === "function") {
-    renderVacationQuotaEditor();
+  // Ferie/fravær viser bare den innloggede sine egne tall - må tegnes på
+  // nytt når vi vet hvem det er.
+  if (typeof renderAbsences === "function") {
+    renderAbsences();
   }
 
   if (typeof renderSubs === "function") {

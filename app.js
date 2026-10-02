@@ -4345,26 +4345,6 @@ if (subMonthFilter) {
 initializeSubs();
 /* ---------- FERIE / FRAVÆR - SUPABASE ---------- */
 
-const absenceForm = document.getElementById("absenceForm");
-const absenceName = document.getElementById("absenceName");
-const absenceType = document.getElementById("absenceType");
-const absenceStartDate = document.getElementById("absenceStartDate");
-const absenceEndDate = document.getElementById("absenceEndDate");
-const absenceHours = document.getElementById("absenceHours");
-const absenceStatus = document.getElementById("absenceStatus");
-const absenceStatusField = document.getElementById("absenceStatusField");
-const absenceNote = document.getElementById("absenceNote");
-const absenceFilter = document.getElementById("absenceFilter");
-if (absenceFilter) {
-  absenceFilter.addEventListener("change", renderAbsences);
-}
-const absenceYearFilter = document.getElementById("absenceYearFilter");
-if (absenceYearFilter) {
-  absenceYearFilter.addEventListener("change", renderAbsences);
-}
-const absenceSummary = document.getElementById("absenceSummary");
-const absenceTableBody = document.getElementById("absenceTableBody");
-const clearAbsences = document.getElementById("clearAbsences");
 const overtimeSummary = document.getElementById("overtimeSummary");
 const overtimeMonthFilter = document.getElementById("overtimeMonthFilter");
 if (overtimeMonthFilter) {
@@ -4373,8 +4353,6 @@ if (overtimeMonthFilter) {
 
 let absencesCache = [];
 let employeeSettingsCache = [];
-let editingAbsenceId = null;
-let editingAbsenceRecord = null;
 
 // Overtid auto-creates a paired "Avspasering opptjent" row (same hours,
 // linked via linked_id both ways) so the comp-time ledger stays correct
@@ -4698,39 +4676,6 @@ function countWeekdays(startDate, endDate) {
   return dates.length;
 }
 
-function populateAbsenceYearFilter() {
-  if (!absenceYearFilter) return;
-
-  const currentYear = new Date().getFullYear();
-  const years = new Set([currentYear]);
-
-  absencesCache.forEach(record => {
-    if (record.start_date) years.add(Number(record.start_date.slice(0, 4)));
-  });
-
-  const previousValue = absenceYearFilter.value;
-  const sortedYears = Array.from(years).sort((a, b) => b - a);
-
-  absenceYearFilter.innerHTML = sortedYears
-    .map(year => `<option value="${year}">${year}</option>`)
-    .join("");
-
-  absenceYearFilter.value = sortedYears.includes(Number(previousValue))
-    ? previousValue
-    : String(currentYear);
-}
-
-function getFilteredAbsences() {
-  const selected = absenceFilter?.value || "all";
-  const selectedYear = absenceYearFilter?.value ? Number(absenceYearFilter.value) : new Date().getFullYear();
-
-  return absencesCache.filter(record => {
-    const matchesEmployee = selected === "all" || record.name === selected;
-    const matchesYear = !record.start_date || Number(record.start_date.slice(0, 4)) === selectedYear;
-    return matchesEmployee && matchesYear;
-  });
-}
-
 // Payroll needs to look at whatever month it's currently running (often
 // the month before "now", or any earlier one) - not just "this month" -
 // so this mirrors populateSubMonthFilter/renderSubSummary's month-picker
@@ -4789,7 +4734,7 @@ function renderOvertimeSummary() {
   overtimeSummary.innerHTML = `
     <div class="compact-item">
       <strong>${formatMonth(selectedMonth)}</strong>
-      <span>Totalt ${Math.round(totalHours * 100) / 100} timer</span>
+      <span>Totalt ${Math.round(totalHours * 100) / 100} timer · utbetal 50 % tillegg</span>
     </div>
 
     ${Object.entries(grouped).map(([name, info]) => `
@@ -4973,7 +4918,14 @@ function renderPendingApprovalCard() {
   const list = document.getElementById("pendingApprovalList");
   if (!card || !list) return;
 
-  if (!canReviewAnyAbsence()) {
+  // Admin godkjenner på Admin-siden (data-context="admin"); på Ferie/
+  // fravær-siden vises kortet bare for avdelingsledere (data-context="leder").
+  const isAdmin = !!currentEmployee?.is_admin;
+  const allowed = card.dataset.context === "admin"
+    ? isAdmin
+    : !isAdmin && canReviewAnyAbsence();
+
+  if (!allowed) {
     card.style.display = "none";
     return;
   }
@@ -4985,6 +4937,12 @@ function renderPendingApprovalCard() {
   );
 
   card.style.display = "";
+
+  const badge = document.getElementById("pendingApprovalsBadge");
+  if (badge) {
+    badge.textContent = pending.length;
+    badge.style.display = pending.length ? "" : "none";
+  }
 
   if (!pending.length) {
     list.innerHTML = `<p class="muted">Ingen ventende søknader.</p>`;
@@ -5010,6 +4968,8 @@ function renderPendingApprovalCard() {
       </div>
     </div>
   `).join("");
+
+  bindPendingApprovalButtons(list);
 }
 
 async function notifyDepartmentLeadersOfAbsenceRequest(record) {
@@ -5091,75 +5051,31 @@ function renderMyUpcomingDays() {
   `).join("");
 }
 
+// Tegner alt som har med ferie/fravær å gjøre på den siden man er på.
+// Hver del sjekker selv om elementet sitt finnes, så samme funksjon brukes
+// både på Ferie/fravær-siden (personlig) og på Admin (godkjenning, lønn,
+// ansattoversikt).
 function renderAbsences() {
   renderMyUpcomingDays();
   renderOvertimeSummary();
   renderHolidayRequestGroups();
   renderPendingApprovalCard();
   renderDepartmentAbsenceOverview();
+  renderMyLeavePage();
+  renderAdminLeaveOverview();
+  renderUnlinkedOpptjent();
+}
 
-  if (!absenceTableBody || !absenceSummary) return;
-
-  const records = getFilteredAbsences();
-
-  if (!records.length) {
-    absenceTableBody.innerHTML = "";
-    absenceSummary.innerHTML = `<p class="muted">Ingen føringer ennå.</p>`;
-    return;
-  }
-
-  const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
-
-  // Godkjenn/Avslå/Avventer lives in "Til godkjenning" above now - this
-  // log is read-only history, so it just shows the outcome plus
-  // edit/delete buttons where that's still allowed. Once a søknad is
-  // Godkjent/Avslått it's locked for the owner (Godkjent may already have
-  // written into vaktplanen) - only "Registrert" (self-logged, no
-  // approval flow, e.g. Overtid) or "Ønsket" (still pending) can be
-  // touched by their own owner; admin can always.
-  absenceTableBody.innerHTML = records.map(record => {
-    const canModify = isAdmin ||
-      (record.name === currentEmployee?.name && (record.status === "Ønsket" || record.status === "Registrert"));
-
-    return `
-    <tr>
-      <td>${escapeHtml(record.name)}</td>
-      <td>${escapeHtml(record.type)}</td>
-      <td>${formatDateRange(record.start_date, record.end_date)}</td>
-      <td>${countWeekdays(record.start_date, record.end_date)}</td>
-      <td>${record.hours || ""}</td>
-      <td>${escapeHtml(record.status) || "Registrert"}${record.admin_comment ? `<br><span class="muted">💬 ${escapeHtml(record.admin_comment)}</span>` : ""}</td>
-      <td>${escapeHtml(record.note)}</td>
-      <td>
-        ${canModify ? `<button class="secondary-btn" data-edit-absence-id="${record.id}">Rediger</button>` : ""}
-        ${canModify ? `<button class="kitchen-delete" data-absence-id="${record.id}">Slett</button>` : ""}
-      </td>
-    </tr>
-  `;
-  }).join("");
-
-  renderAbsenceSummary(records);
-
-  document.querySelectorAll("[data-absence-id]").forEach(button => {
-    button.addEventListener("click", async () => {
-      await deleteAbsenceFromSupabase(button.dataset.absenceId);
-      await loadAbsencesFromSupabase();
-      renderAbsences();
-    });
-  });
-
-  document.querySelectorAll("[data-edit-absence-id]").forEach(button => {
-    button.addEventListener("click", () => {
-      const record = absencesCache.find(item => String(item.id) === String(button.dataset.editAbsenceId));
-      if (record) startEditingAbsence(record);
-    });
-  });
-
-  document.querySelectorAll("[data-approve-id]").forEach(button => {
+// Godkjenn / Avslå / Avventer-knappene i "Til godkjenning". Bundet her
+// (ikke i en tabell lenger nede) så de virker uansett hvilken side kortet
+// står på.
+function bindPendingApprovalButtons(list) {
+  list.querySelectorAll("[data-approve-id]").forEach(button => {
     button.addEventListener("click", async () => {
       const id = button.dataset.approveId;
       const record = absencesCache.find(item => String(item.id) === String(id));
 
+      button.disabled = true;
       await updateAbsenceStatusInSupabase(id, "Godkjent");
 
       if (record && shiftTypesFromAbsence[record.type]) {
@@ -5180,11 +5096,12 @@ function renderAbsences() {
     });
   });
 
-  document.querySelectorAll("[data-reject-id]").forEach(button => {
+  list.querySelectorAll("[data-reject-id]").forEach(button => {
     button.addEventListener("click", async () => {
       const id = button.dataset.rejectId;
       const record = absencesCache.find(item => String(item.id) === String(id));
 
+      button.disabled = true;
       await updateAbsenceStatusInSupabase(id, "Avslått");
       await loadAbsencesFromSupabase();
       renderAbsences();
@@ -5200,18 +5117,18 @@ function renderAbsences() {
     });
   });
 
-  document.querySelectorAll("[data-hold-id]").forEach(button => {
+  list.querySelectorAll("[data-hold-id]").forEach(button => {
     button.addEventListener("click", () => {
-      const box = document.querySelector(`[data-hold-box="${button.dataset.holdId}"]`);
+      const box = list.querySelector(`[data-hold-box="${button.dataset.holdId}"]`);
       if (box) box.style.display = "grid";
     });
   });
 
-  document.querySelectorAll("[data-confirm-hold]").forEach(button => {
+  list.querySelectorAll("[data-confirm-hold]").forEach(button => {
     button.addEventListener("click", async () => {
       const id = button.dataset.confirmHold;
       const record = absencesCache.find(item => String(item.id) === String(id));
-      const commentInput = document.querySelector(`[data-hold-comment-input="${id}"]`);
+      const commentInput = list.querySelector(`[data-hold-comment-input="${id}"]`);
       const comment = commentInput?.value.trim() || null;
 
       button.disabled = true;
@@ -5241,129 +5158,6 @@ function renderAbsences() {
       }
     });
   });
-}
-
-function renderAbsenceSummary(records) {
-  const grouped = {};
-
-  records.forEach(record => {
-    if (!grouped[record.name]) {
-      grouped[record.name] = {
-        ferie: 0,
-        tjenestefri: 0,
-        avsOpptjent: 0,
-        avsBrukt: 0,
-        overtid: 0,
-        permisjonMed: 0,
-        permisjonUten: 0,
-        velferd: 0,
-        egenmelding: 0,
-        sykemelding: 0,
-        omsorgsdager: 0
-      };
-    }
-
-    // Avslåtte søknader er ikke tatt ut - de skal ikke telle som brukt.
-    const days = record.status === "Avslått" ? 0 : countWeekdays(record.start_date, record.end_date);
-    const hours = Number(record.hours || 0);
-
-    switch (record.type) {
-
-      case "Ferie":
-        grouped[record.name].ferie += days;
-        break;
-
-      case "Tjenestefri":
-        grouped[record.name].tjenestefri += days;
-        break;
-
-      case "Avspasering opptjent":
-        grouped[record.name].avsOpptjent += hours;
-        break;
-
-      case "Avspasering brukt":
-      case "Ønsker å avspasere":
-        grouped[record.name].avsBrukt += getAvspaseringUsedHours(record);
-        break;
-
-      case "Overtid":
-        grouped[record.name].overtid += hours;
-        break;
-
-      case "Permisjon med lønn":
-        grouped[record.name].permisjonMed += days;
-        break;
-
-      case "Permisjon uten lønn":
-        grouped[record.name].permisjonUten += days;
-        break;
-
-      case "Velferdspermisjon":
-        grouped[record.name].velferd += days;
-        break;
-
-      case "Egenmelding":
-        grouped[record.name].egenmelding += days;
-        break;
-
-      case "Sykemelding":
-        grouped[record.name].sykemelding += days;
-        break;
-
-      case "Omsorgsdager":
-        grouped[record.name].omsorgsdager += days;
-        break;
-    }
-  });
-
-  absenceSummary.innerHTML = Object.entries(grouped)
-    .sort(([a],[b]) => a.localeCompare(b))
-    .map(([name, t]) => {
-
-      const avs = getAvspaseringTotals(name);
-      const omsorgQuota = getOmsorgsdagerFor(name);
-
-      return `
-      <div class="summary-card">
-
-        <h3>${name}</h3>
-
-        <div>🌴 Ferie: <strong>${t.ferie}/${getVacationDaysFor(name)}</strong> dager</div>
-
-        <div>🏡 Tjenestefri: <strong>${t.tjenestefri}/${getTjenestefriDaysFor(name)}</strong> dager</div>
-
-        <div>💰 Overtid: <strong>${t.overtid.toFixed(1)}</strong> t</div>
-
-        <div>📄 Permisjon m/lønn: <strong>${t.permisjonMed}</strong> dager</div>
-
-        <div>📄 Permisjon u/lønn: <strong>${t.permisjonUten}</strong> dager</div>
-
-        <div>❤️ Velferd: <strong>${t.velferd}</strong> dager</div>
-
-        <div>🤒 Egenmelding: <strong>${t.egenmelding}</strong> dager</div>
-
-        <div>🏥 Sykemelding: <strong>${t.sykemelding}</strong> dager</div>
-
-        <div>👶 Omsorgsdager: ${omsorgQuota
-          ? `<strong>${t.omsorgsdager}/${omsorgQuota}</strong> brukt (${Math.max(0, omsorgQuota - t.omsorgsdager)} igjen)`
-          : `<strong>${t.omsorgsdager}</strong> dager`}</div>
-
-        <hr>
-
-        <div class="muted" style="font-size:0.85rem;">Avspasering (alle år - følger med over nyttår)</div>
-
-        <div>➕ Opptjent avsp.: ${avs.opptjent.toFixed(1)} t</div>
-
-        <div>➖ Brukt avsp.: ${avs.brukt.toFixed(1)} t</div>
-
-        <div style="font-size:1.1rem;font-weight:bold;margin-top:6px;">
-            Saldo: ${avs.saldo.toFixed(1)} t
-        </div>
-
-      </div>
-      `;
-    })
-    .join("");
 }
 
 // Admin sees everyone, Avdelingsleder sees only their own department -
@@ -5454,66 +5248,6 @@ const noApprovalNeededTypes = [
   "Egenmelding", "Sykemelding", "Omsorgsdager"
 ];
 
-const avspaseringTypes = ["Avspasering opptjent", "Avspasering brukt"];
-
-// Only "Avspasering opptjent" (auto-created alongside an Overtid entry) is
-// a pure hours ledger with no meaningful "day" of its own. "Avspasering
-// brukt" is someone actually taking time off on a real date - that date
-// needs to be pickable and editable, not silently forced to "today".
-const dateHiddenAvspaseringTypes = ["Avspasering opptjent"];
-
-function updateAbsenceStatusVisibility() {
-  if (!absenceType || !absenceStatusField || !absenceStatus) return;
-
-  if (noApprovalNeededTypes.includes(absenceType.value)) {
-    absenceStatusField.style.display = "none";
-    absenceStatus.value = "Registrert";
-  } else {
-    absenceStatusField.style.display = "";
-    if (absenceType.value === "Ferie" || absenceType.value === "Tjenestefri" || absenceType.value === "Ønsker å avspasere") {
-      absenceStatus.value = "Ønsket";
-    }
-  }
-
-  // Avspasering opptjent is an hours ledger, not a day-range - skip the
-  // dates and require a note explaining what it's for instead (e.g.
-  // "kveldsmøte"). Avspasering brukt keeps the date picker (see above).
-  const isAvspasering = dateHiddenAvspaseringTypes.includes(absenceType.value);
-  const startField = document.getElementById("absenceStartDateField");
-  const endField = document.getElementById("absenceEndDateField");
-
-  if (startField) startField.style.display = isAvspasering ? "none" : "";
-  if (endField) endField.style.display = isAvspasering ? "none" : "";
-  if (absenceStartDate) absenceStartDate.required = !isAvspasering;
-  // Til dato is always optional - a single day (e.g. one egenmeldingsdag) is
-  // the common case, so it defaults to matching fra dato if left blank.
-  if (absenceNote) absenceNote.required = isAvspasering;
-
-  // Can't self-approve/self-reject - not even admin logging their own
-  // Ferie/Tjenestefri/etc. Those options just aren't offered when the name
-  // on the form is your own.
-  const godkjentOption = document.getElementById("absenceStatusGodkjentOption");
-  const avslattOption = document.getElementById("absenceStatusAvslattOption");
-  const isOwnEntry = typeof currentEmployee !== "undefined" && currentEmployee &&
-    absenceName?.value === currentEmployee.name;
-
-  if (godkjentOption) godkjentOption.disabled = isOwnEntry;
-  if (avslattOption) avslattOption.disabled = isOwnEntry;
-
-  if (isOwnEntry && (absenceStatus.value === "Godkjent" || absenceStatus.value === "Avslått")) {
-    absenceStatus.value = "Ønsket";
-  }
-}
-
-if (absenceType) {
-  absenceType.addEventListener("change", updateAbsenceStatusVisibility);
-  updateAbsenceStatusVisibility();
-}
-
-if (absenceName) {
-  absenceName.addEventListener("change", updateAbsenceStatusVisibility);
-}
-
 // Accepts either decimal hours ("1,25"/"1.25") or time:minutt ("1:15")
 // and always returns decimal hours - "1:15" is unambiguous (1t 15min =
 // 1.25), which plain decimal typing isn't (people naturally write
@@ -5531,211 +5265,776 @@ function parseHoursInput(raw) {
   return Number.isNaN(num) ? null : num;
 }
 
-const absenceFormSubmitBtn = document.getElementById("absenceFormSubmitBtn");
-const absenceFormCancelEdit = document.getElementById("absenceFormCancelEdit");
+/* ---------- FERIE / FRAVÆR - REGISTRERING (NY) ----------
+   Ansatte velger hva de vil registrere med én knapp (Personalmøte, Jobbet
+   ekstra, Ta ut avspasering, Ferie, Syk, Sykt barn, Annet) og får et lite
+   skjema med bare de feltene som trengs.
 
-// Pre-fills the form from an existing record and flips the form into
-// "update" mode - used by the Rediger button in the Føringer-log. Only
-// reachable for rows where canModify was true (owner while
-// Registrert/Ønsket, or admin), matching the RLS update policy.
-function startEditingAbsence(record) {
-  editingAbsenceId = record.id;
-  editingAbsenceRecord = record;
+   Overtid-regelen: ekstra jobbet tid gir ALLTID både avspasering time for
+   time ("Avspasering opptjent", linket) OG en "Overtid"-føring som admin
+   betaler 50 % tillegg for. "Avspasering opptjent" kan ikke velges direkte
+   lenger - det var slik en personalmøte-føring endte uten overtid. */
 
-  if (absenceName) absenceName.value = record.name;
-  if (absenceType) absenceType.value = record.type;
-  updateAbsenceStatusVisibility();
-  if (absenceStartDate) absenceStartDate.value = record.start_date || "";
-  if (absenceEndDate) absenceEndDate.value = record.end_date || "";
-  if (absenceHours) absenceHours.value = record.hours != null ? record.hours : "";
-  if (absenceStatus) absenceStatus.value = record.status || "Registrert";
-  if (absenceNote) absenceNote.value = record.note || "";
+const PERSONALMOTE_HOURS = 2.5;
+const PERSONALMOTE_NOTE = "Personalmøte";
+const FULL_DAY_HOURS = 7.5;
 
-  if (absenceFormSubmitBtn) absenceFormSubmitBtn.textContent = "Oppdater føring";
-  if (absenceFormCancelEdit) absenceFormCancelEdit.style.display = "";
+const LEAVE_KINDS = {
+  personalmote: { title: "Personalmøte", hint: "2,5 t · avspasering + 50 % overtid" },
+  ekstra: { title: "Jobbet ekstra", hint: "Avspasering + 50 % overtid" },
+  avspasering: { title: "Ta ut avspasering", hint: "Søk om fri med timene dine" },
+  ferie: { title: "Ferie", hint: "Søk om ferie" },
+  syk: { title: "Syk", hint: "Egenmelding eller sykemelding" },
+  sykt_barn: { title: "Sykt barn", hint: "Omsorgsdager" },
+  annet: { title: "Annet", hint: "Tjenestefri, permisjon, velferd" }
+};
 
-  absenceForm?.scrollIntoView({ behavior: "smooth", block: "start" });
+const OTHER_LEAVE_TYPES = ["Tjenestefri", "Velferdspermisjon", "Permisjon med lønn", "Permisjon uten lønn"];
+
+// Hvilke felter hvert valg viser.
+const LEAVE_KIND_FIELDS = {
+  personalmote: ["date", "hours"],
+  ekstra: ["date", "hours", "note"],
+  avspasering: ["date", "multi", "hours", "note"],
+  ferie: ["date", "multi", "note"],
+  syk: ["sickType", "date", "multi", "note"],
+  sykt_barn: ["date", "multi", "note"],
+  annet: ["otherType", "date", "multi", "note"],
+  opptjent: ["date", "hours", "note"]
+};
+
+function leaveKindForRecord(record) {
+  switch (record.type) {
+    case "Overtid": return record.note === PERSONALMOTE_NOTE ? "personalmote" : "ekstra";
+    case "Ønsker å avspasere":
+    case "Avspasering brukt": return "avspasering";
+    case "Ferie": return "ferie";
+    case "Egenmelding":
+    case "Sykemelding": return "syk";
+    case "Omsorgsdager": return "sykt_barn";
+    case "Avspasering opptjent": return "opptjent";
+    default: return OTHER_LEAVE_TYPES.includes(record.type) ? "annet" : "annet";
+  }
 }
 
-function stopEditingAbsence() {
-  editingAbsenceId = null;
-  editingAbsenceRecord = null;
-  absenceForm?.reset();
-  lockAbsenceNameToSelf();
-  updateAbsenceStatusVisibility();
-
-  if (absenceFormSubmitBtn) absenceFormSubmitBtn.textContent = "Lagre føring";
-  if (absenceFormCancelEdit) absenceFormCancelEdit.style.display = "none";
+function friendlyLeaveLabel(record) {
+  if (record.type === "Overtid") return record.note === PERSONALMOTE_NOTE ? "Personalmøte" : "Jobbet ekstra";
+  if (record.type === "Ønsker å avspasere") return "Avspasering";
+  if (record.type === "Avspasering brukt") return "Avspasering tatt ut";
+  if (record.type === "Omsorgsdager") return "Sykt barn (omsorgsdag)";
+  return record.type || "";
 }
 
-if (absenceFormCancelEdit) {
-  absenceFormCancelEdit.addEventListener("click", stopEditingAbsence);
+function formatHoursNo(hours) {
+  return String(Math.round(Number(hours || 0) * 100) / 100).replace(".", ",");
 }
 
-if (absenceForm) {
-  absenceForm.addEventListener("submit", async event => {
+// Stats for én person i ett kalenderår (avspasering: alle år).
+function computeLeaveStats(name, year) {
+  const stats = {
+    ferie: 0, tjenestefri: 0, omsorg: 0, egenmelding: 0, sykemelding: 0,
+    permisjon: 0, overtid: 0
+  };
+
+  absencesCache.forEach(record => {
+    if (record.name !== name || record.status === "Avslått") return;
+    if (!record.start_date || Number(record.start_date.slice(0, 4)) !== year) return;
+
+    const days = countWeekdays(record.start_date, record.end_date || record.start_date);
+
+    switch (record.type) {
+      case "Ferie": stats.ferie += days; break;
+      case "Tjenestefri": stats.tjenestefri += days; break;
+      case "Omsorgsdager": stats.omsorg += days; break;
+      case "Egenmelding": stats.egenmelding += days; break;
+      case "Sykemelding": stats.sykemelding += days; break;
+      case "Velferdspermisjon":
+      case "Permisjon med lønn":
+      case "Permisjon uten lønn": stats.permisjon += days; break;
+      case "Overtid": stats.overtid += Number(record.hours || 0); break;
+    }
+  });
+
+  stats.avspasering = getAvspaseringTotals(name).saldo;
+  return stats;
+}
+
+function leaveStatTile(label, value, unit, sub) {
+  return `
+    <div class="leave-stat">
+      <span class="leave-stat-label">${label}</span>
+      <span class="leave-stat-value">${value}<small>${unit}</small></span>
+      ${sub ? `<span class="leave-stat-sub">${sub}</span>` : ""}
+    </div>
+  `;
+}
+
+function renderLeaveStats(container, name, year) {
+  if (!container) return;
+  if (!name) {
+    container.innerHTML = `<p class="muted">Velg en ansatt.</p>`;
+    return;
+  }
+
+  const s = computeLeaveStats(name, year);
+  const ferieQuota = getVacationDaysFor(name);
+  const tjQuota = getTjenestefriDaysFor(name);
+  const omsorgQuota = getOmsorgsdagerFor(name);
+
+  const tiles = [
+    leaveStatTile("Ferie igjen", ferieQuota - s.ferie, " dager", `av ${ferieQuota} · ${s.ferie} brukt eller søkt`),
+    leaveStatTile("Avspasering", formatHoursNo(s.avspasering), " t", "til gode (følger med over nyttår)")
+  ];
+
+  if (omsorgQuota || s.omsorg) {
+    tiles.push(omsorgQuota
+      ? leaveStatTile("Omsorgsdager", `${s.omsorg}/${omsorgQuota}`, "", `brukt · ${Math.max(0, omsorgQuota - s.omsorg)} igjen`)
+      : leaveStatTile("Omsorgsdager", s.omsorg, " dager", "brukt (ingen kvote satt)"));
+  }
+
+  tiles.push(leaveStatTile("Tjenestefri", `${s.tjenestefri}/${tjQuota}`, "", "dager brukt"));
+  tiles.push(leaveStatTile("Egenmelding", s.egenmelding, " dager", `i ${year}`));
+  if (s.sykemelding) tiles.push(leaveStatTile("Sykemelding", s.sykemelding, " dager", `i ${year}`));
+  if (s.permisjon) tiles.push(leaveStatTile("Permisjon / velferd", s.permisjon, " dager", `i ${year}`));
+  tiles.push(leaveStatTile("Overtid", formatHoursNo(s.overtid), " t", `i ${year} · 50 % tillegg`));
+
+  container.innerHTML = tiles.join("");
+}
+
+function leaveStatusChip(record) {
+  const map = {
+    "Ønsket": ["Venter på svar", "wait"],
+    "Avventer": ["Avventer", "wait"],
+    "Godkjent": ["Godkjent", "ok"],
+    "Avslått": ["Avslått", "no"]
+  };
+  const [label, key] = map[record.status] || ["Registrert", "plain"];
+  return `<span class="leave-status leave-status-${key}">${label}</span>`;
+}
+
+function leaveAmountText(record) {
+  if (record.type === "Overtid") {
+    const hasPair = !!findLinkedAbsence(record);
+    return `${formatHoursNo(record.hours)} t · ${hasPair ? "avspasering + 50 % overtid" : "overtid (mangler avspasering)"}`;
+  }
+  if (record.type === "Avspasering opptjent") return `${formatHoursNo(record.hours)} t opptjent`;
+
+  const days = countWeekdays(record.start_date, record.end_date || record.start_date);
+  const dayText = `${days} ${days === 1 ? "dag" : "dager"}`;
+  if (record.hours && (record.type === "Ønsker å avspasere" || record.type === "Avspasering brukt")) {
+    return `${formatHoursNo(record.hours)} t`;
+  }
+  return dayText;
+}
+
+function canModifyLeave(record) {
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return false;
+  if (currentEmployee.is_admin) return true;
+  return record.name === currentEmployee.name && (record.status === "Ønsket" || record.status === "Registrert" || !record.status);
+}
+
+// "Avspasering opptjent" som hører til en Overtid-føring vises ikke som
+// egen linje - den er en del av Personalmøte/Jobbet ekstra-linjen.
+function isHiddenLinkedOpptjent(record) {
+  if (record.type !== "Avspasering opptjent") return false;
+  const pair = findLinkedAbsence(record);
+  return !!pair && pair.type === "Overtid";
+}
+
+function renderLeaveEntries(container, records, { showName = false } = {}) {
+  if (!container) return;
+
+  const visible = records
+    .filter(record => !isHiddenLinkedOpptjent(record))
+    .sort((a, b) => (b.start_date || "").localeCompare(a.start_date || ""));
+
+  if (!visible.length) {
+    container.innerHTML = `<p class="muted">Ingen føringer dette året.</p>`;
+    return;
+  }
+
+  const byMonth = {};
+  visible.forEach(record => {
+    const key = (record.start_date || "").slice(0, 7) || "ukjent";
+    (byMonth[key] = byMonth[key] || []).push(record);
+  });
+
+  container.innerHTML = Object.entries(byMonth).map(([month, list]) => `
+    <div class="leave-month">
+      <h3 class="leave-month-title">${month === "ukjent" ? "Uten dato" : formatMonth(month)}</h3>
+      ${list.map(record => `
+        <div class="leave-entry">
+          <div class="leave-entry-main">
+            <strong>${escapeHtml(friendlyLeaveLabel(record))}${showName ? ` <span class="muted">· ${escapeHtml(record.name)}</span>` : ""}</strong>
+            <span class="muted">${formatDateRange(record.start_date, record.end_date)} · ${leaveAmountText(record)}</span>
+            ${record.note && record.note !== PERSONALMOTE_NOTE ? `<span class="leave-entry-note">${escapeHtml(record.note)}</span>` : ""}
+            ${record.admin_comment ? `<span class="leave-entry-note">Kommentar: ${escapeHtml(record.admin_comment)}</span>` : ""}
+          </div>
+          ${leaveStatusChip(record)}
+          ${canModifyLeave(record) ? `
+            <div class="leave-entry-actions">
+              <button type="button" class="secondary-btn" data-leave-edit="${record.id}">Endre</button>
+              <button type="button" class="kitchen-delete" data-leave-delete="${record.id}">Slett</button>
+            </div>
+          ` : ""}
+        </div>
+      `).join("")}
+    </div>
+  `).join("");
+
+  container.querySelectorAll("[data-leave-edit]").forEach(button => {
+    button.addEventListener("click", () => {
+      const record = absencesCache.find(r => String(r.id) === String(button.dataset.leaveEdit));
+      if (record && activeLeaveRegister) activeLeaveRegister.edit(record);
+    });
+  });
+
+  container.querySelectorAll("[data-leave-delete]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const record = absencesCache.find(r => String(r.id) === String(button.dataset.leaveDelete));
+      if (!record) return;
+      if (!confirm(`Slette «${friendlyLeaveLabel(record)}» ${formatDateRange(record.start_date, record.end_date)}?`)) return;
+
+      button.disabled = true;
+      // Slett også den linkede motparten (Overtid <-> Avspasering opptjent),
+      // ellers blir avspasering eller overtid hengende igjen alene.
+      const pair = findLinkedAbsence(record);
+      await deleteAbsenceFromSupabase(record.id);
+      if (pair) await deleteAbsenceFromSupabase(pair.id);
+
+      await loadAbsencesFromSupabase();
+      renderAbsences();
+    });
+  });
+}
+
+function populateLeaveYearSelect(select, name) {
+  if (!select) return;
+
+  const currentYear = new Date().getFullYear();
+  const years = new Set([currentYear]);
+  absencesCache.forEach(record => {
+    if (record.start_date && (!name || record.name === name)) years.add(Number(record.start_date.slice(0, 4)));
+  });
+
+  const previous = select.value;
+  const sorted = [...years].sort((a, b) => b - a);
+  select.innerHTML = sorted.map(year => `<option value="${year}">${year}</option>`).join("");
+  select.value = sorted.includes(Number(previous)) ? previous : String(currentYear);
+}
+
+function recordsForYear(name, year) {
+  return absencesCache.filter(record =>
+    record.name === name &&
+    (!record.start_date || Number(record.start_date.slice(0, 4)) === year)
+  );
+}
+
+/* ----- Ferie/fravær-siden: alltid bare den innloggede selv ----- */
+
+const leaveYearSelect = document.getElementById("leaveYear");
+if (leaveYearSelect) leaveYearSelect.addEventListener("change", () => renderMyLeavePage());
+
+function renderMyLeavePage() {
+  const statsEl = document.getElementById("myLeaveStats");
+  const entriesEl = document.getElementById("myLeaveEntries");
+  if (!statsEl && !entriesEl) return;
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  const name = currentEmployee.name;
+  populateLeaveYearSelect(leaveYearSelect, name);
+  const year = Number(leaveYearSelect?.value) || new Date().getFullYear();
+
+  renderLeaveStats(statsEl, name, year);
+  renderLeaveEntries(entriesEl, recordsForYear(name, year));
+  activeLeaveRegister?.refreshHelp();
+}
+
+/* ----- Admin: ansattoversikt (velg ansatt) ----- */
+
+const adminLeaveEmployee = document.getElementById("adminLeaveEmployee");
+const adminLeaveYear = document.getElementById("adminLeaveYear");
+if (adminLeaveEmployee) adminLeaveEmployee.addEventListener("change", () => renderAdminLeaveOverview());
+if (adminLeaveYear) adminLeaveYear.addEventListener("change", () => renderAdminLeaveOverview());
+
+function renderAdminLeaveOverview() {
+  const statsEl = document.getElementById("adminLeaveStats");
+  const entriesEl = document.getElementById("adminLeaveEntries");
+  if (!statsEl || !adminLeaveEmployee) return;
+
+  if (!adminLeaveEmployee.options.length) {
+    populateEmployeeSelect("adminLeaveEmployee", { blankText: "Velg ansatt" });
+  }
+
+  const name = adminLeaveEmployee.value;
+  populateLeaveYearSelect(adminLeaveYear, name);
+  const year = Number(adminLeaveYear?.value) || new Date().getFullYear();
+
+  const registerCard = document.getElementById("adminLeaveRegisterWrap");
+  if (registerCard) registerCard.style.display = name ? "" : "none";
+
+  renderLeaveStats(statsEl, name, year);
+  if (entriesEl) {
+    if (name) renderLeaveEntries(entriesEl, recordsForYear(name, year));
+    else entriesEl.innerHTML = "";
+  }
+  activeLeaveRegister?.refreshHelp();
+}
+
+/* ----- Admin: "Avspasering opptjent" uten overtid ----- */
+
+function getDismissedOpptjentIds() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem("kbfb-dismissed-opptjent") || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+
+function dismissOpptjent(id) {
+  const ids = getDismissedOpptjentIds();
+  ids.add(String(id));
+  try {
+    localStorage.setItem("kbfb-dismissed-opptjent", JSON.stringify([...ids]));
+  } catch {
+    // Ikke kritisk - raden dukker bare opp igjen neste gang.
+  }
+}
+
+function renderUnlinkedOpptjent() {
+  const list = document.getElementById("unlinkedOpptjentList");
+  if (!list) return;
+
+  const dismissed = getDismissedOpptjentIds();
+  const records = absencesCache
+    .filter(record =>
+      record.type === "Avspasering opptjent" &&
+      !findLinkedAbsence(record) &&
+      !dismissed.has(String(record.id))
+    )
+    .sort((a, b) => (b.start_date || "").localeCompare(a.start_date || ""));
+
+  if (!records.length) {
+    list.innerHTML = `<p class="muted">Ingen. Alt opptjent har overtid koblet til seg.</p>`;
+    return;
+  }
+
+  list.innerHTML = records.map(record => `
+    <div class="leave-entry">
+      <div class="leave-entry-main">
+        <strong>${escapeHtml(record.name)} · ${formatHoursNo(record.hours)} t</strong>
+        <span class="muted">${formatDateRange(record.start_date, record.end_date)}</span>
+        ${record.note ? `<span class="leave-entry-note">${escapeHtml(record.note)}</span>` : ""}
+      </div>
+      <div class="leave-entry-actions">
+        <button type="button" class="primary-btn" data-add-overtime="${record.id}">Legg til 50 % overtid</button>
+        <button type="button" class="secondary-btn" data-dismiss-opptjent="${record.id}">Ikke overtid</button>
+      </div>
+    </div>
+  `).join("");
+
+  list.querySelectorAll("[data-add-overtime]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const record = absencesCache.find(r => String(r.id) === String(button.dataset.addOvertime));
+      if (!record) return;
+
+      button.disabled = true;
+      const overtime = await saveAbsenceToSupabase({
+        name: record.name,
+        type: "Overtid",
+        start_date: record.start_date,
+        end_date: record.end_date || record.start_date,
+        hours: record.hours,
+        status: "Registrert",
+        note: record.note || "Lagt til av admin",
+        linked_id: record.id
+      });
+
+      if (!overtime) {
+        alert("Kunne ikke lagre overtid. Prøv igjen.");
+        button.disabled = false;
+        return;
+      }
+
+      await updateAbsenceRecordInSupabase(record.id, { linked_id: overtime.id });
+      await loadAbsencesFromSupabase();
+      renderAbsences();
+    });
+  });
+
+  list.querySelectorAll("[data-dismiss-opptjent]").forEach(button => {
+    button.addEventListener("click", () => {
+      dismissOpptjent(button.dataset.dismissOpptjent);
+      renderUnlinkedOpptjent();
+    });
+  });
+}
+
+/* ----- Selve registreringsskjemaet ----- */
+
+let activeLeaveRegister = null;
+
+function mountLeaveRegister(container, { getEmployeeName }) {
+  if (!container) return null;
+
+  container.innerHTML = `
+    <div class="leave-tiles">
+      ${Object.entries(LEAVE_KINDS).map(([kind, info]) => `
+        <button type="button" class="leave-tile" data-kind="${kind}">
+          <strong>${info.title}</strong>
+          <span>${info.hint}</span>
+        </button>
+      `).join("")}
+    </div>
+
+    <form class="leave-form form-grid" hidden novalidate>
+      <h3 class="wide-field leave-form-title"></h3>
+      <p class="wide-field leave-form-help"></p>
+
+      <fieldset class="wide-field leave-choice" data-f="sickType">
+        <legend>Hva slags?</legend>
+        <label class="leave-choice-option"><input type="radio" name="sickType" value="Egenmelding" checked /> <span><strong>Egenmelding</strong><br /><span class="muted">Du melder selv</span></span></label>
+        <label class="leave-choice-option"><input type="radio" name="sickType" value="Sykemelding" /> <span><strong>Sykemelding</strong><br /><span class="muted">Fra lege</span></span></label>
+      </fieldset>
+
+      <label class="wide-field" data-f="otherType">
+        Hva slags?
+        <select name="otherType">
+          ${OTHER_LEAVE_TYPES.map(type => `<option value="${type}">${type}</option>`).join("")}
+        </select>
+      </label>
+
+      <label data-f="date">
+        <span data-label="date">Dato</span>
+        <input type="date" name="start" />
+      </label>
+
+      <label class="wide-field checkbox-field" data-f="multi">
+        <input type="checkbox" name="multi" />
+        Flere dager på rad?
+      </label>
+
+      <label data-f="end">
+        Siste dag
+        <input type="date" name="end" />
+      </label>
+
+      <label data-f="hours">
+        <span data-label="hours">Timer</span>
+        <input type="text" name="hours" inputmode="decimal" placeholder="F.eks. 2,5 eller 1:15" />
+        <small class="muted" data-hours-help></small>
+      </label>
+
+      <label class="wide-field" data-f="note">
+        <span data-label="note">Notat (valgfritt)</span>
+        <input type="text" name="note" />
+      </label>
+
+      <div class="wide-field leave-form-buttons">
+        <button type="submit" class="primary-btn">Lagre</button>
+        <button type="button" class="secondary-btn" data-cancel>Avbryt</button>
+      </div>
+    </form>
+
+    <div class="leave-save-status" role="status" aria-live="polite" hidden></div>
+  `;
+
+  const tiles = container.querySelector(".leave-tiles");
+  const form = container.querySelector(".leave-form");
+  const statusEl = container.querySelector(".leave-save-status");
+  const field = name => form.elements[name];
+  let kind = null;
+  let editing = null;
+  let statusTimer = null;
+
+  function showStatus(message, ok) {
+    statusEl.textContent = message;
+    statusEl.className = `leave-save-status ${ok ? "ok" : "warn"}`;
+    statusEl.hidden = false;
+    statusEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(() => { statusEl.hidden = true; }, 12000);
+  }
+
+  function currentName() {
+    return editing ? editing.name : getEmployeeName();
+  }
+
+  function helpText() {
+    const name = currentName();
+    if (!name) return "";
+    const year = new Date().getFullYear();
+    const stats = computeLeaveStats(name, year);
+    const omsorgQuota = getOmsorgsdagerFor(name);
+
+    switch (kind) {
+      case "personalmote":
+        return "Du får timene som avspasering (time for time), og 50 % overtidstillegg utbetales. 2,5 t er fylt inn - endre bare hvis møtet var lengre eller kortere.";
+      case "ekstra":
+        return "Du får timene som avspasering (time for time), og 50 % overtidstillegg utbetales.";
+      case "avspasering":
+        return `Du har ${formatHoursNo(stats.avspasering)} t til gode. Søknaden må godkjennes.`;
+      case "ferie": {
+        const quota = getVacationDaysFor(name);
+        return `Du har ${quota - stats.ferie} av ${quota} feriedager igjen i ${year}. Søknaden må godkjennes.`;
+      }
+      case "syk":
+        return "Registreres med en gang, og vises som SYK på vaktplanen.";
+      case "sykt_barn":
+        return omsorgQuota
+          ? `Du har brukt ${stats.omsorg} av ${omsorgQuota} omsorgsdager i ${year}. Vises som SB på vaktplanen.`
+          : "Du har ingen omsorgsdager registrert. Si ifra til styrer hvis det er feil.";
+      case "annet":
+        return "Må godkjennes.";
+      case "opptjent":
+        return "Gammel føring av opptjent avspasering.";
+      default:
+        return "";
+    }
+  }
+
+  function updateMultiVisibility() {
+    const fields = LEAVE_KIND_FIELDS[kind] || [];
+    const multi = fields.includes("multi") && field("multi").checked;
+    form.querySelector('[data-f="end"]').hidden = !multi;
+    if (!multi) field("end").value = "";
+  }
+
+  function setKind(newKind) {
+    kind = newKind;
+    const fields = LEAVE_KIND_FIELDS[kind] || [];
+
+    form.querySelectorAll("[data-f]").forEach(el => {
+      el.hidden = !fields.includes(el.dataset.f);
+    });
+
+    const name = getEmployeeName();
+    const forWhom = currentEmployee?.is_admin && name && name !== currentEmployee.name ? ` for ${name}` : "";
+    form.querySelector(".leave-form-title").textContent = editing
+      ? `Endre: ${friendlyLeaveLabel(editing)}${editing.name !== currentEmployee?.name ? ` (${editing.name})` : ""}`
+      : `${kind === "opptjent" ? "Avspasering opptjent" : LEAVE_KINDS[kind].title}${forWhom}`;
+
+    form.querySelector('[data-label="date"]').textContent =
+      kind === "personalmote" ? "Dato for møtet" : fields.includes("multi") ? "Første dag (eller eneste dag)" : "Dato";
+    form.querySelector('[data-label="hours"]').textContent =
+      kind === "avspasering" ? "Timer (bare hvis ikke hele dager)" : "Timer";
+    form.querySelector("[data-hours-help]").textContent =
+      kind === "avspasering" ? `Hele dager: la stå tom (${formatHoursNo(FULL_DAY_HOURS)} t per dag).` : "F.eks. 2,5 eller 1:15 (= 1 t 15 min)";
+    form.querySelector('[data-label="note"]').textContent =
+      kind === "ekstra" ? "Hva jobbet du med?" : "Notat (valgfritt)";
+
+    form.querySelector(".leave-form-help").textContent = helpText();
+    tiles.querySelectorAll(".leave-tile").forEach(tile => tile.classList.toggle("active", tile.dataset.kind === kind));
+    updateMultiVisibility();
+  }
+
+  function resetFields() {
+    form.reset();
+    field("start").value = toDateKey(new Date());
+    field("hours").value = "";
+    field("note").value = "";
+  }
+
+  function open(newKind) {
+    editing = null;
+    tiles.hidden = false;
+    resetFields();
+    if (newKind === "personalmote") field("hours").value = formatHoursNo(PERSONALMOTE_HOURS);
+    form.hidden = false;
+    setKind(newKind);
+    form.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function close() {
+    editing = null;
+    kind = null;
+    form.hidden = true;
+    tiles.hidden = false;
+    tiles.querySelectorAll(".leave-tile").forEach(tile => tile.classList.remove("active"));
+  }
+
+  function edit(record) {
+    editing = record;
+    resetFields();
+    tiles.hidden = true;
+    form.hidden = false;
+
+    const recordKind = leaveKindForRecord(record);
+    field("start").value = record.start_date || "";
+    const multi = record.end_date && record.end_date !== record.start_date;
+    field("multi").checked = !!multi;
+    field("end").value = multi ? record.end_date : "";
+    field("hours").value = record.hours != null ? formatHoursNo(record.hours) : "";
+    field("note").value = record.note && record.note !== PERSONALMOTE_NOTE ? record.note : "";
+    if (recordKind === "syk") {
+      form.querySelectorAll('input[name="sickType"]').forEach(radio => { radio.checked = radio.value === record.type; });
+    }
+    if (recordKind === "annet") field("otherType").value = record.type;
+
+    setKind(recordKind);
+    container.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  tiles.querySelectorAll(".leave-tile").forEach(tile => {
+    tile.addEventListener("click", () => {
+      if (!getEmployeeName()) {
+        alert("Velg en ansatt først.");
+        return;
+      }
+      open(tile.dataset.kind);
+    });
+  });
+
+  field("multi").addEventListener("change", updateMultiVisibility);
+  form.querySelector("[data-cancel]").addEventListener("click", close);
+
+  form.addEventListener("submit", async event => {
     event.preventDefault();
 
-    const todayKey = toDateKey(new Date());
-    const isAvspaseringEntry = dateHiddenAvspaseringTypes.includes(absenceType.value);
+    const name = currentName();
+    if (!name || !kind) return;
+
+    const fields = LEAVE_KIND_FIELDS[kind];
+    const start = field("start").value;
+    const end = (fields.includes("multi") && field("multi").checked && field("end").value) || start;
+    const hours = parseHoursInput(field("hours").value);
+    const note = field("note").value.trim();
+
+    if (!start) return showStatus("Velg dato.", false);
+    if (end < start) return showStatus("Siste dag kan ikke være før første dag.", false);
+    if ((kind === "personalmote" || kind === "ekstra" || kind === "opptjent") && !(hours > 0)) {
+      return showStatus("Skriv inn hvor mange timer.", false);
+    }
+    if (hours != null && (hours < 0 || hours > 24 * 31)) return showStatus("Sjekk timene.", false);
+    if (kind === "ekstra" && !note) return showStatus("Skriv kort hva du jobbet med.", false);
+
+    let type;
+    let status;
+    switch (kind) {
+      case "personalmote":
+      case "ekstra": type = "Overtid"; status = "Registrert"; break;
+      case "avspasering": type = editing?.type === "Avspasering brukt" ? "Avspasering brukt" : "Ønsker å avspasere"; status = "Ønsket"; break;
+      case "ferie": type = "Ferie"; status = "Ønsket"; break;
+      case "syk": type = form.querySelector('input[name="sickType"]:checked')?.value || "Egenmelding"; status = "Registrert"; break;
+      case "sykt_barn": type = "Omsorgsdager"; status = "Registrert"; break;
+      case "annet": type = field("otherType").value; status = "Ønsket"; break;
+      case "opptjent": type = "Avspasering opptjent"; status = "Registrert"; break;
+    }
+
+    // Admin som registrerer for en annen: søknader er godkjent med en gang.
+    const adminForOther = currentEmployee?.is_admin && name !== currentEmployee.name;
+    if (status === "Ønsket" && adminForOther) status = "Godkjent";
+    if (type === "Avspasering brukt") status = "Registrert";
 
     const record = {
-      name: absenceName.value,
-      type: absenceType.value,
-      start_date: isAvspaseringEntry ? todayKey : absenceStartDate.value,
-      end_date: isAvspaseringEntry ? todayKey : (absenceEndDate.value || absenceStartDate.value),
-      hours: parseHoursInput(absenceHours.value),
-      status: absenceStatus.value,
-      note: absenceNote.value.trim()
+      name,
+      type,
+      start_date: start,
+      end_date: end,
+      hours: kind === "personalmote" || kind === "ekstra" || kind === "opptjent" || kind === "avspasering" ? hours : null,
+      note: kind === "personalmote" ? PERSONALMOTE_NOTE : note
     };
 
-    const absenceFormStatus = document.getElementById("absenceFormStatus");
-    const isEditing = !!editingAbsenceId;
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
 
-    // Look this up before saving - it only needs the linked id, which
-    // doesn't change across an edit, and absencesCache still has it from
-    // before the form was opened.
-    const linkedBeforeEdit = isEditing ? findLinkedAbsence(editingAbsenceRecord) : null;
+    let ok;
+    if (editing) {
+      // Status beholdes ved endring (en godkjent søknad blir ikke "ønsket" igjen).
+      const pair = findLinkedAbsence(editing);
+      ok = await updateAbsenceRecordInSupabase(editing.id, record);
+      if (ok && pair) {
+        await updateAbsenceRecordInSupabase(pair.id, {
+          hours: record.hours,
+          start_date: record.start_date,
+          end_date: record.end_date,
+          ...(record.type === "Overtid" ? { note: `Fra overtid: ${record.note}` } : {})
+        });
+      }
+    } else {
+      const saved = await saveAbsenceToSupabase({ ...record, status });
+      ok = !!saved;
 
-    const saved = isEditing
-      ? await updateAbsenceRecordInSupabase(editingAbsenceId, record)
-      : await saveAbsenceToSupabase(record);
+      if (saved && type === "Overtid") {
+        const paired = await saveAbsenceToSupabase({
+          name,
+          type: "Avspasering opptjent",
+          start_date: start,
+          end_date: end,
+          hours,
+          status: "Registrert",
+          note: `Fra overtid: ${record.note}`,
+          linked_id: saved.id
+        });
+        if (paired) await updateAbsenceRecordInSupabase(saved.id, { linked_id: paired.id });
+        else ok = false;
+      }
 
-    if (!saved) {
-      if (absenceFormStatus) absenceFormStatus.textContent = "";
-      alert("Kunne ikke lagre fravær. Prøv igjen.");
+      if (saved && type === "Ønsker å avspasere" && status === "Ønsket") {
+        notifyDepartmentLeadersOfAbsenceRequest(record);
+      }
+
+      // Syk/sykt barn (og alt admin godkjenner direkte) skrives inn på vaktplanen.
+      if (saved && (status === "Godkjent" || sickAbsenceTypes.includes(type)) && shiftTypesFromAbsence[type]) {
+        await applyApprovedAbsenceToShifts({ ...record, status });
+      }
+    }
+
+    submitButton.disabled = false;
+
+    if (!ok) {
+      showStatus("Noe gikk galt. Prøv igjen, eller si ifra til styrer.", false);
       return;
     }
 
-    // Overtid-pairing (auto-oppretter en "Avspasering opptjent"-rad, linket
-    // begge veier via linked_id) og avdelingsleder-varsling skjer kun ved
-    // ny føring - ved redigering finnes paret/varselet allerede.
-    if (!isEditing && record.type === "Overtid" && record.hours) {
-      const paired = await saveAbsenceToSupabase({
-        name: record.name,
-        type: "Avspasering opptjent",
-        start_date: record.start_date,
-        end_date: record.end_date,
-        hours: record.hours,
-        status: record.status,
-        note: record.note ? `Fra overtid: ${record.note}` : "Automatisk opptjent fra overtid",
-        linked_id: saved.id
-      });
+    const label = editing ? "Endret" : "Lagret";
+    const days = countWeekdays(start, end);
+    let detail;
+    if (type === "Overtid") detail = `${formatHoursNo(hours)} t avspasering + 50 % overtid.`;
+    else if (status === "Ønsket") detail = `${formatDateRange(start, end)}. Venter på godkjenning.`;
+    else detail = `${formatDateRange(start, end)} (${days} ${days === 1 ? "dag" : "dager"}).`;
 
-      if (paired) {
-        await updateAbsenceRecordInSupabase(saved.id, { linked_id: paired.id });
-      }
-    }
-
-    if (!isEditing && record.type === "Ønsker å avspasere") {
-      notifyDepartmentLeadersOfAbsenceRequest(record);
-    }
-
-    // Egenmelding/Sykemelding/Omsorgsdager hopper over godkjenning (alltid
-    // status "Registrert", se noApprovalNeededTypes), så de går aldri
-    // gjennom Godkjenn-knappen som ellers trigger applyApprovedAbsenceTo
-    // Shifts - gjøres her i stedet, kun ved ny føring. Gjør sykdom-
-    // registrering toveis: uansett om SYK velges på vaktplanen (skriver
-    // Egenmelding hit) eller sykdom logges her først (skriver SYK dit),
-    // blir begge sider riktige.
-    if (!isEditing && sickAbsenceTypes.includes(record.type)) {
-      await applyApprovedAbsenceToShifts(record);
-    }
-
-    // Redigering av en Overtid/Avspasering-føring som har en tilhørende
-    // "motpart" (paret via linked_id) må også oppdatere motparten, ellers
-    // havner timeregnskapet i utakt - f.eks. hvis en feilregistrert
-    // overtidsføring rettes fra 3t til 5t, må den auto-opprettede
-    // "Avspasering opptjent"-raden også bli 5t. Notatet regenereres kun når
-    // man redigerer fra Overtid-siden (det er den siden malen "Fra overtid: ..."
-    // hører til); redigerer man motparten direkte, styres notatet av skjemaet
-    // som normalt siden det allerede er lagret på riktig rad.
-    if (isEditing && linkedBeforeEdit) {
-      const linkedUpdate = {
-        hours: record.hours,
-        start_date: record.start_date,
-        end_date: record.end_date
-      };
-
-      if (record.type === "Overtid") {
-        linkedUpdate.note = record.note ? `Fra overtid: ${record.note}` : "Automatisk opptjent fra overtid";
-      }
-
-      await updateAbsenceRecordInSupabase(linkedBeforeEdit.id, linkedUpdate);
-    }
+    const prefix = type === "Overtid" ? (kind === "personalmote" ? "Personalmøte: " : "Jobbet ekstra: ") : "";
+    close();
+    showStatus(`${label}! ${prefix}${detail}`, true);
 
     await loadAbsencesFromSupabase();
-
-    stopEditingAbsence();
-
     renderAbsences();
-
-    // Føringer-loggen er lukket som standard (kollaps-visning) - uten
-    // dette kan en vellykket lagring se ut som ingenting skjedde, siden
-    // den nye raden havner i en boks som ikke er åpnet ennå.
-    if (absenceFormStatus) absenceFormStatus.textContent = isEditing
-      ? "✓ Oppdatert! Se den i Føringer-loggen under (trykk for å åpne)."
-      : "✓ Lagret! Se den i Føringer-loggen under (trykk for å åpne).";
-    const foeringerDetails = document.getElementById("foeringerDetails");
-    if (foeringerDetails) foeringerDetails.open = true;
   });
-}
 
-function lockAbsenceNameToSelf() {
-  if (!absenceName || typeof currentEmployee === "undefined" || !currentEmployee) return;
-
-  if (!currentEmployee.is_admin) {
-    absenceName.value = currentEmployee.name;
-    absenceName.disabled = true;
-  } else {
-    absenceName.disabled = false;
-  }
-}
-
-function lockAbsenceFilterToSelf() {
-  if (!absenceFilter || typeof currentEmployee === "undefined" || !currentEmployee) return;
-
-  // Defaults to your own name rather than "Alle" - Oversikt showing
-  // everyone's stats stacked up by default was more than needed most of
-  // the time; "Alle" is still one click away in the dropdown for when
-  // it's actually wanted.
-  if (currentEmployee.is_admin) {
-    absenceFilter.disabled = false;
-    absenceFilter.value = currentEmployee.name;
-  } else if (currentEmployee.role === "Avdelingsleder") {
-    // Sees their own department's overview, not locked to just themselves -
-    // matches what the database actually allows them to read.
-    populateEmployeeSelect("absenceFilter", {
-      includeBlank: false,
-      includeAll: true,
-      departmentFilter: currentEmployee.department
-    });
-    absenceFilter.disabled = false;
-    absenceFilter.value = currentEmployee.name;
-  } else {
-    absenceFilter.innerHTML = `<option value="${escapeHtml(currentEmployee.name)}">${escapeHtml(currentEmployee.name)}</option>`;
-    absenceFilter.value = currentEmployee.name;
-    absenceFilter.disabled = true;
-  }
-
-  renderAbsences();
+  return {
+    edit,
+    refreshHelp() {
+      if (kind && !form.hidden) form.querySelector(".leave-form-help").textContent = helpText();
+    }
+  };
 }
 
 async function initializeAbsences() {
+  const onLeavePage = !!document.getElementById("leaveRegister");
+  const onAdminPage = !!document.getElementById("adminLeaveRegister");
+  const hasLeaveUi = onLeavePage || onAdminPage ||
+    document.getElementById("departmentAbsenceOverviewCard") ||
+    document.getElementById("overtimeSummary");
+  if (!hasLeaveUi) return;
+
   await loadEmployeesFromSupabase();
   await loadEmployeeSettingsFromSupabase();
 
-  populateEmployeeSelect("absenceName");
-  populateEmployeeSelect("absenceFilter", {
-    includeBlank: false,
-    includeAll: true
-  });
-  lockAbsenceNameToSelf();
-  lockAbsenceFilterToSelf();
-  renderVacationQuotaEditor();
+  if (onLeavePage) {
+    activeLeaveRegister = mountLeaveRegister(document.getElementById("leaveRegister"), {
+      getEmployeeName: () => (typeof currentEmployee !== "undefined" && currentEmployee ? currentEmployee.name : "")
+    });
+  }
+
+  if (onAdminPage) {
+    populateEmployeeSelect("adminLeaveEmployee", { blankText: "Velg ansatt" });
+    activeLeaveRegister = mountLeaveRegister(document.getElementById("adminLeaveRegister"), {
+      getEmployeeName: () => adminLeaveEmployee?.value || ""
+    });
+  }
 
   await loadAbsencesFromSupabase();
-  populateAbsenceYearFilter();
   await loadVikarSickDaysFromSupabase();
 
   renderAbsences();
@@ -6339,7 +6638,6 @@ async function initializeAdmin() {
 
   adminEmployeeSearch?.addEventListener("input", renderAdminEmployeeTable);
   adminEmployeeFilter?.addEventListener("change", renderAdminEmployeeTable);
-  loadPendingApprovalsSummary();
   loadFeedbackForAdmin();
 }
 
