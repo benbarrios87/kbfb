@@ -4525,3 +4525,47 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .leave-entry-kind {
   border-left: 5px solid var(--kc);
 }
+
+/* Filter-knapper over Mine føringer / Fravær per ansatt */
+.leave-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.leave-filter-chip {
+  --kc: var(--green);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 2px solid color-mix(in srgb, var(--kc) 40%, transparent);
+  background: var(--paper);
+  color: var(--kc);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.leave-filter-chip span {
+  font-size: 0.75rem;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--kc) 15%, transparent);
+}
+
+.leave-filter-chip:hover {
+  border-color: var(--kc);
+}
+
+.leave-filter-chip.active {
+  background: var(--kc);
+  border-color: var(--kc);
+  color: #fff;
+}
+
+.leave-filter-chip.active span {
+  background: rgba(255, 255, 255, 0.25);
+}

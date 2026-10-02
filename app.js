@@ -1710,10 +1710,20 @@ async function saveShiftToSupabase(shift) {
 // second, overlapping record created on top of the one already covering
 // it. matchTypes is its own list (not always [type]) so SYK still treats
 // an existing Sykemelding as covering the day, same as before.
+// Nabo-arbeidsdag (hopper over lørdag/søndag), brukt for å slå sammen
+// sykedager som henger sammen til én føring.
+function neighbourWorkday(dateKey, direction) {
+  const date = new Date(dateKey + "T12:00:00");
+  do {
+    date.setDate(date.getDate() + direction);
+  } while (date.getDay() === 0 || date.getDay() === 6);
+  return toDateKey(date);
+}
+
 async function ensureSickAbsenceForShift(name, dateKey, type = "Egenmelding", matchTypes = ["Egenmelding", "Sykemelding"]) {
   const { data: existing, error: selectError } = await supabaseClient
     .from("kbfb_absences")
-    .select("id, start_date, end_date")
+    .select("id, type, status, start_date, end_date")
     .eq("name", name)
     .in("type", matchTypes);
 
@@ -1722,11 +1732,34 @@ async function ensureSickAbsenceForShift(name, dateKey, type = "Egenmelding", ma
     return;
   }
 
-  const alreadyCovered = (existing || []).some(record =>
+  const active = (existing || []).filter(record => record.status !== "Avslått");
+
+  const alreadyCovered = active.some(record =>
     dateKey >= record.start_date && dateKey <= (record.end_date || record.start_date)
   );
 
   if (alreadyCovered) return;
+
+  // SYK mandag og tirsdag = ÉN egenmelding på to dager, ikke to. Henger
+  // dagen sammen med en eksisterende føring (dagen før/etter, helg hoppes
+  // over), forlenges den i stedet for å lage en ny.
+  const before = active.find(record => record.type === type && (record.end_date || record.start_date) === neighbourWorkday(dateKey, -1));
+  const after = active.find(record => record.type === type && record.start_date === neighbourWorkday(dateKey, 1));
+
+  if (before || after) {
+    const target = before || after;
+    const update = before ? { end_date: after ? (after.end_date || after.start_date) : dateKey } : { start_date: dateKey };
+    const { error: updateError } = await supabaseClient.from("kbfb_absences").update(update).eq("id", target.id);
+    if (updateError) {
+      console.error(`Kunne ikke forlenge ${type.toLowerCase()} fra vaktplanen:`, updateError);
+      return;
+    }
+    // Dagen fylte et hull mellom to føringer - de er nå én.
+    if (before && after) {
+      await supabaseClient.from("kbfb_absences").delete().eq("id", after.id);
+    }
+    return;
+  }
 
   const { error: insertError } = await supabaseClient.from("kbfb_absences").insert([{
     name,
@@ -5574,17 +5607,49 @@ function isHiddenLinkedOpptjent(record) {
   return !!pair && pair.type === "Overtid";
 }
 
+// Filter-knapper over historikken. Personalmøte, jobbet ekstra og gammel
+// "opptjent" er én gruppe; resten følger valgene i "Hva vil du registrere?".
+const LEAVE_FILTER_GROUPS = [
+  { key: "overtid", label: "Personalmøte og ekstra", kinds: ["personalmote", "ekstra", "opptjent"], color: "ekstra" },
+  { key: "avspasering", label: "Avspasering", kinds: ["avspasering"], color: "avspasering" },
+  { key: "ferie", label: "Ferie", kinds: ["ferie"], color: "ferie" },
+  { key: "syk", label: "Syk", kinds: ["syk"], color: "syk" },
+  { key: "sykt_barn", label: "Sykt barn", kinds: ["sykt_barn"], color: "sykt_barn" },
+  { key: "annet", label: "Annet", kinds: ["annet"], color: "annet" }
+];
+
 function renderLeaveEntries(container, records, { showName = false } = {}) {
   if (!container) return;
 
-  const visible = records
+  const all = records
     .filter(record => !isHiddenLinkedOpptjent(record))
     .sort((a, b) => (b.start_date || "").localeCompare(a.start_date || ""));
 
-  if (!visible.length) {
+  if (!all.length) {
     container.innerHTML = `<p class="muted">Ingen føringer dette året.</p>`;
     return;
   }
+
+  // Filteret huskes på containeren, så det står seg når lista tegnes på nytt.
+  const groupsPresent = LEAVE_FILTER_GROUPS.filter(group =>
+    all.some(record => group.kinds.includes(leaveKindForRecord(record)))
+  );
+  let filterKey = container.dataset.filter || "alle";
+  if (filterKey !== "alle" && !groupsPresent.some(g => g.key === filterKey)) filterKey = "alle";
+  const activeGroup = groupsPresent.find(g => g.key === filterKey);
+  const visible = activeGroup
+    ? all.filter(record => activeGroup.kinds.includes(leaveKindForRecord(record)))
+    : all;
+
+  const filterBar = groupsPresent.length > 1 ? `
+    <div class="leave-filter" role="group" aria-label="Filtrer føringer">
+      <button type="button" class="leave-filter-chip${filterKey === "alle" ? " active" : ""}" data-leave-filter="alle">Alle <span>${all.length}</span></button>
+      ${groupsPresent.map(group => {
+        const count = all.filter(record => group.kinds.includes(leaveKindForRecord(record))).length;
+        return `<button type="button" class="leave-filter-chip${filterKey === group.key ? " active" : ""}" data-leave-filter="${group.key}" ${kindColorStyle(group.color)}>${group.label} <span>${count}</span></button>`;
+      }).join("")}
+    </div>
+  ` : "";
 
   const byMonth = {};
   visible.forEach(record => {
@@ -5592,7 +5657,7 @@ function renderLeaveEntries(container, records, { showName = false } = {}) {
     (byMonth[key] = byMonth[key] || []).push(record);
   });
 
-  container.innerHTML = Object.entries(byMonth).map(([month, list]) => `
+  container.innerHTML = filterBar + Object.entries(byMonth).map(([month, list]) => `
     <div class="leave-month">
       <h3 class="leave-month-title">${month === "ukjent" ? "Uten dato" : formatMonth(month)}</h3>
       ${list.map(record => `
@@ -5614,6 +5679,13 @@ function renderLeaveEntries(container, records, { showName = false } = {}) {
       `).join("")}
     </div>
   `).join("");
+
+  container.querySelectorAll("[data-leave-filter]").forEach(button => {
+    button.addEventListener("click", () => {
+      container.dataset.filter = button.dataset.leaveFilter;
+      renderLeaveEntries(container, records, { showName });
+    });
+  });
 
   container.querySelectorAll("[data-leave-edit]").forEach(button => {
     button.addEventListener("click", () => {
@@ -6175,8 +6247,54 @@ function mountLeaveRegister(container, { getEmployeeName }) {
         });
       }
     } else {
+      // Syk / sykt barn kan allerede være registrert fra vaktplanen (SYK/SB
+      // i en celle lager en føring automatisk). Da skal det ikke føres to
+      // ganger: er alle dagene dekket fra før, lagres ingenting. Overlapper
+      // det delvis, slås det sammen til én føring.
+      let mergedFrom = [];
+      if (sickAbsenceTypes.includes(type)) {
+        await loadAbsencesFromSupabase();
+        const group = type === "Omsorgsdager" ? ["Omsorgsdager"] : ["Egenmelding", "Sykemelding"];
+        const overlapping = absencesCache.filter(r =>
+          r.name === name && group.includes(r.type) && r.status !== "Avslått" &&
+          r.start_date <= record.end_date && (r.end_date || r.start_date) >= record.start_date
+        );
+
+        const covering = overlapping.find(r =>
+          r.start_date <= record.start_date && (r.end_date || r.start_date) >= record.end_date
+        );
+
+        if (covering) {
+          submitButton.disabled = false;
+          close();
+          showStatus(`Allerede registrert: ${friendlyLeaveLabel(covering)} ${formatDateRange(covering.start_date, covering.end_date)}. Ingenting nytt ble lagt til.`, true);
+          renderAbsences();
+          return;
+        }
+
+        // Dager som henger rett sammen (f.eks. torsdag fra vaktplanen + fredag
+        // her) blir også én føring - viktig for "antall ganger" egenmelding.
+        overlapping.push(...absencesCache.filter(r =>
+          r.name === name && r.type === type && r.status !== "Avslått" && !overlapping.includes(r) &&
+          ((r.end_date || r.start_date) === neighbourWorkday(record.start_date, -1) ||
+            r.start_date === neighbourWorkday(record.end_date, 1))
+        ));
+
+        if (overlapping.length) {
+          record.start_date = overlapping.reduce((min, r) => (r.start_date < min ? r.start_date : min), record.start_date);
+          record.end_date = overlapping.reduce((max, r) => ((r.end_date || r.start_date) > max ? (r.end_date || r.start_date) : max), record.end_date);
+          mergedFrom = overlapping;
+        }
+      }
+
       const saved = await saveAbsenceToSupabase({ ...record, status });
       ok = !!saved;
+
+      // Slett de gamle først ETTER at den sammenslåtte er lagret, så ingenting
+      // forsvinner hvis lagringen feiler.
+      if (saved && mergedFrom.length) {
+        for (const old of mergedFrom) await deleteAbsenceFromSupabase(old.id);
+      }
 
       if (saved && type === "Overtid") {
         const paired = await saveAbsenceToSupabase({
@@ -6211,11 +6329,11 @@ function mountLeaveRegister(container, { getEmployeeName }) {
     }
 
     const label = editing ? "Endret" : "Lagret";
-    const days = countWeekdays(start, end);
+    const days = countWeekdays(record.start_date, record.end_date);
     let detail;
     if (type === "Overtid") detail = `+ ${formatHoursNo(hours)} t avspasering og 50 % overtid for ${formatHoursNo(hours)} t.`;
     else if (status === "Ønsket") detail = `${formatDateRange(start, end)}. Venter på godkjenning.`;
-    else detail = `${formatDateRange(start, end)} (${days} ${days === 1 ? "dag" : "dager"}).`;
+    else detail = `${formatDateRange(record.start_date, record.end_date)} (${days} ${days === 1 ? "dag" : "dager"}).`;
 
     const prefix = type === "Overtid" ? (kind === "personalmote" ? "Personalmøte: " : "Jobbet ekstra: ") : "";
     close();
