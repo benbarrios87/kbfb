@@ -1300,7 +1300,8 @@ async function startHeroPhotoRotation() {
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const settled = heroPhotosCache.filter(p => new Date(p.created_at) < startOfToday);
   const pool = settled.length ? settled : heroPhotosCache;
-  const photo = pool[dayNumber % pool.length];
+  const slot = dayNumber * 2 + (now.getHours() >= 12 ? 1 : 0);
+  const photo = pool[slot % pool.length];
 
   hero.style.setProperty("--hero-photo-url", `url("${photo.photo_url}")`);
 }
