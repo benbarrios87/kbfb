@@ -4756,14 +4756,26 @@ function populateOvertimeMonthFilter() {
   overtimeMonthFilter.value = months.includes(currentValue) ? currentValue : getCurrentMonthKey();
 }
 
+function lastPayrollRunInCache() {
+  return absencesCache
+    .filter(r => r.payroll_done_on)
+    .map(r => String(r.payroll_done_on).slice(0, 10))
+    .sort()
+    .pop() || null;
+}
+
 function overtimeLineHtml(entry, { undo = false } = {}) {
   const registered = entry.created_at ? toDateKey(new Date(entry.created_at)) : null;
-  const late = registered && registered.slice(0, 7) !== (entry.start_date || "").slice(0, 7);
+  const lastRun = lastPayrollRunInCache();
+  // Skjedde før siste lønnskjøring, men ble registrert etter den = kom ikke med.
+  const late = !entry.payroll_done_on && registered && (lastRun
+    ? entry.start_date <= lastRun && registered > lastRun
+    : registered.slice(0, 7) !== (entry.start_date || "").slice(0, 7));
 
   return `
     <li>
       <strong>${formatHoursNo(entry.hours)} t</strong> · ${formatDateRange(entry.start_date, entry.end_date)}${entry.note ? ` · ${escapeHtml(entry.note)}` : ""}
-      ${late ? `<span class="overtime-late">Registrert ${formatNorwegianDate(registered)}</span>` : ""}
+      ${late ? `<span class="overtime-late">Registrert etter lønn: ${formatNorwegianDate(registered)}</span>` : ""}
       ${undo ? `<button type="button" class="link-btn" data-overtime-undo="${entry.id}">Angre</button>` : ""}
     </li>
   `;
@@ -5991,48 +6003,52 @@ function renderUnlinkedOpptjent() {
   });
 }
 
-/* ----- Varsel til styrer om føringer gjort i ettertid ----- */
+/* ----- Varsel til styrer: registrert etter lønnskjøring ----- */
 
-// Overtid fra en tidligere måned kan ha gått glipp av lønnskjøringen, og
-// sykdom/ferie langt tilbake i tid bør styrer også vite om. Admin får
-// push-varsel (ikke når admin registrerer selv - sendPushNotification
-// hopper over den innloggede).
-const LATE_REGISTRATION_DAYS = 7;
-
-function lateRegistrationInfo(record) {
-  const today = new Date();
-  const todayKey = toDateKey(today);
-  const monthStart = toDateKey(new Date(today.getFullYear(), today.getMonth(), 1));
-  const limit = toDateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() - LATE_REGISTRATION_DAYS));
-
-  if (!record.start_date || record.start_date > todayKey) return null;
-  if (record.type === "Overtid") return record.start_date < monthStart ? "overtid" : null;
-  return record.start_date < limit ? "annet" : null;
+// Styrer kjører lønn (ofte første uka i måneden) og markerer da overtiden
+// som "ført i lønn". Registrerer noen noe som skjedde FØR den datoen, kom
+// det ikke med - da får admin push-varsel. Siste lønnskjøring hentes fra
+// databasen (kbfb_last_payroll_run), siden ansatte bare ser egne føringer.
+// Er ingen lønn markert ennå: varsle for overtid fra en tidligere måned.
+async function getLastPayrollRun() {
+  try {
+    const { data, error } = await supabaseClient.rpc("kbfb_last_payroll_run");
+    if (error) return null;
+    return data ? String(data).slice(0, 10) : null;
+  } catch {
+    return null;
+  }
 }
 
-function notifyAdminsOfLateRegistration(record, kindLabel) {
-  const late = lateRegistrationInfo(record);
+async function notifyAdminsOfLateRegistration(record, kindLabel) {
+  if (!record.start_date) return;
+  const todayKey = toDateKey(new Date());
+  if (record.start_date > todayKey) return;
+
+  const lastRun = await getLastPayrollRun();
+  let late;
+  if (lastRun) {
+    late = record.start_date <= lastRun;
+  } else {
+    const now = new Date();
+    const monthStart = toDateKey(new Date(now.getFullYear(), now.getMonth(), 1));
+    late = record.type === "Overtid" && record.start_date < monthStart;
+  }
   if (!late) return;
 
   const admins = employeesCache.filter(e => e.is_admin).map(e => e.name);
   if (!admins.length) return;
 
   const when = formatDateRange(record.start_date, record.end_date);
-  if (late === "overtid") {
-    sendPushNotification(
-      admins,
-      "Sen overtid - sjekk lønn",
-      `${record.name} førte ${kindLabel.toLowerCase()} ${when} (${formatHoursNo(record.hours)} t). Ikke ført i lønn ennå.`,
-      "admin.html"
-    );
-  } else {
-    sendPushNotification(
-      admins,
-      "Registrert i ettertid",
-      `${record.name} førte ${kindLabel.toLowerCase()} ${when}.`,
-      "admin.html"
-    );
-  }
+  const hours = record.type === "Overtid" ? ` (${formatHoursNo(record.hours)} t)` : "";
+  const runText = lastRun ? ` Siste lønn ble kjørt ${formatNorwegianDate(lastRun)}.` : "";
+
+  sendPushNotification(
+    admins,
+    "Registrert etter lønnskjøring",
+    `${record.name} førte ${kindLabel.toLowerCase()} ${when}${hours}.${runText}${record.type === "Overtid" ? " Står i Ikke ført i lønn." : ""}`,
+    "admin.html"
+  );
 }
 
 /* ----- Selve registreringsskjemaet ----- */

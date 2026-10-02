@@ -11,3 +11,19 @@
 
 ALTER TABLE public.kbfb_absences
   ADD COLUMN IF NOT EXISTS payroll_done_on date;
+
+-- Siste lønnskjøring = siste dato noe ble markert "ført i lønn". Gir bare
+-- ut én dato (ingen føringer), så alle innloggede kan spørre - appen
+-- bruker den til å varsle styrer når noen registrerer noe som skjedde
+-- FØR siste lønnskjøring (og derfor ikke kom med).
+CREATE OR REPLACE FUNCTION public.kbfb_last_payroll_run()
+RETURNS date
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT max(payroll_done_on) FROM public.kbfb_absences
+$$;
+
+GRANT EXECUTE ON FUNCTION public.kbfb_last_payroll_run() TO authenticated;
