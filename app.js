@@ -5986,6 +5986,85 @@ function mountLeaveRegister(container, { getEmployeeName }) {
     }
   }
 
+  // Stopper vanlige feil FØR lagring (vises også live i før/etter-boksen).
+  // Returnerer en liste med feilmeldinger - tom liste = alt ok.
+  function validationErrors() {
+    const name = currentName();
+    if (!name || !kind) return [];
+
+    const fields = LEAVE_KIND_FIELDS[kind] || [];
+    const start = field("start").value;
+    const multi = fields.includes("multi") && field("multi").checked;
+    const end = (multi && field("end").value) || start;
+    const hours = parseHoursInput(field("hours").value);
+    const todayKey = toDateKey(new Date());
+    const thisYear = new Date().getFullYear();
+    const errors = [];
+
+    if (!start) return ["Velg dato."];
+    if (multi && !field("end").value) errors.push("Velg siste dag, eller ta bort krysset for flere dager.");
+    if (end < start) errors.push("Siste dag kan ikke være før første dag.");
+
+    const startYear = Number(start.slice(0, 4));
+    const endYear = Number(end.slice(0, 4));
+    if (startYear < thisYear - 1 || endYear > thisYear + 1) errors.push("Sjekk året - datoen ser feil ut.");
+
+    const dayKinds = ["avspasering", "ferie", "syk", "sykt_barn", "annet"];
+    if (dayKinds.includes(kind) && end >= start && countWeekdays(start, end) === 0) {
+      errors.push("Du har bare valgt lørdag/søndag. Velg en hverdag.");
+    }
+
+    const sickType = kind === "syk" ? (form.querySelector('input[name="sickType"]:checked')?.value || "Egenmelding") : null;
+
+    if ((sickType === "Egenmelding" || kind === "sykt_barn") && start > todayKey) {
+      errors.push("Du kan ikke melde syk fram i tid. Velg i dag eller en dag som har vært.");
+    }
+    if (sickType === "Egenmelding" && end >= start && daysBetweenInclusive(start, end) > EGENMELDING_MAX_DAYS_PER_TIME) {
+      errors.push(`Egenmelding kan være maks ${EGENMELDING_MAX_DAYS_PER_TIME} dager. Er du syk lenger, trenger du sykemelding fra lege.`);
+    }
+
+    if (kind === "personalmote" || kind === "ekstra" || kind === "opptjent") {
+      if (!(hours > 0)) errors.push("Skriv inn hvor mange timer.");
+      else if (hours > 12) errors.push("Mer enn 12 timer på én dag? Sjekk timene.");
+    } else if (hours != null && (hours <= 0 || hours > 24 * 31)) {
+      errors.push("Sjekk timene.");
+    }
+    if (kind === "ekstra" && !field("note").value.trim()) errors.push("Skriv kort hva du jobbet med.");
+
+    // Samme ting to ganger på samme dag(er)?
+    const exclude = [];
+    if (editing) {
+      exclude.push(editing.id);
+      const pair = findLinkedAbsence(editing);
+      if (pair) exclude.push(pair.id);
+    }
+    const overlaps = types => absencesCache.find(r =>
+      r.name === name && !exclude.includes(r.id) && types.includes(r.type) && r.status !== "Avslått" &&
+      r.start_date <= end && (r.end_date || r.start_date) >= start
+    );
+
+    if (kind === "personalmote") {
+      const dup = absencesCache.find(r =>
+        r.name === name && !exclude.includes(r.id) && r.type === "Overtid" && r.note === PERSONALMOTE_NOTE && r.start_date === start
+      );
+      if (dup) errors.push("Du har allerede registrert personalmøte denne dagen.");
+    }
+    if (kind === "ferie") {
+      const dup = overlaps(["Ferie"]);
+      if (dup) errors.push(`Du har allerede ferie ${formatDateRange(dup.start_date, dup.end_date)}.`);
+    }
+    if (kind === "avspasering") {
+      const dup = overlaps(["Ønsker å avspasere", "Avspasering brukt"]);
+      if (dup) errors.push(`Du har allerede avspasering ${formatDateRange(dup.start_date, dup.end_date)}.`);
+    }
+    if (kind === "annet") {
+      const dup = overlaps(OTHER_LEAVE_TYPES);
+      if (dup) errors.push(`Du har allerede ${dup.type.toLowerCase()} ${formatDateRange(dup.start_date, dup.end_date)}.`);
+    }
+
+    return errors;
+  }
+
   // "Når du trykker Lagre:" - viser før -> etter med personens egne tall,
   // og oppdateres mens skjemaet fylles ut, så det er helt tydelig hva
   // føringen gjør.
@@ -6081,7 +6160,16 @@ function mountLeaveRegister(container, { getEmployeeName }) {
 
   function updateEffect() {
     const list = form.querySelector(".leave-effect-list");
-    if (list) list.innerHTML = effectLines().map(line => `<li>${line}</li>`).join("");
+    const errors = validationErrors();
+    const box = form.querySelector(".leave-effect");
+    if (box) box.classList.toggle("has-errors", errors.length > 0);
+    if (list) {
+      list.innerHTML = errors.length
+        ? errors.map(error => `<li class="leave-effect-error">${escapeHtml(error)}</li>`).join("")
+        : effectLines().map(line => `<li>${line}</li>`).join("");
+    }
+    const heading = box?.querySelector("strong");
+    if (heading) heading.textContent = errors.length ? "Rett dette før du lagrer:" : "Når du trykker Lagre:";
   }
 
   function updateMultiVisibility() {
@@ -6195,13 +6283,12 @@ function mountLeaveRegister(container, { getEmployeeName }) {
     const hours = parseHoursInput(field("hours").value);
     const note = field("note").value.trim();
 
-    if (!start) return showStatus("Velg dato.", false);
-    if (end < start) return showStatus("Siste dag kan ikke være før første dag.", false);
-    if ((kind === "personalmote" || kind === "ekstra" || kind === "opptjent") && !(hours > 0)) {
-      return showStatus("Skriv inn hvor mange timer.", false);
+    const errors = validationErrors();
+    if (errors.length) {
+      updateEffect();
+      form.querySelector(".leave-effect")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      return showStatus(errors[0], false);
     }
-    if (hours != null && (hours < 0 || hours > 24 * 31)) return showStatus("Sjekk timene.", false);
-    if (kind === "ekstra" && !note) return showStatus("Skriv kort hva du jobbet med.", false);
 
     let type;
     let status;

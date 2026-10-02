@@ -4569,3 +4569,19 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .leave-filter-chip.active span {
   background: rgba(255, 255, 255, 0.25);
 }
+
+/* Feil i skjemaet (Ferie og fravær) - vises i før/etter-boksen */
+.leave-form .leave-effect.has-errors {
+  border-color: #b42318;
+  border-style: solid;
+  background: #fef2f2;
+}
+
+.leave-form .leave-effect.has-errors > strong {
+  color: #b42318;
+}
+
+.leave-effect-error {
+  color: #991b1b;
+  font-weight: 700;
+}
