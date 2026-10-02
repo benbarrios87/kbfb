@@ -11081,3 +11081,52 @@ async function initializeTasks() {
 }
 
 initializeTasks();
+
+/* ---------- HJELP (hjelp.html) ----------
+   Enkelt søk: viser bare spørsmålene som inneholder ordene man skriver
+   (i spørsmålet eller svaret), åpner dem, og skjuler tomme temaer. */
+(function initHelpPage() {
+  const search = document.getElementById("helpSearch");
+  if (!search) return;
+
+  const items = [...document.querySelectorAll(".help-section .faq")];
+  const sections = [...document.querySelectorAll(".help-section")];
+  const noResults = document.getElementById("helpNoResults");
+  const normalize = text => (text || "").toLowerCase().normalize("NFC");
+
+  items.forEach(item => { item.dataset.search = normalize(item.textContent); });
+
+  function applySearch() {
+    const words = normalize(search.value).split(/\s+/).filter(Boolean);
+    let shown = 0;
+
+    items.forEach(item => {
+      const match = words.every(word => item.dataset.search.includes(word));
+      item.hidden = !match;
+      if (match) shown += 1;
+    });
+
+    // Få treff: åpne dem, så svaret vises med en gang. Mange treff: vis
+    // bare spørsmålene, ellers blir det en vegg av tekst.
+    const openAll = words.length > 0 && words.join("").length >= 3 && shown <= 8;
+    items.forEach(item => { item.open = openAll && !item.hidden; });
+
+    sections.forEach(section => {
+      section.hidden = !section.querySelector(".faq:not([hidden])");
+    });
+
+    if (noResults) noResults.hidden = shown > 0;
+  }
+
+  search.addEventListener("input", applySearch);
+
+  // Lenke rett til et tema (#tema-...) - tøm søket så temaet faktisk vises.
+  document.querySelectorAll(".help-topics a").forEach(link => {
+    link.addEventListener("click", () => {
+      if (search.value) {
+        search.value = "";
+        applySearch();
+      }
+    });
+  });
+})();

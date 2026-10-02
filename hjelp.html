@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hjelp | KBFB Personal</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="images/icon-192.png" type="image/png" />
+  <meta name="theme-color" content="#234d31" />
+  <link rel="apple-touch-icon" href="images/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="KBFB" />
+</head>
+
+<body>
+  <div class="layout">
+    <aside class="sidebar nature-sidebar">
+      <div class="brand">
+        <div class="brand-icon">🌲</div>
+        <h2>KBFB</h2>
+        <p>Personalrommet</p>
+      </div>
+
+      <nav>
+        <a href="dashboard.html">🏠 Hjem</a>
+        <a href="vakter.html">📅 Vakter<span class="nav-badge" style="display:none;"></span></a>
+        <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
+        <a data-admin-only href="oppgaver.html">🗒️ Oppgaver</a>
+
+        <details class="nav-folder">
+          <summary>📁 Personal</summary>
+          <div class="nav-folder-links">
+            <a data-hide-from-vikar href="datoer.html">📆 Datoer</a>
+            <a href="vikarer.html">🕒 Vikarer</a>
+            <a data-hide-from-vikar data-hide-from-guest href="ferieogavspasering.html">🌴 Ferie og fravær</a>
+            <a data-hide-from-vikar data-hide-from-guest href="kjorebok.html">🚗 Kjørebok</a>
+            <a data-hide-from-guest href="personalhandbok.html">📕 Personalhåndbok</a>
+          </div>
+        </details>
+
+        <details class="nav-folder" data-hide-from-vikar>
+          <summary>📁 Ressurser</summary>
+          <div class="nav-folder-links">
+            <a href="filarkiv.html">📁 Filarkiv</a>
+            <a href="aarshjul.html">🗓️ Årshjul</a>
+            <a href="arsplan.html">📘 Årsplan</a>
+            <a href="turbank.html">🏕️ Turbank (kommer)</a>
+          </div>
+        </details>
+
+        <details class="nav-folder">
+          <summary>📁 Praktisk</summary>
+          <div class="nav-folder-links">
+            <a href="bestillinger.html">🛒 Bestillinger</a>
+            <a data-hide-from-vikar href="kalender.html">📍 Hvor er Benjamin?</a>
+          </div>
+        </details>
+
+        <details class="nav-folder" data-admin-only>
+          <summary>📁 Admin</summary>
+          <div class="nav-folder-links">
+            <a href="nokkeltall.html">📊 Nøkkeltall</a>
+            <a href="admin.html">⚙️ Admin</a>
+            <a href="hms.html">🏥 HMS</a>
+            <a href="lederutfordring.html">🎯 Lederutfordringen</a>
+          </div>
+        </details>
+
+        <a class="active nav-help" href="hjelp.html">❓ Hjelp og spørsmål</a>
+      </nav>
+
+      <div class="sidebar-feedback" data-hide-from-guest>
+        <p>💬 Innspill?</p>
+        <form id="feedbackForm">
+          <textarea id="feedbackText" rows="2" placeholder="Skriv her..." required></textarea>
+          <button type="submit">Send</button>
+        </form>
+        <p id="feedbackStatus"></p>
+      </div>
+
+      <div class="sidebar-footer">
+        <span class="user-badge" id="userBadge"></span>
+        <button class="logout-btn" id="logoutBtn">Logg ut</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="forest-hero compact">
+        <div>
+          <p class="eyebrow">Hjelp</p>
+          <h1>Spørsmål og svar</h1>
+          <p class="muted">Alt om Personalrommet, forklart enkelt. Søk, eller trykk på et tema.</p>
+        </div>
+      </section>
+
+      <section class="card help-search-card">
+        <label class="help-search">
+          <span class="help-search-label">Hva lurer du på?</span>
+          <input id="helpSearch" type="search" placeholder="F.eks. syk, ferie, passord, vaktbytte..." autocomplete="off" />
+        </label>
+        <nav class="help-topics" aria-label="Temaer">
+          <a href="#tema-start">Komme i gang</a>
+          <a href="#tema-fravaer">Ferie og fravær</a>
+          <a href="#tema-vaktplan">Vaktplan</a>
+          <a href="#tema-hverdag">Hverdagen</a>
+          <a href="#tema-kjorebok">Kjørebok</a>
+          <a href="#tema-dokumenter">Dokumenter og planer</a>
+          <a href="#tema-vikar">For vikarer</a>
+          <a href="#tema-leder">For avdelingsledere</a>
+          <a href="#tema-problem">Noe virker ikke</a>
+        </nav>
+        <p id="helpNoResults" class="help-no-results" hidden>
+          Fant ingenting. Prøv et annet ord, eller skriv spørsmålet ditt i <strong>Innspill?</strong>-boksen i menyen - da får styrer det.
+        </p>
+      </section>
+
+      <!-- ================= KOMME I GANG ================= -->
+      <section class="card help-section" id="tema-start">
+        <p class="eyebrow">Tema</p>
+        <h2>Komme i gang</h2>
+
+        <details class="faq">
+          <summary>Hvordan logger jeg inn?</summary>
+          <div class="faq-a">
+            <p>Bruk e-posten og passordet du har fått av styrer. Første gang bør du bytte til ditt eget passord (se under).</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg har glemt passordet</summary>
+          <div class="faq-a">
+            <p>Si ifra til styrer. Styrer kan lage et nytt passord til deg. Bytt det til ditt eget når du har logget inn.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvordan bytter jeg passord?</summary>
+          <div class="faq-a">
+            <ol>
+              <li>Gå til <a href="dashboard.html">Hjem</a>.</li>
+              <li>Finn <strong>Min konto</strong>.</li>
+              <li>Skriv nytt passord to ganger og trykk <strong>Bytt passord</strong>.</li>
+            </ol>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvordan legger jeg inn profilbilde?</summary>
+          <div class="faq-a">
+            <ol>
+              <li>Gå til <a href="dashboard.html">Hjem</a> → <strong>Min konto</strong>.</li>
+              <li>Trykk <strong>Last opp bilde</strong> og velg et bilde.</li>
+              <li>Dra bildet på plass, bruk zoom om du vil, og trykk <strong>Lagre bilde</strong>.</li>
+            </ol>
+            <p>Bildet vises ved navnet ditt i vaktplanen og andre steder.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Kan jeg ha Personalrommet som en app på mobilen?</summary>
+          <div class="faq-a">
+            <p>Ja. Da får du et eget ikon på mobilen.</p>
+            <p><strong>iPhone:</strong> Åpne siden i <strong>Safari</strong> → trykk Del-knappen (firkant med pil opp) → <strong>Legg til på Hjem-skjerm</strong>.</p>
+            <p><strong>Android:</strong> Åpne siden i <strong>Chrome</strong> → trykk menyen (tre prikker) → <strong>Installer app</strong> eller <strong>Legg til på startsiden</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvordan får jeg varsler (push) på mobilen?</summary>
+          <div class="faq-a">
+            <ol>
+              <li>Gå til <a href="dashboard.html">Hjem</a> → <strong>Min konto</strong>.</li>
+              <li>Trykk <strong>Skru på varsler på denne enheten</strong> og svar <strong>Tillat</strong>.</li>
+            </ol>
+            <p><strong>iPhone:</strong> Du må først legge Personalrommet til på Hjem-skjermen (se spørsmålet over), og åpne det derfra.</p>
+            <p>Du får varsel når du får en beskjed, et vaktbytte, eller svar på en søknad.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvordan logger jeg ut?</summary>
+          <div class="faq-a">
+            <p>Trykk <strong>Logg ut</strong> nederst i menyen.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvorfor ser jeg ikke alle sidene i menyen?</summary>
+          <div class="faq-a">
+            <p>Menyen viser bare det som er aktuelt for deg. Vikarer ser for eksempel ikke Ferie og fravær, og noen sider er bare for styrer.</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>Virker Personalrommet på både mobil og PC?</summary>
+          <div class="faq-a">
+            <p>Ja. Det fungerer i nettleseren på PC, nettbrett og mobil. På mobil er det enklest å legge det til som app (se over).</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvordan endrer jeg navn eller e-post?</summary>
+          <div class="faq-a">
+            <p>Det gjør styrer. Si ifra hvis noe er feil.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvorfor står det ikke navnet mitt / bildet mitt?</summary>
+          <div class="faq-a">
+            <p>Logg ut og inn igjen. Mangler bildet, kan du legge det inn selv under <strong>Min konto</strong> på <a href="dashboard.html">Hjem</a>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvem ser hva jeg skriver?</summary>
+          <div class="faq-a">
+            <ul><li><strong>Kjøkkenboka, bilder og hyggelige beskjeder:</strong> alle ansatte.</li><li><strong>Send beskjed:</strong> bare den du sender til.</li><li><strong>Ferie og fravær:</strong> bare deg og styrer (avdelingsleder ser ferie og avspasering, ikke sykdom).</li><li><strong>Innspill?:</strong> bare styrer.</li></ul>
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= FERIE OG FRAVÆR ================= -->
+      <section class="card help-section" id="tema-fravaer">
+        <p class="eyebrow">Tema</p>
+        <h2>Ferie og fravær</h2>
+
+        <details class="faq">
+          <summary>Hvem kan se feriene, sykedagene og timene mine?</summary>
+          <div class="faq-a">
+            <p>Bare <strong>deg</strong> og <strong>styrer</strong>.</p>
+            <p>Avdelingsleder ser ferie og avspasering for sin avdeling (for å planlegge), men <strong>ikke</strong> sykdom.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvordan registrerer jeg personalmøte?</summary>
+          <div class="faq-a">
+            <ol>
+              <li>Gå til <a href="ferieogavspasering.html">Ferie og fravær</a>.</li>
+              <li>Trykk <strong>Personalmøte</strong>.</li>
+              <li>Sjekk datoen. 2,5 t er fylt inn.</li>
+              <li>Trykk <strong>Lagre</strong>.</li>
+            </ol>
+            <p>Du får <strong>2,5 t avspasering</strong> og <strong>50 % overtid for 2,5 t</strong>. Det trenger ikke godkjenning.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg jobbet ekstra (f.eks. fordi noen var syke). Hva gjør jeg?</summary>
+          <div class="faq-a">
+            <ol>
+              <li>Gå til <a href="ferieogavspasering.html">Ferie og fravær</a> → <strong>Jobbet ekstra</strong>.</li>
+              <li>Velg dato, skriv hvor mange timer, og kort hvorfor.</li>
+              <li>Trykk <strong>Lagre</strong>.</li>
+            </ol>
+            <p>Eksempel: 1 t ekstra = <strong>1 t avspasering</strong> + <strong>50 % overtid for 1 t</strong>. Trenger ikke godkjenning.</p>
+            <p>Du kan skrive timer som <strong>1,5</strong> eller <strong>1:30</strong> (1 time og 30 min).</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hva betyr "50 % overtid"?</summary>
+          <div class="faq-a">
+            <p>Når du jobber ekstra, får du to ting:</p>
+            <ul>
+              <li><strong>Avspasering:</strong> timene kan du ta ut som fri senere (time for time).</li>
+              <li><strong>50 % overtid:</strong> du får i tillegg betalt et overtidstillegg på 50 % for de samme timene, på lønna.</li>
+            </ul>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvordan tar jeg ut avspasering (fri)?</summary>
+          <div class="faq-a">
+            <ol>
+              <li>Gå til <a href="ferieogavspasering.html">Ferie og fravær</a> → <strong>Ta ut avspasering</strong>.</li>
+              <li>Velg dagen. Flere dager? Kryss av for <strong>Flere dager på rad</strong>.</li>
+              <li>Hele dager: la timer stå tom (1 dag = 7,5 t). Bare noen timer: skriv antall timer.</li>
+              <li>Trykk <strong>Lagre</strong>.</li>
+            </ol>
+            <p>Søknaden må <strong>godkjennes</strong>. Du får beskjed når den er godkjent.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvor mye avspasering har jeg?</summary>
+          <div class="faq-a">
+            <p>Se <strong>Avspasering</strong> under <strong>Min oversikt</strong> på <a href="ferieogavspasering.html">Ferie og fravær</a>.</p>
+            <p>Avspasering <strong>følger med over nyttår</strong> - den forsvinner ikke 1. januar.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvordan søker jeg ferie?</summary>
+          <div class="faq-a">
+            <ol>
+              <li>Gå til <a href="ferieogavspasering.html">Ferie og fravær</a> → <strong>Ferie</strong>.</li>
+              <li>Velg første dag. Flere dager? Kryss av for <strong>Flere dager på rad</strong> og velg siste dag.</li>
+              <li>Trykk <strong>Lagre</strong>.</li>
+            </ol>
+            <p>Søknaden må <strong>godkjennes</strong>. Når den er godkjent, kommer F inn i vaktplanen.</p>
+            <p>Lørdag og søndag telles ikke som feriedager.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvor mange feriedager har jeg igjen?</summary>
+          <div class="faq-a">
+            <p>Se <strong>Ferie igjen</strong> under <strong>Min oversikt</strong> på <a href="ferieogavspasering.html">Ferie og fravær</a>.</p>
+            <p>Ferie gjelder per kalenderår og starter på nytt <strong>1. januar</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg er syk. Hva gjør jeg?</summary>
+          <div class="faq-a">
+            <ol>
+              <li><strong>Først:</strong> si ifra til pedagogisk leder eller styrer så tidlig som mulig, helst før arbeidstid.</li>
+              <li>Registrer så sykdommen på <a href="ferieogavspasering.html">Ferie og fravær</a> → <strong>Syk</strong>.</li>
+              <li>Velg <strong>Egenmelding</strong> (du melder selv) eller <strong>Sykemelding</strong> (fra lege).</li>
+              <li>Velg dagen(e) og trykk <strong>Lagre</strong>.</li>
+            </ol>
+            <p>Det kommer automatisk <strong>SYK</strong> i vaktplanen.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Egenmelding eller sykemelding - hva er forskjellen?</summary>
+          <div class="faq-a">
+            <ul>
+              <li><strong>Egenmelding:</strong> du melder selv at du er syk. Maks <strong>8 dager</strong> per gang. Kan brukes etter 2 måneder i jobben.</li>
+              <li><strong>Sykemelding:</strong> fra lege. Trengs hvis du er syk lenger enn 8 dager, eller før du har jobbet her i 2 måneder.</li>
+            </ul>
+            <p>Mer om dette i <a href="personalhandbok.html">Personalhåndboka</a>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Barnet mitt er sykt. Hva gjør jeg?</summary>
+          <div class="faq-a">
+            <ol>
+              <li>Si ifra til pedagogisk leder eller styrer så tidlig som mulig.</li>
+              <li>Registrer på <a href="ferieogavspasering.html">Ferie og fravær</a> → <strong>Sykt barn</strong>.</li>
+              <li>Velg dagen(e) og trykk <strong>Lagre</strong>.</li>
+            </ol>
+            <p>Det trekkes fra omsorgsdagene dine, og det kommer <strong>SB</strong> i vaktplanen. Se hvor mange du har brukt under <strong>Min oversikt</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvor mange omsorgsdager (sykt barn) har jeg?</summary>
+          <div class="faq-a">
+            <p>Det står under <strong>Omsorgsdager</strong> i <strong>Min oversikt</strong>, f.eks. "2/10 brukt". Vanligvis 10 dager per år, 20 hvis du er alene om omsorgen. Dagene starter på nytt 1. januar.</p>
+            <p>Står det ingen omsorgsdager hos deg, og du har barn under 12 år? Si ifra til styrer.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Sykdommen står allerede i vaktplanen. Må jeg registrere den selv også?</summary>
+          <div class="faq-a">
+            <p>Nei. Når SYK eller SB settes i vaktplanen, blir det registrert automatisk. Prøver du å registrere de samme dagene, får du beskjed om at det allerede er registrert. Det blir aldri dobbelt.</p>
+            <p>Det spiller ingen rolle om det legges inn i vaktplanen eller på Ferie og fravær først.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Tjenestefri, permisjon eller velferdspermisjon?</summary>
+          <div class="faq-a">
+            <p>Gå til <a href="ferieogavspasering.html">Ferie og fravær</a> → <strong>Annet</strong>, velg hva slags fri, velg dag(er) og trykk <strong>Lagre</strong>. Det må godkjennes.</p>
+            <p>Hva du har rett på, står i <a href="personalhandbok.html">Personalhåndboka</a>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg har lagret feil. Hvordan retter jeg?</summary>
+          <div class="faq-a">
+            <p>Gå ned til <strong>Mine føringer</strong> og trykk <strong>Endre</strong> eller <strong>Slett</strong> på føringen.</p>
+            <p>Er den allerede <strong>godkjent</strong> eller <strong>avslått</strong>, kan du ikke endre den selv. Spør styrer.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvorfor får jeg ikke lagret? Boksen er rød.</summary>
+          <div class="faq-a">
+            <p>Den røde boksen forteller hva som er feil, f.eks.:</p>
+            <ul>
+              <li>Du har valgt bare lørdag/søndag.</li>
+              <li>Du prøver å melde syk en dag fram i tid.</li>
+              <li>Du har allerede søkt om de samme dagene.</li>
+              <li>Egenmelding er lenger enn 8 dager.</li>
+            </ul>
+            <p>Rett det som står, så kan du lagre.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hva betyr "Venter på svar", "Godkjent" og "Registrert"?</summary>
+          <div class="faq-a">
+            <ul>
+              <li><strong>Venter på svar:</strong> søknaden er sendt, men ikke behandlet ennå.</li>
+              <li><strong>Avventer:</strong> styrer ser på den. Det kan stå en kommentar.</li>
+              <li><strong>Godkjent:</strong> klart! Den er lagt inn i vaktplanen.</li>
+              <li><strong>Avslått:</strong> ikke godkjent. Se kommentaren, eller snakk med styrer.</li>
+              <li><strong>Registrert:</strong> trenger ikke godkjenning (f.eks. syk, personalmøte, jobbet ekstra).</li>
+            </ul>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Får jeg beskjed når søknaden er godkjent?</summary>
+          <div class="faq-a">
+            <p>Ja, hvis du har skrudd på varsler (se <a href="#tema-start">Komme i gang</a>). Du ser det uansett under <strong>Mine føringer</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hva er "Når du trykker Lagre"-boksen?</summary>
+          <div class="faq-a">
+            <p>Den viser hva som skjer med tallene dine <strong>før</strong> du lagrer, f.eks. "Avspaseringen din: 14 t → 16,5 t" eller "Feriedager igjen: 20 → 17". Da ser du at alt stemmer.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Kan jeg se bare én type føringer, f.eks. bare ferie?</summary>
+          <div class="faq-a">
+            <p>Ja. Trykk på knappene over <strong>Mine føringer</strong> (Ferie, Syk, Avspasering ...). Trykk <strong>Alle</strong> for å se alt igjen. Velg år øverst i <strong>Min oversikt</strong>.</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>Hvordan tar jeg ut en halv dag avspasering?</summary>
+          <div class="faq-a">
+            <p>Velg <strong>Ta ut avspasering</strong>, velg dagen, og skriv timene i <strong>Timer</strong>-feltet, f.eks. <strong>3,75</strong> (halv dag) eller <strong>2</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Kan jeg ta ut mer avspasering enn jeg har?</summary>
+          <div class="faq-a">
+            <p>Boksen "Når du trykker Lagre" sier fra hvis du ikke har nok timer. Du kan fortsatt sende søknaden, men da bestemmer styrer.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg glemte å registrere et personalmøte for en stund siden</summary>
+          <div class="faq-a">
+            <p>Ikke noe problem. Velg <strong>Personalmøte</strong> og velg riktig dato for møtet. Overtiden kommer med på lønna for den måneden møtet var.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Møtet varte lenger eller kortere enn 2,5 t</summary>
+          <div class="faq-a">
+            <p>Endre timene i skjemaet før du lagrer, f.eks. <strong>3</strong> eller <strong>2:15</strong>. Allerede lagret? Trykk <strong>Endre</strong> under Mine føringer.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg skal til lege eller tannlege i arbeidstiden</summary>
+          <div class="faq-a">
+            <p>Skriv det i <a href="kjokkenboka.html">Kjøkkenboka</a> så kollegaene vet det. Trenger du fri, kan du ta ut avspasering for timene, eller søke velferdspermisjon under <strong>Annet</strong>. Hva som gjelder, står i <a href="personalhandbok.html">Personalhåndboka</a>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg går tidlig eller kommer sent. Må jeg registrere noe?</summary>
+          <div class="faq-a">
+            <p>Skriv det i <a href="kjokkenboka.html">Kjøkkenboka</a>. Skal timene tas fra avspaseringen din, registrer også <strong>Ta ut avspasering</strong> med antall timer.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg ble syk i ferien</summary>
+          <div class="faq-a">
+            <p>Snakk med styrer. Med sykemelding fra lege kan du ha rett til å ta igjen feriedagene senere.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Kan jeg søke ferie for neste år?</summary>
+          <div class="faq-a">
+            <p>Ja. Velg datoene for neste år, så teller de på neste års feriedager.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Må jeg registrere plandager?</summary>
+          <div class="faq-a">
+            <p>Nei. Plandager legges inn av styrer og vises i vaktplanen og under <a href="datoer.html">Datoer</a>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hva er "Dager siden sist syk"?</summary>
+          <div class="faq-a">
+            <p>En liten oppmuntring øverst i Min oversikt: hvor mange dager det er siden du sist hadde egenmelding eller sykemelding. Bare du ser den. Sykt barn teller ikke.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hva er "Mine kommende fridager"?</summary>
+          <div class="faq-a">
+            <p>En liste over ferie, avspasering og annen fri du har søkt om eller fått godkjent fram i tid.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg har to registreringer for samme dag</summary>
+          <div class="faq-a">
+            <p>Slett den ene under <strong>Mine føringer</strong>. Er begge godkjent, spør styrer.</p>
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= VAKTPLAN ================= -->
+      <section class="card help-section" id="tema-vaktplan">
+        <p class="eyebrow">Tema</p>
+        <h2>Vaktplan</h2>
+
+        <details class="faq">
+          <summary>Hvor ser jeg vaktene mine?</summary>
+          <div class="faq-a">
+            <p>På <a href="vakter.html">Vakter</a>. Bruk pilene for å bla mellom uker, eller trykk <strong>Månedsvisning</strong> for å se hele måneden. På <a href="dashboard.html">Hjem</a> ser du hvem som jobber i dag.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hva betyr kodene i vaktplanen?</summary>
+          <div class="faq-a">
+            <ul class="help-codes">
+              <li><strong>TV</strong> Tidligvakt</li>
+              <li><strong>TM</strong> Tidlig-mellom</li>
+              <li><strong>MV</strong> Mellomvakt</li>
+              <li><strong>SV</strong> Senvakt</li>
+              <li><strong>F</strong> Ferie</li>
+              <li><strong>AVS</strong> Avspasering</li>
+              <li><strong>Tjenestefri</strong> Tjenestefri</li>
+              <li><strong>PERM</strong> Permisjon</li>
+              <li><strong>PLANDAG</strong> Plandag (barnehagen stengt)</li>
+              <li><strong>SYK</strong> Syk</li>
+              <li><strong>SB</strong> Sykt barn</li>
+              <li><strong>MØTE</strong> Møte</li>
+              <li><strong>ANNET</strong> Egen tekst, f.eks. "11–14"</li>
+            </ul>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvem kan endre vaktplanen?</summary>
+          <div class="faq-a">
+            <p>Styrer og avdelingsledere. Ser du en feil? Si ifra til en av dem.</p>
+            <p>Ferie, avspasering, syk og sykt barn kommer inn i vaktplanen automatisk når du registrerer det på <a href="ferieogavspasering.html">Ferie og fravær</a> (søknader når de er godkjent).</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvordan bytter jeg vakt med en kollega?</summary>
+          <div class="faq-a">
+            <ol>
+              <li>Gå til <a href="vakter.html">Vakter</a> → <strong>Be om vaktbytte</strong>.</li>
+              <li>Velg dato og hvem du vil bytte med.</li>
+              <li>Trykk <strong>Send forespørsel</strong>.</li>
+            </ol>
+            <p>Kollegaen får varsel og kan godta eller si nei under <strong>Vaktbytte-forespørsler til deg</strong>. Godtar de, byttes vaktene automatisk i vaktplanen.</p>
+            <p>Du ser dine egne forespørsler under <strong>Dine sendte forespørsler</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg har fått en vaktbytte-forespørsel. Hva gjør jeg?</summary>
+          <div class="faq-a">
+            <p>Gå til <a href="vakter.html">Vakter</a>. Øverst står det at du har en ny forespørsel. Trykk <strong>Se forespørsel</strong>, og godta eller si nei.</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>Kan jeg trekke tilbake en vaktbytte-forespørsel?</summary>
+          <div class="faq-a">
+            <p>Ikke mens den venter på svar. Be kollegaen om å si nei, eller si ifra til styrer.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvorfor står det SYK, F eller AVS hos meg i vaktplanen?</summary>
+          <div class="faq-a">
+            <p>Det kommer automatisk fra <a href="ferieogavspasering.html">Ferie og fravær</a>: SYK når du har registrert sykdom, F/AVS når ferie eller avspasering er godkjent. Er det feil? Rett føringen på Ferie og fravær, så rettes vaktplanen også.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvor ser jeg hvem som jobber i dag?</summary>
+          <div class="faq-a">
+            <p>På <a href="dashboard.html">Hjem</a> under <strong>Hvem jobber</strong>.</p>
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= HVERDAGEN ================= -->
+      <section class="card help-section" id="tema-hverdag">
+        <p class="eyebrow">Tema</p>
+        <h2>Hverdagen</h2>
+
+        <details class="faq">
+          <summary>Hva er Kjøkkenboka, og hvordan skriver jeg i den?</summary>
+          <div class="faq-a">
+            <p>Kjøkkenboka er som boka på kjøkkenet: korte beskjeder til alle, f.eks. tannlege, går tidlig eller kommer sent.</p>
+            <ol>
+              <li>Gå til <a href="kjokkenboka.html">Kjøkkenboka</a>.</li>
+              <li>Velg hvem og dato. Trykk en knapp (f.eks. <strong>Tannlege</strong>) eller skriv selv.</li>
+              <li>Trykk <strong>Lagre beskjed</strong>.</li>
+            </ol>
+            <p>Beskjeden vises også på <a href="dashboard.html">Hjem</a>.</p>
+            <p><strong>Obs:</strong> Er du syk, må du også registrere det på <a href="ferieogavspasering.html">Ferie og fravær</a>. Kjøkkenboka teller ikke som sykemelding.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hva finner jeg på Hjem?</summary>
+          <div class="faq-a">
+            <ul>
+              <li>Ukens beskjeder fra Kjøkkenboka</li>
+              <li>Hvem som jobber i dag</li>
+              <li>Viktige datoer som kommer</li>
+              <li>Værmelding</li>
+              <li>Bilder og hyggelige beskjeder fra kollegaer</li>
+              <li><strong>Min konto</strong> (bilde, passord, varsler)</li>
+              <li><strong>Send beskjed</strong> - en privat beskjed til én kollega</li>
+            </ul>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvordan sender jeg en privat beskjed til en kollega?</summary>
+          <div class="faq-a">
+            <p>Gå til <a href="dashboard.html">Hjem</a> → <strong>Send beskjed</strong>. Velg kollega, skriv beskjeden og send. De ser den på Hjem og får et varsel.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvordan deler jeg et bilde eller sender en hyggelig beskjed?</summary>
+          <div class="faq-a">
+            <p>På <a href="dashboard.html">Hjem</a>: bruk <strong>Del et bilde</strong> eller <strong>Hyggelig beskjed</strong>. Alle kollegaene ser det.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Vi trenger noe (dopapir, kontorrekvisita ...). Hvem sier jeg det til?</summary>
+          <div class="faq-a">
+            <ol>
+              <li>Gå til <a href="bestillinger.html">Bestillinger</a>.</li>
+              <li>Skriv hva som trengs, og velg hvor viktig det er (Hadde vært fint / Trengs snart / Haster).</li>
+              <li>Trykk <strong>Legg til</strong>.</li>
+            </ol>
+            <p>Sjekk lista først, så det ikke meldes to ganger. Styrer markerer når det er bestilt.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvor ser jeg viktige datoer (plandager, personalmøter, turer)?</summary>
+          <div class="faq-a">
+            <p>På <a href="datoer.html">Datoer</a>, måned for måned. Fargene viser hva slags dato det er. De neste datoene vises også på <a href="dashboard.html">Hjem</a> og øverst på <a href="vakter.html">Vakter</a>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvor er styrer akkurat nå?</summary>
+          <div class="faq-a">
+            <p>Se <a href="kalender.html">Hvor er Benjamin?</a> - der står det om han er på kontoret, i møte, på tur eller ute. Viktige ting: skriv i Kjøkkenboka eller send beskjed.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg har en idé, eller noe er irriterende. Hvor sier jeg det?</summary>
+          <div class="faq-a">
+            <p>Skriv det i <strong>Innspill?</strong>-boksen nederst i menyen og trykk <strong>Send</strong>. Styrer får det med en gang.</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>Kan jeg slette en beskjed jeg har skrevet?</summary>
+          <div class="faq-a">
+            <p>Ja. Trykk <strong>Slett</strong> på beskjeden, i Kjøkkenboka eller på Hjem. Du kan bare slette dine egne.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hva betyr knappene under en beskjed i Kjøkkenboka?</summary>
+          <div class="faq-a">
+            <p>Det er reaksjoner (👍 ❤️ 😂). Trykk for å vise at du har sett beskjeden.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hva betyr "Allerede bestilt", "Ikke aktuelt" og "Avslått" på Bestillinger?</summary>
+          <div class="faq-a">
+            <ul><li><strong>Allerede bestilt:</strong> styrer har bestilt det.</li><li><strong>Ikke aktuelt / Avslått:</strong> det blir ikke bestilt. Spør styrer hvis du lurer på hvorfor.</li></ul>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Kan jeg legge inn en viktig dato selv?</summary>
+          <div class="faq-a">
+            <p>Nei, det gjør styrer. Send det i <strong>Innspill?</strong> eller skriv i <a href="kjokkenboka.html">Kjøkkenboka</a>.</p>
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= KJØREBOK ================= -->
+      <section class="card help-section" id="tema-kjorebok">
+        <p class="eyebrow">Tema</p>
+        <h2>Kjørebok</h2>
+
+        <details class="faq">
+          <summary>Når skal jeg bruke kjøreboka?</summary>
+          <div class="faq-a">
+            <p>Når du kjører <strong>egen bil</strong> i jobben, f.eks. på tur eller for å handle til barnehagen. Da får du kjøregodtgjørelse.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvordan fører jeg en kjøretur?</summary>
+          <div class="faq-a">
+            <ol>
+              <li>Gå til <a href="kjorebok.html">Kjørebok</a>.</li>
+              <li>Fyll inn dato, hvor du kjørte fra og til, antall km og formålet med turen.</li>
+              <li>Hadde du passasjerer? Skriv antall og fornavnene deres (regnskapsfører krever det).</li>
+              <li>Parkering, bompenger eller andre utlegg? Skriv beløpet.</li>
+              <li>Trykk <strong>Lagre kjøring</strong>.</li>
+            </ol>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvordan får jeg kjøringen utbetalt?</summary>
+          <div class="faq-a">
+            <p>Under <strong>Oversikt</strong> velger du måned og laster ned som <strong>PDF</strong>, <strong>Word</strong> eller <strong>Excel</strong>. Den skal signeres og leveres til lønn.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg ser ikke kjøreboka i menyen</summary>
+          <div class="faq-a">
+            <p>Kjøreboka er ikke med i menyen for vikarer. Er du fast ansatt og ser den ikke under <strong>Personal</strong> i menyen? Si ifra til styrer.</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>Jeg førte feil kjøretur</summary>
+          <div class="faq-a">
+            <p>Trykk <strong>Endre</strong> eller <strong>Slett</strong> på turen i oversikten. Finner du ikke knappen? Si ifra til styrer.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvilken sats får jeg per km?</summary>
+          <div class="faq-a">
+            <p>Satsen står under <strong>Satser</strong> nederst på <a href="kjorebok.html">Kjørebok</a>. Den følger statens satser og oppdateres én gang i året.</p>
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= DOKUMENTER ================= -->
+      <section class="card help-section" id="tema-dokumenter">
+        <p class="eyebrow">Tema</p>
+        <h2>Dokumenter og planer</h2>
+
+        <details class="faq">
+          <summary>Hvor finner jeg reglene for arbeidstid, ferie, sykdom og lønn?</summary>
+          <div class="faq-a">
+            <p>I <a href="personalhandbok.html">Personalhåndboka</a>. Bruk <strong>Innhold</strong> øverst for å hoppe til riktig kapittel.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvor finner jeg felles dokumenter?</summary>
+          <div class="faq-a">
+            <p>I <a href="filarkiv.html">Filarkiv</a> (f.eks. ansvarsfordeling for aktivitetsdager).</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hva er Årshjul og Årsplan?</summary>
+          <div class="faq-a">
+            <ul>
+              <li><a href="aarshjul.html"><strong>Årshjul</strong></a>: hva som skjer når gjennom barnehageåret, og faste rutiner (daglig, ukentlig, månedlig). Trykk på en måned i hjulet.</li>
+              <li><a href="arsplan.html"><strong>Årsplan</strong></a>: barnehagens årsplan. Endringer siden sist godkjenning vises i rødt.</li>
+            </ul>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hva er Turbank?</summary>
+          <div class="faq-a">
+            <p>En samling turer og aktiviteter. Den kommer snart.</p>
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= VIKARER ================= -->
+      <section class="card help-section" id="tema-vikar">
+        <p class="eyebrow">Tema</p>
+        <h2>For vikarer</h2>
+
+        <details class="faq">
+          <summary>Hvordan fører jeg timene mine?</summary>
+          <div class="faq-a">
+            <ol>
+              <li>Gå til <a href="vikarer.html">Vikarer</a>.</li>
+              <li>Velg <strong>dato du jobbet</strong>.</li>
+              <li>Vanlig dag (7 t 30 min)? Den er valgt. Jobbet du kortere eller lengre? Velg <strong>Annen tid</strong> og velg timer og minutter.</li>
+              <li>Velg avdeling og trykk <strong>Lagre vakt</strong>.</li>
+            </ol>
+            <p>Du ser en grønn boks når vakten er lagret.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg jobbet flere dager på rad</summary>
+          <div class="faq-a">
+            <p>Kryss av for <strong>Jobbet du flere dager på rad?</strong> og velg siste dag. Lørdag og søndag blir ikke lagret.</p>
+            <p>Jobbet du bare én dag? Velg bare datoen. Det er nok.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg ble syk og kunne ikke komme på vakten</summary>
+          <div class="faq-a">
+            <p>Si ifra til barnehagen med en gang. Registrer vakten som vanlig, og kryss av for <strong>Syk</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvor ser jeg timene jeg har ført?</summary>
+          <div class="faq-a">
+            <p>Under <strong>Oppsummering</strong> (velg måned) og <strong>Vikarlogg</strong> på <a href="vikarer.html">Vikarer</a>. Du ser bare dine egne timer.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg førte feil timer</summary>
+          <div class="faq-a">
+            <p>Si ifra til styrer, så retter styrer det.</p>
+          </div>
+        </details>
+        <details class="faq">
+          <summary>Kan andre vikarer se timene mine?</summary>
+          <div class="faq-a">
+            <p>Nei. Du ser bare dine egne timer. Styrer ser alle.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg finner ikke navnet mitt i lista</summary>
+          <div class="faq-a">
+            <p>Navnet ditt er valgt automatisk når du er logget inn. Står det feil navn? Si ifra til styrer.</p>
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= AVDELINGSLEDERE ================= -->
+      <section class="card help-section" id="tema-leder">
+        <p class="eyebrow">Tema</p>
+        <h2>For avdelingsledere</h2>
+
+        <details class="faq">
+          <summary>Hvordan godkjenner jeg avspasering for avdelingen min?</summary>
+          <div class="faq-a">
+            <p>Du får varsel når noen søker. Gå til <a href="ferieogavspasering.html">Ferie og fravær</a> → <strong>Til godkjenning</strong>, og trykk <strong>Godkjenn</strong>, <strong>Avslå</strong> eller <strong>Avventer</strong> (med en kort kommentar). Godkjent avspasering kommer automatisk inn i vaktplanen.</p>
+            <p>Ferie, tjenestefri og permisjon godkjenner styrer.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Hvor ser jeg ferie og avspasering for avdelingen?</summary>
+          <div class="faq-a">
+            <p>På <a href="ferieogavspasering.html">Ferie og fravær</a> → <strong>Avdelingen din</strong>. Der ser du ferie igjen, avspasering og planlagte fridager per person.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Noen er syke. Setter jeg SYK i vaktplanen?</summary>
+          <div class="faq-a">
+            <p>Ja. Når du setter <strong>SYK</strong> eller <strong>SB</strong> i vaktplanen, blir sykdommen registrert automatisk på personen. Hvis personen har registrert det selv allerede, blir det ikke dobbelt.</p>
+            <p>Setter du SYK på flere dager på rad, blir det én samlet egenmelding. Fjerner du SYK, fjernes også den dagen fra egenmeldingen.</p>
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= NOE VIRKER IKKE ================= -->
+      <section class="card help-section" id="tema-problem">
+        <p class="eyebrow">Tema</p>
+        <h2>Noe virker ikke</h2>
+
+        <details class="faq">
+          <summary>Siden ser rar ut, eller jeg ser ikke det nyeste</summary>
+          <div class="faq-a">
+            <ul>
+              <li><strong>PC:</strong> trykk <strong>Ctrl + Shift + R</strong> (Mac: Cmd + Shift + R).</li>
+              <li><strong>Mobil (app):</strong> lukk appen helt og åpne den igjen.</li>
+              <li><strong>Mobil (nettleser):</strong> dra siden ned for å laste på nytt.</li>
+            </ul>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg blir sendt tilbake til innlogging</summary>
+          <div class="faq-a">
+            <p>Du er logget ut. Logg inn igjen. Skjer det hele tiden? Sjekk at du ikke bruker privat-/inkognitovindu.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jeg får ikke varsler</summary>
+          <div class="faq-a">
+            <ul>
+              <li>Sjekk at du har trykket <strong>Skru på varsler</strong> under <strong>Min konto</strong> på <a href="dashboard.html">Hjem</a>, på <strong>denne</strong> mobilen.</li>
+              <li><strong>iPhone:</strong> Personalrommet må være lagt til på Hjem-skjermen og åpnet derfra.</li>
+              <li>Sjekk at varsler er tillatt i innstillingene på mobilen.</li>
+            </ul>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Tallene mine ser feil ut</summary>
+          <div class="faq-a">
+            <p>Se gjennom <strong>Mine føringer</strong> på <a href="ferieogavspasering.html">Ferie og fravær</a> - kanskje noe er ført to ganger eller mangler. Finner du ikke feilen? Si ifra til styrer.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Fant du ikke svaret her?</summary>
+          <div class="faq-a">
+            <p>Skriv spørsmålet i <strong>Innspill?</strong>-boksen nederst i menyen, eller spør styrer. Da kan vi legge svaret inn her også.</p>
+          </div>
+        </details>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+  <script src="pwa.js"></script>
+</body>
+</html>
