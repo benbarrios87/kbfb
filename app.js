@@ -6415,7 +6415,7 @@ function employeeCardHtml(employee) {
               <button type="button" class="secondary-btn reset-password-btn" data-id="${employee.id}">Nullstill passord</button>
             </div>
             <p class="muted emp-small" title="Kan ikke endres her - en feilklikk kan koble noen fra sin egen innlogging.">Bruker-ID: ${escapeHtml(employee.user_id)}</p>
-          ` : `<p class="muted">Ingen innlogging koblet. Bruk «Ny ansatt eller vikar - med innlogging» over for å lage en.</p>`}
+          ` : `<p class="muted">Ingen innlogging koblet. Bruk «Legg til ny ansatt eller vikar» under lista for å lage en.</p>`}
         </section>
 
         <div class="emp-danger">

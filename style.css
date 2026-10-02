@@ -4391,3 +4391,20 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   font-size: 0.8rem;
   color: var(--muted);
 }
+
+/* Gruppeoverskrifter på Admin (Fravær og lønn / Ansatte og innlogging / Annet) */
+.admin-group-title {
+  margin: 28px 0 4px;
+  padding: 0 4px 8px;
+  border-bottom: 3px solid var(--green);
+}
+
+.admin-group-title h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: var(--green-dark);
+}
+
+.admin-group-title p {
+  margin: 4px 0 0;
+}

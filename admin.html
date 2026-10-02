@@ -93,6 +93,11 @@
         <div class="hero-badge">⚙️ Ansattstyring</div>
       </section>
 
+      <div class="admin-group-title">
+        <h2>Fravær og lønn</h2>
+        <p class="muted">Godkjenning, ferie, avspasering og overtid for alle ansatte.</p>
+      </div>
+
       <details class="card dates-highlight" id="pendingApprovalCard" data-context="admin" style="display: none;">
         <summary class="section-heading">
           <div>
@@ -111,8 +116,8 @@
         <summary class="section-heading">
           <div>
             <span class="details-toggle-icon">▸</span>
-            <p class="eyebrow">Ferie og fravær</p>
-            <h2 style="display: inline;">Ansattoversikt</h2>
+            <p class="eyebrow">Ferie, avspasering og sykdom</p>
+            <h2 style="display: inline;">Fravær per ansatt</h2>
           </div>
         </summary>
         <p class="muted">Velg en ansatt for å se tallene og føringene deres, rette feil eller registrere noe for dem. Søknader du registrerer for andre blir godkjent med en gang.</p>
@@ -141,7 +146,7 @@
           <div>
             <span class="details-toggle-icon">▸</span>
             <p class="eyebrow">Lønn</p>
-            <h2 style="display: inline;">Overtid til lønn (50 % tillegg)</h2>
+            <h2 style="display: inline;">Overtid til lønn</h2>
           </div>
         </summary>
         <p class="muted">Timene er også gitt som avspasering. Legg dem inn i lønnssystemet med 50 % overtid.</p>
@@ -199,16 +204,37 @@
         </div>
       </details>
 
+      <div class="admin-group-title">
+        <h2>Ansatte og innlogging</h2>
+        <p class="muted">Hvem som jobber her, hva de har tilgang til, og nye ansatte.</p>
+      </div>
+
       <details class="card">
-        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">💬 Forbedringsbehov</h2></summary>
-        <p class="muted">Innspill fra ansatte, sendt inn fra Hjem-siden.</p>
-        <div id="feedbackAdminList" class="summary-list">
-          <p class="muted">Sjekker...</p>
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
+            <p class="eyebrow">Roller, tilganger, bilder og innlogging</p>
+            <h2 style="display: inline;">Personalliste</h2>
+          </div>
+        </summary>
+
+        <div class="emp-toolbar">
+          <input id="adminEmployeeSearch" type="search" placeholder="Søk etter navn" aria-label="Søk etter navn" />
+          <select id="adminEmployeeFilter" aria-label="Vis">
+            <option value="active">Aktive</option>
+            <option value="inactive">Ikke aktive</option>
+            <option value="all">Alle</option>
+          </select>
+          <span id="adminEmployeeCount" class="muted"></span>
         </div>
+
+        <p class="muted emp-help">Trykk på en person for å se og endre. Endringer lagres med en gang.</p>
+
+        <div id="adminEmployeeList" class="emp-list"></div>
       </details>
 
       <details class="card">
-        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Ny ansatt eller vikar - med innlogging med det samme</h2></summary>
+        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Legg til ny ansatt eller vikar</h2></summary>
         <p class="muted">
           Dette skjemaet oppretter en ekte innloggingskonto og legger personen til i lista under - i ett steg.
           Fungerer det ikke, bruk skjemaet lenger ned på siden i stedet.
@@ -260,7 +286,7 @@
       </details>
 
       <details class="card">
-        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Legg til uten automatisk innlogging (sjelden nødvendig)</h2></summary>
+        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Legg til uten innlogging (sjelden nødvendig)</h2></summary>
         <p class="muted">
           Bruk bare denne hvis skjemaet øverst på siden ikke fungerer. Legger personen til i lista,
           men uten egen innlogging - noen må da koble den til manuelt etterpå (spør Claude eller
@@ -295,22 +321,17 @@
         </form>
       </details>
 
+      <div class="admin-group-title">
+        <h2>Annet</h2>
+        <p class="muted">Tilbakemeldinger og bilder på forsiden.</p>
+      </div>
+
       <details class="card">
-        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Alle ansatte</h2></summary>
-
-        <div class="emp-toolbar">
-          <input id="adminEmployeeSearch" type="search" placeholder="Søk etter navn" aria-label="Søk etter navn" />
-          <select id="adminEmployeeFilter" aria-label="Vis">
-            <option value="active">Aktive</option>
-            <option value="inactive">Ikke aktive</option>
-            <option value="all">Alle</option>
-          </select>
-          <span id="adminEmployeeCount" class="muted"></span>
+        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">💬 Forbedringsbehov</h2></summary>
+        <p class="muted">Innspill fra ansatte, sendt inn fra Hjem-siden.</p>
+        <div id="feedbackAdminList" class="summary-list">
+          <p class="muted">Sjekker...</p>
         </div>
-
-        <p class="muted emp-help">Trykk på en person for å se og endre. Endringer lagres med en gang.</p>
-
-        <div id="adminEmployeeList" class="emp-list"></div>
       </details>
 
       <details class="card">
