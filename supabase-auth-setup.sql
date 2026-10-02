@@ -1773,3 +1773,19 @@ DROP POLICY IF EXISTS "hero_photos_public_read" ON storage.objects;
 CREATE POLICY "hero_photos_public_read" ON storage.objects
   FOR SELECT TO public
   USING (bucket_id = 'hero-photos');
+
+-- =========================================================
+-- STEP 55: staff can add their own "Del et bilde" photo to the hero
+--   rotation (checkbox on the dashboard share form). The row just points
+--   at the already-uploaded shared-photos URL, so no hero-photos storage
+--   access is needed. Only for their own name, never for Gjest logins;
+--   deleting stays admin-only (STEP 54's admin_write policy).
+-- =========================================================
+
+DROP POLICY IF EXISTS "kbfb_hero_photos_insert_own" ON public.kbfb_hero_photos;
+CREATE POLICY "kbfb_hero_photos_insert_own" ON public.kbfb_hero_photos
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    uploaded_by = public.kbfb_current_employee_name()
+    AND public.kbfb_current_employee_role() IS DISTINCT FROM 'Gjest'
+  );

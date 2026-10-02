@@ -1160,8 +1160,25 @@ if (photoShareForm) {
       return;
     }
 
+    let statusText = "Bilde delt!";
+
+    const alsoForHero = document.getElementById("photoShareForHero")?.checked;
+    if (alsoForHero) {
+      const { error: heroError } = await supabaseClient.from("kbfb_hero_photos").insert([{
+        photo_url: publicUrlData.publicUrl,
+        uploaded_by: currentEmployee.name
+      }]);
+
+      if (heroError) {
+        console.error("Kunne ikke legge bilde i forsidebilde-rotasjonen:", heroError);
+        statusText = "Bilde delt, men det kom ikke med i forsidebilde-rotasjonen.";
+      } else {
+        statusText = "Bilde delt og lagt i forsidebilde-rotasjonen!";
+      }
+    }
+
     photoShareForm.reset();
-    if (photoShareStatus) photoShareStatus.textContent = "Bilde delt!";
+    if (photoShareStatus) photoShareStatus.textContent = statusText;
     await loadSharedPhotos();
   });
 }
@@ -1195,6 +1212,7 @@ function renderHeroPhotoList() {
     ? heroPhotosCache.map(photo => `
         <div class="compact-item">
           <img src="${photo.photo_url}" alt="" style="width: 160px; height: 90px; object-fit: cover; border-radius: 10px; display: block;" />
+          ${photo.uploaded_by ? `<span class="muted">Fra ${escapeHtml(photo.uploaded_by)}</span>` : ""}
           <button class="kitchen-delete" data-hero-photo-id="${photo.id}" style="margin-top: 6px;">Slett</button>
         </div>
       `).join("")
