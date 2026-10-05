@@ -5416,6 +5416,18 @@ function parseHoursInput(raw) {
     return Number(timeMatch[1]) + Number(timeMatch[2]) / 60;
   }
 
+  // "10 min" / "10m" = 10 minutter, "2 t" / "2 timer" = 2 timer. Et rent
+  // tall ("10") er alltid timer, så minutter må skrives med "min" eller 0:10.
+  const minuteMatch = value.match(/^(\d+(?:[.,]\d+)?)\s*(?:min|m|minutt|minutter)$/i);
+  if (minuteMatch) {
+    return Number(minuteMatch[1].replace(",", ".")) / 60;
+  }
+
+  const hourMatch = value.match(/^(\d+(?:[.,]\d+)?)\s*(?:t|h|time|timer)$/i);
+  if (hourMatch) {
+    return Number(hourMatch[1].replace(",", "."));
+  }
+
   const num = Number(value.replace(",", "."));
   return Number.isNaN(num) ? null : num;
 }
@@ -6107,7 +6119,7 @@ function mountLeaveRegister(container, { getEmployeeName }) {
 
       <label data-f="hours">
         <span data-label="hours">Timer</span>
-        <input type="text" name="hours" inputmode="decimal" placeholder="F.eks. 2,5 eller 1:15" />
+        <input type="text" name="hours" placeholder="Timer, f.eks. 2,5 eller 1:15. 10 minutter = 0:10 eller 10 min" />
         <small class="muted" data-hours-help></small>
       </label>
 
