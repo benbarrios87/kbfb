@@ -140,41 +140,34 @@
 
         <h3 class="leave-subheading">Føringer</h3>
         <div id="adminLeaveEntries" class="leave-entries"></div>
-      </details>
 
-      <details class="card">
-        <summary class="section-heading">
-          <div>
-            <span class="details-toggle-icon">▸</span>
-            <p class="eyebrow">Oppfølging</p>
-            <h2 style="display: inline;">Sykefravær over tid</h2>
+        <details class="followup-details">
+          <summary class="leave-subheading">Sykefravær over tid (oppfølging)</summary>
+          <p class="muted">Egenmelding, sykemelding og omsorgsdager for valgt ansatt over et helt år eller en valgfri periode - til bruk når det er mye fravær.</p>
+
+          <div class="emp-toolbar">
+            <label class="compact-filter">
+              Periode
+              <select id="followupPeriod">
+                <option value="12m">Siste 12 måneder</option>
+                <option value="thisYear">I år</option>
+                <option value="lastYear">Forrige år</option>
+                <option value="custom">Velg selv</option>
+              </select>
+            </label>
+            <label class="compact-filter" id="followupFromWrap" style="display: none;">
+              Fra
+              <input type="date" id="followupFrom" />
+            </label>
+            <label class="compact-filter" id="followupToWrap" style="display: none;">
+              Til
+              <input type="date" id="followupTo" />
+            </label>
           </div>
-        </summary>
-        <p class="muted">Se egenmelding, sykemelding og omsorgsdager for én ansatt over et helt år eller en valgfri periode - til bruk i oppfølging.</p>
 
-        <div class="emp-toolbar">
-          <select id="followupEmployee" aria-label="Ansatt"></select>
-          <label class="compact-filter">
-            Periode
-            <select id="followupPeriod">
-              <option value="12m">Siste 12 måneder</option>
-              <option value="thisYear">I år</option>
-              <option value="lastYear">Forrige år</option>
-              <option value="custom">Velg selv</option>
-            </select>
-          </label>
-          <label class="compact-filter" id="followupFromWrap" style="display: none;">
-            Fra
-            <input type="date" id="followupFrom" />
-          </label>
-          <label class="compact-filter" id="followupToWrap" style="display: none;">
-            Til
-            <input type="date" id="followupTo" />
-          </label>
-        </div>
-
-        <div id="followupSummary"></div>
-        <div id="followupEntries" class="leave-entries"></div>
+          <div id="followupSummary"></div>
+          <div id="followupEntries" class="leave-entries"></div>
+        </details>
       </details>
 
       <details class="card">

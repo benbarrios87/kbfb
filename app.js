@@ -5218,7 +5218,6 @@ function renderAbsences() {
   renderDepartmentAbsenceOverview();
   renderMyLeavePage();
   renderAdminLeaveOverview();
-  renderSickFollowup();
   renderUnlinkedOpptjent();
 }
 
@@ -5929,16 +5928,17 @@ function renderAdminLeaveOverview() {
     else entriesEl.innerHTML = "";
   }
   activeLeaveRegister?.refreshHelp();
+  renderSickFollowup();
 }
 
 /* ----- Admin: sykefravær over tid (oppfølging) ----- */
 
-const followupEmployee = document.getElementById("followupEmployee");
+// Bruker samme ansatt-valg som "Fravær per ansatt" (adminLeaveEmployee).
 const followupPeriod = document.getElementById("followupPeriod");
 const followupFrom = document.getElementById("followupFrom");
 const followupTo = document.getElementById("followupTo");
 
-[followupEmployee, followupFrom, followupTo].forEach(el => el?.addEventListener("change", () => renderSickFollowup()));
+[followupFrom, followupTo].forEach(el => el?.addEventListener("change", () => renderSickFollowup()));
 followupPeriod?.addEventListener("change", () => {
   const custom = followupPeriod.value === "custom";
   document.getElementById("followupFromWrap").style.display = custom ? "" : "none";
@@ -5966,17 +5966,13 @@ function followupDateRange() {
 function renderSickFollowup() {
   const summaryEl = document.getElementById("followupSummary");
   const entriesEl = document.getElementById("followupEntries");
-  if (!summaryEl || !followupEmployee) return;
+  if (!summaryEl || !adminLeaveEmployee) return;
 
-  if (!followupEmployee.options.length) {
-    populateEmployeeSelect("followupEmployee", { blankText: "Velg ansatt" });
-  }
-
-  const name = followupEmployee.value;
+  const name = adminLeaveEmployee.value;
   const { from, to } = followupDateRange();
 
   if (!name) {
-    summaryEl.innerHTML = `<p class="muted">Velg en ansatt.</p>`;
+    summaryEl.innerHTML = `<p class="muted">Velg en ansatt øverst i "Fravær per ansatt".</p>`;
     entriesEl.innerHTML = "";
     return;
   }
