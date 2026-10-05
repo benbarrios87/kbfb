@@ -4832,9 +4832,10 @@ function renderSickLeaveSummary() {
       .filter(day => day.slice(0, 7) === month).length;
     if (!daysInMonth) return;
 
-    if (!perPerson[record.name]) perPerson[record.name] = { egenmelding: 0, omsorg: 0 };
+    if (!perPerson[record.name]) perPerson[record.name] = { egenmelding: 0, omsorg: 0, entries: [] };
     if (record.type === "Egenmelding") perPerson[record.name].egenmelding += daysInMonth;
     else perPerson[record.name].omsorg += daysInMonth;
+    perPerson[record.name].entries.push({ record, daysInMonth });
   });
 
   const names = Object.keys(perPerson).sort((a, b) => a.localeCompare(b));
@@ -4847,6 +4848,13 @@ function renderSickLeaveSummary() {
           <div class="overtime-person">
             <strong>${escapeHtml(name)}</strong>
             <span class="muted">Egenmelding: <strong>${p.egenmelding}</strong> d (hittil i år ${yearStats.egenmelding}) · Omsorgsdager: <strong>${p.omsorg}</strong> d (hittil i år ${yearStats.omsorg})</span>
+            <ul class="overtime-lines">${p.entries
+              .sort((a, b) => a.record.start_date.localeCompare(b.record.start_date))
+              .map(({ record, daysInMonth }) => `
+                <li>
+                  <strong>${record.type === "Omsorgsdager" ? "Omsorgsdager" : "Egenmelding"}</strong> · ${formatDateRange(record.start_date, record.end_date || record.start_date)} · ${daysInMonth} ${daysInMonth === 1 ? "dag" : "dager"} i måneden${record.note ? ` · ${escapeHtml(record.note)}` : ""}
+                </li>
+              `).join("")}</ul>
           </div>
         `;
       }).join("")
