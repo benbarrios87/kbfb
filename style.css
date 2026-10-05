@@ -4809,3 +4809,6 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   font: inherit;
   font-size: 0.85rem;
 }
+
+.overtime-details { margin-top: 6px; }
+.overtime-details > summary { cursor: pointer; font-size: 0.85rem; }
