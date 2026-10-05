@@ -147,17 +147,29 @@
           <div>
             <span class="details-toggle-icon">▸</span>
             <p class="eyebrow">Lønn</p>
-            <h2 style="display: inline;">Overtid (50 %)</h2>
+            <h2 style="display: inline;">Lønn</h2>
           </div>
         </summary>
-        <p class="muted">Alle får avspasering time for time, og i tillegg 50 % overtid. Her ser du hvor mange timer hver person skal ha 50 % overtid for, per måned.</p>
+        <p class="muted">Alt til lønn for valgt måned: overtid per ansatt, timelønn per vikar, og egenmeldings-/omsorgsdager.</p>
 
         <label class="compact-filter">
           Måned
           <select id="overtimeMonthFilter"></select>
         </label>
 
+        <h3 style="margin-top: 20px;">Overtid (50 %) per ansatt</h3>
+        <p class="muted">Alle får avspasering time for time, og i tillegg 50 % overtid for timene.</p>
         <div id="overtimeSummary">
+          <p class="muted">Laster...</p>
+        </div>
+
+        <h3 style="margin-top: 26px;">Timelønn per vikar</h3>
+        <div id="vikarPaySummary">
+          <p class="muted">Laster...</p>
+        </div>
+
+        <h3 style="margin-top: 26px;">Egenmelding og omsorgsdager per ansatt</h3>
+        <div id="sickLeaveSummary">
           <p class="muted">Laster...</p>
         </div>
 

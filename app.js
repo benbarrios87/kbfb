@@ -4748,7 +4748,8 @@ function populateOvertimeMonthFilter() {
     ...absencesCache
       .filter(record => isFiftyPercentOvertime(record) && record.start_date)
       .map(record => record.start_date.slice(0, 7)),
-    ...vikarSickDaysCache.filter(r => r.date).map(r => r.date.slice(0, 7))
+    ...vikarSickDaysCache.filter(r => r.date).map(r => r.date.slice(0, 7)),
+    ...subsCache.filter(r => r.date).map(r => r.date.slice(0, 7))
   ])].sort((a, b) => b.localeCompare(a));
 
   overtimeMonthFilter.innerHTML = months.map(month => `
@@ -4770,11 +4771,103 @@ function groupOvertimeByName(records) {
   return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
 }
 
+// Lønn for vikarer: timer jobbet per vikar i valgt måned (syke vikarer
+// med avtalt vakt har timene sine med, jf. "Syk (men får fortsatt betalt)").
+function renderVikarPaySummary() {
+  const container = document.getElementById("vikarPaySummary");
+  if (!container) return;
+
+  const month = overtimeMonthFilter?.value || getCurrentMonthKey();
+  const records = subsCache
+    .filter(r => r.date && r.date.slice(0, 7) === month)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  if (!records.length) {
+    container.innerHTML = `<p class="muted">Ingen vikarvakter registrert i ${formatMonth(month)}.</p>`;
+    return;
+  }
+
+  const grouped = {};
+  records.forEach(r => {
+    if (!grouped[r.name]) grouped[r.name] = { hours: 0, entries: [] };
+    grouped[r.name].hours += Number(r.hours) || 0;
+    grouped[r.name].entries.push(r);
+  });
+
+  const total = records.reduce((sum, r) => sum + (Number(r.hours) || 0), 0);
+
+  container.innerHTML = `
+    <p class="muted"><strong>${formatHoursNo(total)} t</strong> vikartimer totalt i ${formatMonth(month)}</p>
+    ${Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([name, info]) => `
+      <div class="overtime-person">
+        <strong>${escapeHtml(name)} · ${formatHoursNo(info.hours)} t timelønn</strong>
+        <details class="overtime-details">
+          <summary class="muted">Vis vakter (${info.entries.length})</summary>
+          <ul class="overtime-lines">${info.entries.map(entry => `
+            <li>
+              <strong>${formatHoursNo(entry.hours)} t</strong> · ${formatNorwegianDate(entry.date)}${entry.start_time && entry.end_time ? ` · ${entry.start_time}–${entry.end_time}` : ""}${entry.is_sick ? " · 🤒 syk (betalt)" : ""}${entry.note ? ` · ${escapeHtml(entry.note)}` : ""}
+            </li>
+          `).join("")}</ul>
+        </details>
+      </div>
+    `).join("")}
+  `;
+}
+
+// Egenmeldingsdager og omsorgsdager per ansatt i valgt måned (hverdager),
+// med hittil i år i parentes.
+function renderSickLeaveSummary() {
+  const container = document.getElementById("sickLeaveSummary");
+  if (!container) return;
+
+  const month = overtimeMonthFilter?.value || getCurrentMonthKey();
+  const year = Number(month.slice(0, 4));
+  const perPerson = {};
+
+  absencesCache.forEach(record => {
+    if (!record.start_date || record.status === "Avslått") return;
+    if (record.type !== "Egenmelding" && record.type !== "Omsorgsdager") return;
+
+    const daysInMonth = getWeekdaysBetween(record.start_date, record.end_date || record.start_date)
+      .filter(day => day.slice(0, 7) === month).length;
+    if (!daysInMonth) return;
+
+    if (!perPerson[record.name]) perPerson[record.name] = { egenmelding: 0, omsorg: 0 };
+    if (record.type === "Egenmelding") perPerson[record.name].egenmelding += daysInMonth;
+    else perPerson[record.name].omsorg += daysInMonth;
+  });
+
+  const names = Object.keys(perPerson).sort((a, b) => a.localeCompare(b));
+
+  container.innerHTML = names.length
+    ? names.map(name => {
+        const p = perPerson[name];
+        const yearStats = computeLeaveStats(name, year);
+        return `
+          <div class="overtime-person">
+            <strong>${escapeHtml(name)}</strong>
+            <span class="muted">Egenmelding: <strong>${p.egenmelding}</strong> d (hittil i år ${yearStats.egenmelding}) · Omsorgsdager: <strong>${p.omsorg}</strong> d (hittil i år ${yearStats.omsorg})</span>
+          </div>
+        `;
+      }).join("")
+    : `<p class="muted">Ingen egenmeldings- eller omsorgsdager i ${formatMonth(month)}.</p>`;
+}
+
 function renderOvertimeSummary() {
   if (!overtimeSummary) return;
 
   populateOvertimeMonthFilter();
   renderVikarSickDaysSummary();
+  renderSickLeaveSummary();
+
+  if (document.getElementById("vikarPaySummary")) {
+    // subsCache fylles av initializeSubs() på alle sider, men kan
+    // komme etter fravær - hent på nytt hvis den er tom.
+    (subsCache.length ? Promise.resolve() : loadSubsFromSupabase()).then(() => {
+      populateOvertimeMonthFilter();
+      renderVikarPaySummary();
+    });
+  }
 
   const month = overtimeMonthFilter?.value || getCurrentMonthKey();
   const records = absencesCache.filter(record =>
