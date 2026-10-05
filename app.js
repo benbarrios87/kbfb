@@ -4726,6 +4726,14 @@ function countWeekdays(startDate, endDate) {
   return dates.length;
 }
 
+// Alt som teller som 50 % overtid: alle "Overtid"-føringer, pluss
+// "Avspasering opptjent" uten koblet Overtid-føring (f.eks. admin sin
+// egen) - all ekstra tid gir 50 %, uansett hvordan den ble ført.
+function isFiftyPercentOvertime(record) {
+  if (record.type === "Overtid") return true;
+  return record.type === "Avspasering opptjent" && !findLinkedAbsence(record);
+}
+
 // Overtid: alle får avspasering time for time OG 50 % overtid. Admin
 // trenger bare se hvor mange timer hver person skal ha 50 % overtid for,
 // per måned (etter datoen overtiden ble jobbet) - ingen "ført"-sporing.
@@ -4738,7 +4746,7 @@ function populateOvertimeMonthFilter() {
   const months = [...new Set([
     getCurrentMonthKey(),
     ...absencesCache
-      .filter(record => record.type === "Overtid" && record.start_date)
+      .filter(record => isFiftyPercentOvertime(record) && record.start_date)
       .map(record => record.start_date.slice(0, 7)),
     ...vikarSickDaysCache.filter(r => r.date).map(r => r.date.slice(0, 7))
   ])].sort((a, b) => b.localeCompare(a));
@@ -4770,7 +4778,7 @@ function renderOvertimeSummary() {
 
   const month = overtimeMonthFilter?.value || getCurrentMonthKey();
   const records = absencesCache.filter(record =>
-    record.type === "Overtid" && record.start_date && record.start_date.slice(0, 7) === month
+    isFiftyPercentOvertime(record) && record.start_date && record.start_date.slice(0, 7) === month
   );
   const groups = groupOvertimeByName(records);
   const total = records.reduce((sum, r) => sum + (Number(r.hours) || 0), 0);
