@@ -191,6 +191,15 @@ function colorForEmployee(employee) {
   return employeeColorPalette[spread].value;
 }
 
+// Style-attributt som farger et kort med den ansattes egen farge (pastell
+// bakgrunn + tydeligere kant) - brukt i Lønn-oversikten på Admin.
+function personColorStyle(name, fallbackColor = "") {
+  const employee = employeesCache.find(e => e.name === name);
+  const color = (employee && colorForEmployee(employee)) || fallbackColor;
+  if (!color) return "";
+  return `style="background:${color}; border-left-color:${darkenEmployeeColor(color, 0.35) || color};"`;
+}
+
 // A darker shade of an employee's own row color, used on their name and
 // shift cells - so the cell you're looking for reads as "Mari's blue,
 // but darker" instead of a generic neutral gray, without having to
@@ -4799,7 +4808,7 @@ function renderVikarPaySummary() {
   container.innerHTML = `
     <p class="muted"><strong>${formatHoursNo(total)} t</strong> vikartimer totalt i ${formatMonth(month)}</p>
     ${Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([name, info]) => `
-      <div class="overtime-person">
+      <div class="overtime-person" ${personColorStyle(name, getSubPersonColor(name))}>
         <strong>${escapeHtml(name)} · ${formatHoursNo(info.hours)} t timelønn</strong>
         <details class="overtime-details">
           <summary class="muted">Vis vakter (${info.entries.length})</summary>
@@ -4845,7 +4854,7 @@ function renderSickLeaveSummary() {
         const p = perPerson[name];
         const yearStats = computeLeaveStats(name, year);
         return `
-          <div class="overtime-person">
+          <div class="overtime-person" ${personColorStyle(name)}>
             <strong>${escapeHtml(name)}</strong>
             <span class="muted">Egenmelding: <strong>${p.egenmelding}</strong> d (hittil i år ${yearStats.egenmelding}) · Omsorgsdager: <strong>${p.omsorg}</strong> d (hittil i år ${yearStats.omsorg})</span>
             <ul class="overtime-lines">${p.entries
@@ -4888,7 +4897,7 @@ function renderOvertimeSummary() {
     <p class="muted"><strong>${formatHoursNo(total)} t</strong> med 50 % overtid totalt i ${formatMonth(month)}</p>
 
     ${groups.map(([name, info]) => `
-      <div class="overtime-person">
+      <div class="overtime-person" ${personColorStyle(name)}>
         <strong>${escapeHtml(name)} · ${formatHoursNo(info.hours)} t med 50 % overtid</strong>
         <details class="overtime-details">
           <summary class="muted">Vis datoer (${info.entries.length})</summary>
