@@ -3953,7 +3953,17 @@ function renderSubs() {
 
   const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
 
-  visibleSubs.forEach(sub => {
+  // Tabellen følger samme månedsvelger som oppsummeringen - ellers blir
+  // den en lang liste over alle vakter noensinne.
+  populateSubMonthFilter();
+  const selectedMonth = subMonthFilter?.value || getCurrentMonthKey();
+  const monthSubs = visibleSubs.filter(sub => sub.date && sub.date.slice(0, 7) === selectedMonth);
+
+  if (!monthSubs.length) {
+    subTableBody.innerHTML = `<tr><td colspan="7" class="muted">Ingen vakter i ${formatMonth(selectedMonth)}.</td></tr>`;
+  }
+
+  monthSubs.forEach(sub => {
     const row = document.createElement("tr");
 
     if (isAdmin && sub.id === editingSubId) {
@@ -4135,17 +4145,17 @@ function renderSubSummary() {
     .reduce((sum, item) => sum + item.hours, 0);
 
   subSummary.innerHTML = `
-    <div class="compact-item">
-      <strong>${formatMonth(selectedMonth)}</strong>
-      <span>Totalt ${formatHoursMinutes(totalHours)}</span>
-    </div>
+    <p class="muted"><strong>${formatMonth(selectedMonth)}</strong> · totalt ${formatHoursMinutes(totalHours)}</p>
 
-    ${Object.values(grouped).map(item => `
-      <div class="compact-item">
-        <strong>${renderVikarBadge(item.name)}</strong>
-        <span>${item.days.size} dager · ${formatHoursMinutes(item.hours)}</span>
-      </div>
-    `).join("")}
+    <div class="vikar-card-grid">
+      ${Object.values(grouped).sort((a, b) => a.name.localeCompare(b.name)).map(item => `
+        <div class="vikar-card" style="background:${getSubPersonColor(item.name)};">
+          <strong class="vikar-card-name">${escapeHtml(item.name)}</strong>
+          <span class="vikar-card-hours">${formatHoursMinutes(item.hours)}</span>
+          <span class="vikar-card-days">${item.days.size} ${item.days.size === 1 ? "dag" : "dager"}</span>
+        </div>
+      `).join("")}
+    </div>
   `;
 }
 
@@ -4381,7 +4391,7 @@ async function initializeSubs() {
   applySubFormVisibility();
 }
 if (subMonthFilter) {
-  subMonthFilter.addEventListener("change", renderSubSummary);
+  subMonthFilter.addEventListener("change", renderSubs);
 }
 
 initializeSubs();
@@ -5227,7 +5237,7 @@ function renderAbsences() {
   renderDepartmentAbsenceOverview();
   renderMyLeavePage();
   renderAdminLeaveOverview();
-  renderUnlinkedOpptjent();
+  renderAdminSnapshot();
 }
 
 // Godkjenn / Avslå / Avventer-knappene i "Til godkjenning". Bundet her
@@ -6033,93 +6043,37 @@ function renderSickFollowup() {
     : `<p class="muted">Ingen egenmelding, sykemelding eller omsorgsdager i perioden.</p>`;
 }
 
-/* ----- Admin: "Avspasering opptjent" uten overtid ----- */
+// Oversiktsrad øverst på Admin: det som trenger oppmerksomhet nå.
+function renderAdminSnapshot() {
+  const container = document.getElementById("adminSnapshot");
+  if (!container || typeof currentEmployee === "undefined" || !currentEmployee?.is_admin) return;
 
-function getDismissedOpptjentIds() {
-  try {
-    return new Set(JSON.parse(localStorage.getItem("kbfb-dismissed-opptjent") || "[]"));
-  } catch {
-    return new Set();
-  }
-}
+  const todayKey = toDateKey(new Date());
+  const monthKey = getCurrentMonthKey();
 
-function dismissOpptjent(id) {
-  const ids = getDismissedOpptjentIds();
-  ids.add(String(id));
-  try {
-    localStorage.setItem("kbfb-dismissed-opptjent", JSON.stringify([...ids]));
-  } catch {
-    // Ikke kritisk - raden dukker bare opp igjen neste gang.
-  }
-}
+  const pending = absencesCache.filter(record =>
+    (record.status === "Ønsket" || record.status === "Avventer") &&
+    record.name !== currentEmployee.name &&
+    canReviewAbsence(record)
+  ).length;
 
-function renderUnlinkedOpptjent() {
-  const list = document.getElementById("unlinkedOpptjentList");
-  if (!list) return;
+  const overtimeHours = absencesCache
+    .filter(record => isFiftyPercentOvertime(record) && record.start_date && record.start_date.slice(0, 7) === monthKey)
+    .reduce((sum, record) => sum + (Number(record.hours) || 0), 0);
 
-  const dismissed = getDismissedOpptjentIds();
-  const records = absencesCache
+  const sickToday = [...new Set(absencesCache
     .filter(record =>
-      record.type === "Avspasering opptjent" &&
-      !findLinkedAbsence(record) &&
-      !dismissed.has(String(record.id))
+      ["Egenmelding", "Sykemelding", "Omsorgsdager"].includes(record.type) &&
+      record.status !== "Avslått" &&
+      record.start_date <= todayKey && (record.end_date || record.start_date) >= todayKey
     )
-    .sort((a, b) => (b.start_date || "").localeCompare(a.start_date || ""));
+    .map(record => record.name))];
 
-  if (!records.length) {
-    list.innerHTML = `<p class="muted">Ingen. Alt opptjent har overtid koblet til seg.</p>`;
-    return;
-  }
-
-  list.innerHTML = records.map(record => `
-    <div class="leave-entry">
-      <div class="leave-entry-main">
-        <strong>${escapeHtml(record.name)} · ${formatHoursNo(record.hours)} t</strong>
-        <span class="muted">${formatDateRange(record.start_date, record.end_date)}</span>
-        ${record.note ? `<span class="leave-entry-note">${escapeHtml(record.note)}</span>` : ""}
-      </div>
-      <div class="leave-entry-actions">
-        <button type="button" class="primary-btn" data-add-overtime="${record.id}">Legg til 50 % overtid</button>
-        <button type="button" class="secondary-btn" data-dismiss-opptjent="${record.id}">Ikke overtid</button>
-      </div>
-    </div>
-  `).join("");
-
-  list.querySelectorAll("[data-add-overtime]").forEach(button => {
-    button.addEventListener("click", async () => {
-      const record = absencesCache.find(r => String(r.id) === String(button.dataset.addOvertime));
-      if (!record) return;
-
-      button.disabled = true;
-      const overtime = await saveAbsenceToSupabase({
-        name: record.name,
-        type: "Overtid",
-        start_date: record.start_date,
-        end_date: record.end_date || record.start_date,
-        hours: record.hours,
-        status: "Registrert",
-        note: record.note || "Lagt til av admin",
-        linked_id: record.id
-      });
-
-      if (!overtime) {
-        alert("Kunne ikke lagre overtid. Prøv igjen.");
-        button.disabled = false;
-        return;
-      }
-
-      await updateAbsenceRecordInSupabase(record.id, { linked_id: overtime.id });
-      await loadAbsencesFromSupabase();
-      renderAbsences();
-    });
-  });
-
-  list.querySelectorAll("[data-dismiss-opptjent]").forEach(button => {
-    button.addEventListener("click", () => {
-      dismissOpptjent(button.dataset.dismissOpptjent);
-      renderUnlinkedOpptjent();
-    });
-  });
+  container.innerHTML = [
+    leaveStatTile("Til godkjenning", pending, "", pending ? "venter på deg" : "ingenting venter"),
+    leaveStatTile("Overtid denne måneden", formatHoursNo(overtimeHours), " t", "med 50 %"),
+    leaveStatTile("Syke i dag", sickToday.length, "", sickToday.length ? escapeHtml(sickToday.join(", ")) : "ingen")
+  ].join("");
 }
 
 /* ----- Varsel til styrer: registrert etter lønnskjøring ----- */
