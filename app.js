@@ -11077,9 +11077,16 @@ function renderTaskLists() {
       const bDate = b.due_date || "9999-99-99";
       return aDate.localeCompare(bDate);
     });
-  const completed = projectTasks
+  // Fullførte vises bare for de siste 30 dagene, maks 20 - eldre ligger
+  // fortsatt i databasen, de blir bare ikke rotet med her.
+  const completedCutoff = new Date();
+  completedCutoff.setDate(completedCutoff.getDate() - 30);
+  const completedAll = projectTasks
     .filter(t => t.completed)
     .sort((a, b) => (b.completed_at || "").localeCompare(a.completed_at || ""));
+  const completedRecent = completedAll.filter(t => !t.completed_at || new Date(t.completed_at) >= completedCutoff);
+  const completed = completedRecent.slice(0, 20);
+  const completedHidden = completedAll.length - completed.length;
 
   const todayKey = toDateKey(new Date());
 
@@ -11123,10 +11130,27 @@ function renderTaskLists() {
             <input type="checkbox" data-task-toggle-id="${t.id}" checked />
             <strong>${escapeHtml(t.text)}</strong>
           </label>
+          ${t.completed_at ? `<span class="muted">${formatNorwegianDate(String(t.completed_at).slice(0, 10))}</span>` : ""}
+          <button class="secondary-btn" type="button" data-task-reopen-id="${t.id}">Gjenåpne</button>
           <button class="kitchen-delete" type="button" data-task-delete-id="${t.id}">Slett</button>
         </div>
-      `).join("")
-    : `<p class="muted">Ingen fullførte oppgaver i ${escapeHtml(taskSelectedProject)} ennå.</p>`;
+      `).join("") + (completedHidden > 0
+        ? `<p class="muted">Viser de siste fullførte (maks 20, siste 30 dager). ${completedHidden} eldre er skjult.</p>`
+        : "")
+    : `<p class="muted">Ingen fullførte oppgaver de siste 30 dagene i ${escapeHtml(taskSelectedProject)}.</p>`;
+
+  completedEl.querySelectorAll("[data-task-reopen-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      await supabaseClient
+        .from("kbfb_tasks")
+        .update({ completed: false, completed_at: null })
+        .eq("id", button.dataset.taskReopenId);
+
+      await loadTasksFromSupabase();
+      renderTaskLists();
+    });
+  });
 
   activeEl.querySelectorAll("[data-task-toggle-id]").forEach(checkbox => {
     checkbox.addEventListener("change", async () => {
