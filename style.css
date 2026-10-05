@@ -4812,3 +4812,14 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 
 .overtime-details { margin-top: 6px; }
 .overtime-details > summary { cursor: pointer; font-size: 0.85rem; }
+
+.kitchen-reopen {
+  border: 0;
+  background: var(--green-soft);
+  color: var(--green-dark);
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-weight: 900;
+  cursor: pointer;
+  justify-self: start;
+}

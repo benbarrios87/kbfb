@@ -11131,7 +11131,7 @@ function renderTaskLists() {
             <strong>${escapeHtml(t.text)}</strong>
           </label>
           ${t.completed_at ? `<span class="muted">${formatNorwegianDate(String(t.completed_at).slice(0, 10))}</span>` : ""}
-          <button class="secondary-btn" type="button" data-task-reopen-id="${t.id}">Gjenåpne</button>
+          <button class="kitchen-reopen" type="button" data-task-reopen-id="${t.id}">Gjenåpne</button>
           <button class="kitchen-delete" type="button" data-task-delete-id="${t.id}">Slett</button>
         </div>
       `).join("") + (completedHidden > 0
