@@ -5218,6 +5218,7 @@ function renderAbsences() {
   renderDepartmentAbsenceOverview();
   renderMyLeavePage();
   renderAdminLeaveOverview();
+  renderSickFollowup();
   renderUnlinkedOpptjent();
 }
 
@@ -5928,6 +5929,103 @@ function renderAdminLeaveOverview() {
     else entriesEl.innerHTML = "";
   }
   activeLeaveRegister?.refreshHelp();
+}
+
+/* ----- Admin: sykefravær over tid (oppfølging) ----- */
+
+const followupEmployee = document.getElementById("followupEmployee");
+const followupPeriod = document.getElementById("followupPeriod");
+const followupFrom = document.getElementById("followupFrom");
+const followupTo = document.getElementById("followupTo");
+
+[followupEmployee, followupFrom, followupTo].forEach(el => el?.addEventListener("change", () => renderSickFollowup()));
+followupPeriod?.addEventListener("change", () => {
+  const custom = followupPeriod.value === "custom";
+  document.getElementById("followupFromWrap").style.display = custom ? "" : "none";
+  document.getElementById("followupToWrap").style.display = custom ? "" : "none";
+  renderSickFollowup();
+});
+
+function followupDateRange() {
+  const today = new Date();
+  const year = today.getFullYear();
+
+  switch (followupPeriod?.value) {
+    case "thisYear": return { from: `${year}-01-01`, to: `${year}-12-31` };
+    case "lastYear": return { from: `${year - 1}-01-01`, to: `${year - 1}-12-31` };
+    case "custom": return { from: followupFrom?.value || "", to: followupTo?.value || "" };
+    default: {
+      const start = new Date(today);
+      start.setFullYear(start.getFullYear() - 1);
+      start.setDate(start.getDate() + 1);
+      return { from: toDateKey(start), to: toDateKey(today) };
+    }
+  }
+}
+
+function renderSickFollowup() {
+  const summaryEl = document.getElementById("followupSummary");
+  const entriesEl = document.getElementById("followupEntries");
+  if (!summaryEl || !followupEmployee) return;
+
+  if (!followupEmployee.options.length) {
+    populateEmployeeSelect("followupEmployee", { blankText: "Velg ansatt" });
+  }
+
+  const name = followupEmployee.value;
+  const { from, to } = followupDateRange();
+
+  if (!name) {
+    summaryEl.innerHTML = `<p class="muted">Velg en ansatt.</p>`;
+    entriesEl.innerHTML = "";
+    return;
+  }
+  if (!from || !to || to < from) {
+    summaryEl.innerHTML = `<p class="muted">Velg en gyldig periode (fra og til).</p>`;
+    entriesEl.innerHTML = "";
+    return;
+  }
+
+  const types = ["Egenmelding", "Sykemelding", "Omsorgsdager"];
+  const rows = absencesCache
+    .filter(r => r.name === name && types.includes(r.type) && r.status !== "Avslått" && r.start_date)
+    .map(r => {
+      const days = getWeekdaysBetween(r.start_date, r.end_date || r.start_date)
+        .filter(day => day >= from && day <= to).length;
+      return { record: r, days };
+    })
+    .filter(row => row.days > 0)
+    .sort((a, b) => b.record.start_date.localeCompare(a.record.start_date));
+
+  const sum = type => rows.filter(row => row.record.type === type).reduce((s, row) => s + row.days, 0);
+  const times = type => rows.filter(row => row.record.type === type).length;
+  const egenDays = sum("Egenmelding");
+  const sykDays = sum("Sykemelding");
+  const omsorgDays = sum("Omsorgsdager");
+  const workdays = getWeekdaysBetween(from, to).length;
+  const pct = workdays ? Math.round(((egenDays + sykDays) / workdays) * 1000) / 10 : 0;
+
+  summaryEl.innerHTML = `
+    <p class="muted">${formatNorwegianDate(from)} – ${formatNorwegianDate(to)} · ${workdays} hverdager</p>
+    <div class="leave-stats">
+      ${leaveStatTile("Egenmelding", egenDays, " dager", `${times("Egenmelding")} ${times("Egenmelding") === 1 ? "gang" : "ganger"}`, "syk")}
+      ${leaveStatTile("Sykemelding", sykDays, " dager", `${times("Sykemelding")} ${times("Sykemelding") === 1 ? "gang" : "ganger"}`, "syk")}
+      ${leaveStatTile("Omsorgsdager", omsorgDays, " dager", "sykt barn", "sykt_barn")}
+      ${leaveStatTile("Eget sykefravær", `ca. ${String(pct).replace(".", ",")}`, " %", "egenmelding + sykemelding av hverdager", "syk")}
+    </div>
+  `;
+
+  entriesEl.innerHTML = rows.length
+    ? rows.map(({ record, days }) => `
+        <div class="leave-entry">
+          <div class="leave-entry-main">
+            <strong>${record.type === "Omsorgsdager" ? "Omsorgsdager (sykt barn)" : record.type}</strong>
+            <span class="muted">${formatDateRange(record.start_date, record.end_date || record.start_date)} · ${days} ${days === 1 ? "hverdag" : "hverdager"} i perioden</span>
+            ${record.note ? `<span class="leave-entry-note">${escapeHtml(record.note)}</span>` : ""}
+          </div>
+        </div>
+      `).join("")
+    : `<p class="muted">Ingen egenmelding, sykemelding eller omsorgsdager i perioden.</p>`;
 }
 
 /* ----- Admin: "Avspasering opptjent" uten overtid ----- */
