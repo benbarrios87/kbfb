@@ -4872,3 +4872,33 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   font-size: 0.85rem;
   cursor: pointer;
 }
+
+/* Personalliste: grupper med overskrift, avdelingsleder øverst og de
+   andre på avdelingen innrykket under. */
+.emp-group {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.emp-group-title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--green-dark);
+}
+
+.emp-group-members {
+  display: grid;
+  gap: 8px;
+  margin-left: 18px;
+  padding-left: 12px;
+  border-left: 3px solid var(--green-soft);
+}
+
+.emp-group > div:not(.emp-group-members) {
+  display: grid;
+  gap: 8px;
+}

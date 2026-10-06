@@ -7063,6 +7063,59 @@ function refreshEmployeeCardSummary(id) {
   if (employee && head) head.innerHTML = employeeCardSummaryHtml(employee);
 }
 
+// Personallista grupperes: leder alene øverst, så hver avdeling med
+// pedagogisk leder først og de andre under, og vikarer i egen bolk til
+// slutt. Avdeling styrer hvem som havner hvor; de uten avdeling havner
+// i "Andre" så ingen forsvinner.
+const EMPLOYEE_DEPARTMENT_ORDER = ["Regnbuen", "Sommerfuglen"];
+const EMPLOYEE_DEPARTMENT_SHORT = { Regnbuen: "RB", Sommerfuglen: "SF" };
+
+function adminEmployeeGroupsHtml(employees) {
+  const byName = (a, b) => (a.name || "").localeCompare(b.name || "", "no");
+  const isLeader = e => e.role === "Leder";
+  const isVikar = e => e.role === "Vikar";
+  const isDepartmentLead = e => /pedagog/i.test(e.role || "") && e.arshjul_enabled !== false;
+
+  const groups = [];
+  const leaders = employees.filter(isLeader).sort(byName);
+  if (leaders.length) groups.push({ title: "Leder", lead: null, members: leaders, flat: true });
+
+  const rest = employees.filter(e => !isLeader(e) && !isVikar(e));
+  const departments = [...new Set(rest.map(e => e.department).filter(Boolean))].sort((a, b) => {
+    const ia = EMPLOYEE_DEPARTMENT_ORDER.indexOf(a);
+    const ib = EMPLOYEE_DEPARTMENT_ORDER.indexOf(b);
+    if (ia !== -1 || ib !== -1) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    return a.localeCompare(b, "no");
+  });
+
+  departments.forEach(department => {
+    const people = rest.filter(e => e.department === department).sort(byName);
+    const lead = people.find(isDepartmentLead) || null;
+    const short = EMPLOYEE_DEPARTMENT_SHORT[department];
+    groups.push({
+      title: short ? `${short} · ${department}` : department,
+      lead,
+      members: people.filter(e => e !== lead)
+    });
+  });
+
+  const others = rest.filter(e => !e.department).sort(byName);
+  if (others.length) groups.push({ title: "Andre", lead: null, members: others, flat: true });
+
+  const vikarer = employees.filter(isVikar).sort(byName);
+  if (vikarer.length) groups.push({ title: "Vikarer", lead: null, members: vikarer, flat: true });
+
+  return groups.map(group => `
+    <section class="emp-group">
+      <h3 class="emp-group-title">${escapeHtml(group.title)}</h3>
+      ${group.lead ? employeeCardHtml(group.lead) : ""}
+      <div class="${group.lead ? "emp-group-members" : ""}">
+        ${group.members.map(employeeCardHtml).join("")}
+      </div>
+    </section>
+  `).join("");
+}
+
 function renderAdminEmployeeTable() {
   if (!adminEmployeeList) return;
 
@@ -7080,7 +7133,7 @@ function renderAdminEmployeeTable() {
   }
 
   adminEmployeeList.innerHTML = visible.length
-    ? visible.map(employeeCardHtml).join("")
+    ? adminEmployeeGroupsHtml(visible)
     : `<p class="muted">Ingen treff.</p>`;
 
   adminEmployeeList.querySelectorAll(".emp-card").forEach(card => {
