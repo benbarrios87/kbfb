@@ -1800,3 +1800,12 @@ ALTER TABLE public.kbfb_hero_photos ADD COLUMN IF NOT EXISTS pinned boolean NOT 
 
 CREATE UNIQUE INDEX IF NOT EXISTS kbfb_hero_photos_one_pinned
   ON public.kbfb_hero_photos (pinned) WHERE pinned;
+
+-- =========================================================
+-- STEP 57: kbfb_hero_photos.pinned_at
+--   "Vis dette nå" skal ikke feste bildet for alltid, bare løfte det
+--   fremst i rotasjonen en stund. pinned_at forteller når det ble
+--   festet, så dashboardet kan la festingen utløpe av seg selv.
+-- =========================================================
+
+ALTER TABLE public.kbfb_hero_photos ADD COLUMN IF NOT EXISTS pinned_at timestamptz;

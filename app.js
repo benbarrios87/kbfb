@@ -1203,6 +1203,20 @@ loadSharedPhotos();
 
 let heroPhotosCache = [];
 
+// "Vis dette nå" løfter et bilde fremst i rotasjonen i dette antall timer,
+// så fortsetter den vanlige rotasjonen av seg selv.
+const HERO_PIN_HOURS = 24;
+
+function heroPinExpiresAt(photo) {
+  if (!photo.pinned || !photo.pinned_at) return null;
+  return new Date(new Date(photo.pinned_at).getTime() + HERO_PIN_HOURS * 3600 * 1000);
+}
+
+function isHeroPinActive(photo) {
+  const expires = heroPinExpiresAt(photo);
+  return !!expires && expires > new Date();
+}
+
 async function loadHeroPhotosFromSupabase() {
   const { data, error } = await supabaseClient
     .from("kbfb_hero_photos")
@@ -1223,17 +1237,23 @@ function renderHeroPhotoList() {
   if (!container) return;
 
   container.innerHTML = heroPhotosCache.length
-    ? heroPhotosCache.map(photo => `
+    ? heroPhotosCache.map(photo => {
+        const active = isHeroPinActive(photo);
+        const until = active
+          ? heroPinExpiresAt(photo).toLocaleString("nb-NO", { weekday: "short", hour: "2-digit", minute: "2-digit" })
+          : "";
+        return `
         <div class="compact-item">
           <img src="${photo.photo_url}" alt="" style="width: 160px; height: 90px; object-fit: cover; border-radius: 10px; display: block;" />
           ${photo.uploaded_by ? `<span class="muted">Fra ${escapeHtml(photo.uploaded_by)}</span>` : ""}
-          ${photo.pinned ? `<strong>📌 Vises nå (overstyrt)</strong>` : ""}
+          ${active ? `<strong>📌 Vises nå, så fortsetter rotasjonen (til ${until})</strong>` : ""}
           <div style="display: flex; gap: 6px; margin-top: 6px;">
-            <button class="secondary-btn" data-hero-pin-id="${photo.id}" data-hero-pinned="${photo.pinned ? "1" : ""}">${photo.pinned ? "Fjern overstyring" : "Vis dette nå"}</button>
+            <button class="secondary-btn" data-hero-pin-id="${photo.id}" data-hero-pinned="${active ? "1" : ""}">${active ? "Fortsett rotasjonen nå" : "Vis dette nå"}</button>
             <button class="kitchen-delete" data-hero-photo-id="${photo.id}">Slett</button>
           </div>
         </div>
-      `).join("")
+      `;
+      }).join("")
     : `<p class="muted">Ingen bilder lagt til ennå.</p>`;
 
   document.querySelectorAll("[data-hero-pin-id]").forEach(button => {
@@ -1252,7 +1272,7 @@ function renderHeroPhotoList() {
       if (!error && !unpinning) {
         ({ error } = await supabaseClient
           .from("kbfb_hero_photos")
-          .update({ pinned: true })
+          .update({ pinned: true, pinned_at: new Date().toISOString() })
           .eq("id", button.dataset.heroPinId));
       }
 
@@ -1350,8 +1370,9 @@ async function startHeroPhotoRotation() {
   await loadHeroPhotosFromSupabase();
   if (!heroPhotosCache.length) return;
 
-  // Admin kan overstyre rotasjonen og låse ett bestemt bilde.
-  const pinnedPhoto = heroPhotosCache.find(p => p.pinned);
+  // Admin kan løfte ett bilde fremst i rotasjonen ("Vis dette nå").
+  // Festingen utløper etter HERO_PIN_HOURS, så rotasjonen tar over igjen.
+  const pinnedPhoto = heroPhotosCache.find(isHeroPinActive);
   if (pinnedPhoto) {
     hero.style.setProperty("--hero-photo-url", `url("${pinnedPhoto.photo_url}")`);
     return;
