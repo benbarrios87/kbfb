@@ -1951,3 +1951,13 @@ CREATE POLICY "kbfb_absences_insert_own_admin_or_avdelingsleder_sick" ON public.
       )
     )
   );
+
+-- =========================================================
+-- STEP 59: kbfb_absences.no_overtime
+--   "Kun avspasering, ikke overtid" ved registrering av ekstra tid
+--   (f.eks. personalmøte uten å ha jobbet på dagtid). Raden blir en
+--   vanlig "Avspasering opptjent" som teller i avspaseringssaldoen,
+--   men ikke i 50 %-overtid i Lønn-oversikten på Admin.
+-- =========================================================
+
+ALTER TABLE public.kbfb_absences ADD COLUMN IF NOT EXISTS no_overtime boolean NOT NULL DEFAULT false;

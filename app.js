@@ -4784,7 +4784,9 @@ function countWeekdays(startDate, endDate) {
 // egen) - all ekstra tid gir 50 %, uansett hvordan den ble ført.
 function isFiftyPercentOvertime(record) {
   if (record.type === "Overtid") return true;
-  return record.type === "Avspasering opptjent" && !findLinkedAbsence(record);
+  // no_overtime = bevisst registrert som kun avspasering (f.eks.
+  // personalmøte uten å ha jobbet på dagtid), uten 50 % på lønn.
+  return record.type === "Avspasering opptjent" && !record.no_overtime && !findLinkedAbsence(record);
 }
 
 // Overtid: alle får avspasering time for time OG 50 % overtid. Admin
@@ -5569,8 +5571,8 @@ const OTHER_LEAVE_TYPES = ["Tjenestefri", "Velferdspermisjon", "Permisjon med l�
 
 // Hvilke felter hvert valg viser.
 const LEAVE_KIND_FIELDS = {
-  personalmote: ["date", "hours"],
-  ekstra: ["date", "hours", "note"],
+  personalmote: ["date", "hours", "noOvertime"],
+  ekstra: ["date", "hours", "noOvertime", "note"],
   avspasering: ["date", "multi", "hours", "note"],
   ferie: ["date", "multi", "note"],
   syk: ["sickType", "date", "multi", "note"],
@@ -6240,6 +6242,11 @@ function mountLeaveRegister(container, { getEmployeeName }) {
         <small class="muted" data-hours-help></small>
       </label>
 
+      <label class="wide-field checkbox-field" data-f="noOvertime">
+        <input type="checkbox" name="noOvertime" />
+        Kun avspasering, ikke overtid (f.eks. personalmøte uten å ha jobbet på dagtid)
+      </label>
+
       <label class="wide-field" data-f="note">
         <span data-label="note">Notat (valgfritt)</span>
         <input type="text" name="note" />
@@ -6411,7 +6418,11 @@ function mountLeaveRegister(container, { getEmployeeName }) {
       case "opptjent": {
         const avs = stats.avspasering;
         lines.push(arrow("Avspaseringen din", formatHoursNo(avs), formatHoursNo(avs + hours), " t"));
-        if (kind !== "opptjent") lines.push(`50 % overtid på lønn for <strong>${formatHoursNo(hours)} t</strong>`);
+        if (kind !== "opptjent") {
+          lines.push(field("noOvertime")?.checked
+            ? "Ingen overtid på lønn - bare avspasering."
+            : `50 % overtid på lønn for <strong>${formatHoursNo(hours)} t</strong>`);
+        }
         lines.push("Trenger ikke godkjenning - lagres med en gang.");
         break;
       }
@@ -6496,6 +6507,9 @@ function mountLeaveRegister(container, { getEmployeeName }) {
     form.querySelectorAll("[data-f]").forEach(el => {
       el.hidden = !fields.includes(el.dataset.f);
     });
+    // "Kun avspasering" velges bare når en ny føring lages, ikke ved endring.
+    if (editing) form.querySelector('[data-f="noOvertime"]').hidden = true;
+    else field("noOvertime").checked = false;
 
     const name = getEmployeeName();
     const forWhom = currentEmployee?.is_admin && name && name !== currentEmployee.name ? ` for ${name}` : "";
@@ -6599,11 +6613,12 @@ function mountLeaveRegister(container, { getEmployeeName }) {
       return showStatus(errors[0], false);
     }
 
+    const noOvertime = !editing && fields.includes("noOvertime") && !!field("noOvertime")?.checked;
     let type;
     let status;
     switch (kind) {
       case "personalmote":
-      case "ekstra": type = "Overtid"; status = "Registrert"; break;
+      case "ekstra": type = noOvertime ? "Avspasering opptjent" : "Overtid"; status = "Registrert"; break;
       case "avspasering": type = editing?.type === "Avspasering brukt" ? "Avspasering brukt" : "Ønsker å avspasere"; status = "Ønsket"; break;
       case "ferie": type = "Ferie"; status = "Ønsket"; break;
       case "syk": type = form.querySelector('input[name="sickType"]:checked')?.value || "Egenmelding"; status = "Registrert"; break;
@@ -6623,7 +6638,10 @@ function mountLeaveRegister(container, { getEmployeeName }) {
       start_date: start,
       end_date: end,
       hours: kind === "personalmote" || kind === "ekstra" || kind === "opptjent" || kind === "avspasering" ? hours : null,
-      note: kind === "personalmote" ? PERSONALMOTE_NOTE : note
+      note: kind === "personalmote" ? PERSONALMOTE_NOTE : note,
+      // Kun avspasering (ingen 50 % overtid på lønn) - krever kolonnen
+      // no_overtime, se STEP 59.
+      ...(noOvertime ? { no_overtime: true } : {})
     };
 
     const submitButton = form.querySelector('button[type="submit"]');
