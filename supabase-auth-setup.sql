@@ -1809,3 +1809,58 @@ CREATE UNIQUE INDEX IF NOT EXISTS kbfb_hero_photos_one_pinned
 -- =========================================================
 
 ALTER TABLE public.kbfb_hero_photos ADD COLUMN IF NOT EXISTS pinned_at timestamptz;
+
+-- =========================================================
+-- STEP 57: gi hver pedagog en egen kopi av det gamle felles
+--   "Pedagogisk leder"-årshjulet
+--   STEP 51 gjorde årshjulene personlige, så de gamle delte punktene
+--   (owner_name IS NULL) vises ikke for noen lenger - de ligger der
+--   fortsatt, bare usynlige. Dette kopierer dem (med sjekklister) og
+--   rutinene til hver aktive pedagog som har årshjul slått på, og
+--   hopper over de som allerede har egne punkter/rutiner, så det er
+--   trygt å kjøre flere ganger. Fremdrift (avkrysninger) starter på
+--   nytt for hver person.
+-- =========================================================
+
+DO $$
+DECLARE
+  owner_row record;
+  old_item record;
+  new_item_id uuid;
+BEGIN
+  FOR owner_row IN
+    SELECT name FROM public.kbfb_employees
+    WHERE active
+      AND arshjul_enabled IS NOT FALSE
+      AND (role ILIKE '%pedagog%' OR role ILIKE '%pedleder%' OR role ILIKE '%avdelingsleder%')
+  LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM public.kbfb_arshjul_items
+      WHERE variant = 'Pedagogisk leder' AND owner_name = owner_row.name
+    ) THEN
+      FOR old_item IN
+        SELECT * FROM public.kbfb_arshjul_items
+        WHERE variant = 'Pedagogisk leder' AND owner_name IS NULL
+      LOOP
+        INSERT INTO public.kbfb_arshjul_items (variant, month, title, description, notat, completed, owner_name)
+        VALUES ('Pedagogisk leder', old_item.month, old_item.title, old_item.description, old_item.notat, false, owner_row.name)
+        RETURNING id INTO new_item_id;
+
+        INSERT INTO public.kbfb_arshjul_subitems (arshjul_item_id, text, completed)
+        SELECT new_item_id, text, false
+        FROM public.kbfb_arshjul_subitems
+        WHERE arshjul_item_id = old_item.id;
+      END LOOP;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM public.kbfb_arshjul_routines
+      WHERE variant = 'Pedagogisk leder' AND owner_name = owner_row.name
+    ) THEN
+      INSERT INTO public.kbfb_arshjul_routines (variant, frequency, title, notat, completed, owner_name)
+      SELECT 'Pedagogisk leder', frequency, title, notat, false, owner_row.name
+      FROM public.kbfb_arshjul_routines
+      WHERE variant = 'Pedagogisk leder' AND owner_name IS NULL;
+    END IF;
+  END LOOP;
+END $$;
