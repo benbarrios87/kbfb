@@ -14,6 +14,11 @@ function applySeasonTheme() {
 }
 applySeasonTheme();
 
+// Møtepunkt-mappene i Oppgaver er huskelapper for neste møte, ikke oppgaver
+// som skal prioriteres seg imellom - derfor skjules prioritetsvalg/gruppering
+// der. Ligger øverst fordi Årshjul også bruker lista ("Ta opp på møte").
+const TASK_MEETING_PROJECTS = ["Ledermøte", "Styremøte", "Foreldremøte", "Personalmøte", "SU-møte"];
+
 /* ---------- HJELPEFUNKSJONER ---------- */
 
 // Anything an employee typed (notes, item names, reasons, etc.) must go
@@ -9358,6 +9363,12 @@ function renderArshjulMonthDetail() {
             <select class="arshjul-move-select" data-arshjul-move-id="${item.id}">
               ${NORWEGIAN_MONTHS.map((name, idx) => `<option value="${idx + 1}" ${idx + 1 === item.month ? "selected" : ""}>${name}</option>`).join("")}
             </select>
+            ${typeof currentEmployee !== "undefined" && currentEmployee?.is_admin ? `
+              <select class="arshjul-move-select" data-arshjul-copy-id="${item.id}" title="Kopier til oppgavene til et møte" aria-label="Ta opp på møte">
+                <option value="">↗ Ta opp på…</option>
+                ${TASK_MEETING_PROJECTS.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join("")}
+              </select>
+            ` : ""}
             <button class="secondary-btn arshjul-edit-btn" type="button" data-arshjul-edit-id="${item.id}">Rediger</button>
             <button class="kitchen-delete" type="button" data-arshjul-delete-id="${item.id}">Slett</button>
           </div>
@@ -9403,6 +9414,54 @@ function renderArshjulMonthDetail() {
       }
 
       await loadArshjulItemsFromSupabase();
+    });
+  });
+
+  // "Ta opp på ledermøte" o.l.: kopierer punktet til Oppgaver under valgt
+  // møtemappe. Originalen blir stående i årshjulet.
+  listEl.querySelectorAll("[data-arshjul-copy-id]").forEach(select => {
+    select.addEventListener("change", async () => {
+      const project = select.value;
+      const first = select.options[0];
+      if (!project) return;
+      select.value = "";
+
+      const item = arshjulItemsCache.find(candidate => String(candidate.id) === String(select.dataset.arshjulCopyId));
+      if (!item) return;
+
+      const { data: existing, error: lookupError } = await supabaseClient
+        .from("kbfb_tasks")
+        .select("id")
+        .eq("project", project)
+        .eq("text", item.title)
+        .eq("completed", false)
+        .limit(1);
+
+      let result = "✓ Kopiert";
+      if (lookupError) {
+        console.error("Kunne ikke sjekke oppgaver:", lookupError);
+        result = "! Feilet";
+      } else if (existing?.length) {
+        result = "✓ Finnes fra før";
+      } else {
+        const { error } = await supabaseClient.from("kbfb_tasks").insert([{
+          project,
+          text: item.title,
+          note: item.notat || item.description || null,
+          due_date: null,
+          priority: 4
+        }]);
+
+        if (error) {
+          console.error("Kunne ikke kopiere til oppgaver:", error);
+          result = "! Feilet";
+        }
+      }
+
+      first.textContent = result;
+      setTimeout(() => {
+        if (first.isConnected) first.textContent = "↗ Ta opp på…";
+      }, 2000);
     });
   });
 
@@ -11110,9 +11169,6 @@ initializeLederutfordring();
 
 const TASK_PROJECTS = ["Inbox", "Ledermøte", "Styremøte", "Foreldremøte", "Personalmøte", "SU-møte"];
 
-// Møtepunkt-mappene er huskelapper for neste møte, ikke oppgaver som skal
-// prioriteres seg imellom - derfor skjules prioritetsvalg/gruppering der.
-const TASK_MEETING_PROJECTS = ["Ledermøte", "Styremøte", "Foreldremøte", "Personalmøte", "SU-møte"];
 
 // Matches Todoist's own P1-P4 colors, since that's the convention already
 // familiar from the tool this page replaces - P1 red, P2 orange, P3 blue,
