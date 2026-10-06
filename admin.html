@@ -292,7 +292,11 @@
 
           <label>
             Avdeling
-            <input id="loginEmployeeDepartment" type="text" placeholder="F.eks. Sommerfuglen (valgfritt)" />
+            <select id="loginEmployeeDepartment">
+              <option value="">Ingen avdeling</option>
+              <option value="Sommerfuglen">Sommerfuglen</option>
+              <option value="Regnbuen">Regnbuen</option>
+            </select>
           </label>
 
           <label>
@@ -345,7 +349,11 @@
 
           <label>
             Avdeling
-            <input id="newEmployeeDepartment" type="text" placeholder="F.eks. Sommerfuglen (valgfritt)" />
+            <select id="newEmployeeDepartment">
+              <option value="">Ingen avdeling</option>
+              <option value="Sommerfuglen">Sommerfuglen</option>
+              <option value="Regnbuen">Regnbuen</option>
+            </select>
           </label>
 
           <button class="secondary-btn form-button" type="submit">Legg til uten innlogging</button>

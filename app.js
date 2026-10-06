@@ -6776,6 +6776,22 @@ function roleSelectOptionsHtml(currentValue) {
   }).join("");
 }
 
+// Det er bare to avdelinger - velges fra liste i stedet for å skrives.
+// En avdeling som allerede står der men ikke er i lista beholdes som valg,
+// så ingenting overskrives uten at du velger det selv.
+const DEPARTMENT_OPTIONS = ["Sommerfuglen", "Regnbuen"];
+
+function departmentSelectOptionsHtml(currentValue) {
+  const value = currentValue || "";
+  const known = DEPARTMENT_OPTIONS.includes(value);
+  const options = value && !known ? ["", ...DEPARTMENT_OPTIONS, value] : ["", ...DEPARTMENT_OPTIONS];
+
+  return options.map(department => {
+    const label = department === "" ? "Ingen avdeling" : department;
+    return `<option value="${escapeHtml(department)}" ${department === value ? "selected" : ""}>${escapeHtml(label)}</option>`;
+  }).join("");
+}
+
 // Turns a raw Postgres/Supabase error into something an admin who isn't
 // technical can actually act on, instead of a bare "kunne ikke lagre".
 function describeSupabaseError(error) {
@@ -6983,7 +6999,7 @@ function employeeCardHtml(employee) {
             </label>
             <label class="emp-field">
               <span class="emp-label">Avdeling</span>
-              <input type="text" class="admin-field" data-id="${employee.id}" data-field="department" value="${escapeHtml(employee.department)}" placeholder="F.eks. Sommerfuglen" />
+              <select class="admin-field" data-id="${employee.id}" data-field="department">${departmentSelectOptionsHtml(employee.department)}</select>
             </label>
             <label class="emp-field">
               <span class="emp-label">Bursdag <span class="muted">(året spiller ingen rolle)</span></span>
@@ -7183,7 +7199,14 @@ function renderAdminEmployeeTable() {
 
       const ok = await updateEmployeeField(id, { [key]: value === "" ? null : value });
       await loadAllEmployeesForAdmin();
-      refreshEmployeeCardSummary(id);
+
+      // Avdeling og rolle bestemmer hvilken bolk personen står i - tegn
+      // lista på nytt så vedkommende flytter seg med en gang.
+      if (ok && (key === "department" || key === "role")) {
+        renderAdminEmployeeTable();
+      } else {
+        refreshEmployeeCardSummary(id);
+      }
       flashEmployeeSaved(id, ok);
     });
   });
