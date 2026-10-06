@@ -1864,3 +1864,90 @@ BEGIN
     END IF;
   END LOOP;
 END $$;
+
+-- =========================================================
+-- STEP 58: pedagoger (Pedagogisk leder / Pedleder) har samme innsyn som
+--   Avdelingsleder i avdelingens fravær
+--   Policyene i STEP 16/30/37 sjekket rollen eksakt mot 'Avdelingsleder',
+--   så en pedagog med rollen "Pedagogisk leder" så ingen føringer for
+--   de andre på avdelingen. Alle tre nivåene regnes nå som samme nivå
+--   (som i årshjulet). Helse-føringene (egenmelding/sykemelding/
+--   omsorgsdager) er fortsatt skjult for andre enn admin og personen selv.
+-- =========================================================
+
+CREATE OR REPLACE FUNCTION public.kbfb_is_department_lead()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    public.kbfb_current_employee_role() ILIKE '%avdelingsleder%'
+    OR public.kbfb_current_employee_role() ILIKE '%pedagog%'
+    OR public.kbfb_current_employee_role() ILIKE '%pedleder%';
+$$;
+
+DROP POLICY IF EXISTS "kbfb_absences_select_own_admin_or_department" ON public.kbfb_absences;
+CREATE POLICY "kbfb_absences_select_own_admin_or_department" ON public.kbfb_absences
+  FOR SELECT TO authenticated
+  USING (
+    name = public.kbfb_current_employee_name()
+    OR public.kbfb_is_admin()
+    OR (
+      public.kbfb_is_department_lead()
+      AND type NOT IN ('Egenmelding', 'Sykemelding', 'Omsorgsdager')
+      AND name IN (
+        SELECT e.name FROM public.kbfb_employees e
+        WHERE e.department = public.kbfb_current_employee_department()
+      )
+    )
+  );
+
+DROP POLICY IF EXISTS "kbfb_absences_update_admin_or_avdelingsleder" ON public.kbfb_absences;
+CREATE POLICY "kbfb_absences_update_admin_or_avdelingsleder" ON public.kbfb_absences
+  FOR UPDATE TO authenticated
+  USING (
+    (public.kbfb_is_admin() AND name <> public.kbfb_current_employee_name())
+    OR (
+      type = 'Ønsker å avspasere'
+      AND name <> public.kbfb_current_employee_name()
+      AND public.kbfb_is_department_lead()
+      AND EXISTS (
+        SELECT 1 FROM public.kbfb_employees req
+        JOIN public.kbfb_employees leader ON leader.user_id = auth.uid()
+        WHERE req.name = kbfb_absences.name
+          AND req.department = leader.department
+      )
+    )
+  )
+  WITH CHECK (
+    (public.kbfb_is_admin() AND name <> public.kbfb_current_employee_name())
+    OR (
+      type = 'Ønsker å avspasere'
+      AND name <> public.kbfb_current_employee_name()
+      AND public.kbfb_is_department_lead()
+      AND EXISTS (
+        SELECT 1 FROM public.kbfb_employees req
+        JOIN public.kbfb_employees leader ON leader.user_id = auth.uid()
+        WHERE req.name = kbfb_absences.name
+          AND req.department = leader.department
+      )
+    )
+  );
+
+DROP POLICY IF EXISTS "kbfb_absences_insert_own_admin_or_avdelingsleder_sick" ON public.kbfb_absences;
+CREATE POLICY "kbfb_absences_insert_own_admin_or_avdelingsleder_sick" ON public.kbfb_absences
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    name = public.kbfb_current_employee_name()
+    OR public.kbfb_is_admin()
+    OR (
+      public.kbfb_is_department_lead()
+      AND type IN ('Egenmelding', 'Sykemelding')
+      AND name IN (
+        SELECT e.name FROM public.kbfb_employees e
+        WHERE e.department = public.kbfb_current_employee_department()
+      )
+    )
+  );

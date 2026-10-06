@@ -19,6 +19,14 @@ applySeasonTheme();
 // der. Ligger øverst fordi Årshjul også bruker lista ("Ta opp på møte").
 const TASK_MEETING_PROJECTS = ["Ledermøte", "Styremøte", "Foreldremøte", "Personalmøte", "SU-møte"];
 
+// Avdelingsleder, Pedagogisk leder og Pedleder er samme nivå her (en
+// avdelingsleder er også pedagogisk leder). Brukes der rollen gir innsyn i
+// avdelingens fravær, godkjenning av avspasering og redigering av vaktplan.
+function isDepartmentLeadRole(role) {
+  return /avdelingsleder|pedagog|pedleder/i.test(role || "");
+}
+const DEPARTMENT_LEAD_ROLE_FILTER = "role.ilike.%avdelingsleder%,role.ilike.%pedagog%,role.ilike.%pedleder%";
+
 /* ---------- HJELPEFUNKSJONER ---------- */
 
 // Anything an employee typed (notes, item names, reasons, etc.) must go
@@ -1903,7 +1911,7 @@ function applyEmployeeRowColors() {
 
 function buildShiftDropdowns() {
   const isAdmin = typeof currentEmployee !== "undefined" &&
-    !!(currentEmployee?.is_admin || currentEmployee?.role === "Avdelingsleder");
+    !!(currentEmployee?.is_admin || isDepartmentLeadRole(currentEmployee?.role));
 
   const shiftEditHelp = document.getElementById("shiftEditHelp");
   if (shiftEditHelp) shiftEditHelp.style.display = isAdmin ? "" : "none";
@@ -2489,7 +2497,7 @@ async function notifyDepartmentLeadersOfSwap(departments, message) {
   const { data, error } = await supabaseClient
     .from("kbfb_employees")
     .select("name")
-    .eq("role", "Avdelingsleder")
+    .or(DEPARTMENT_LEAD_ROLE_FILTER)
     .in("department", uniqueDepartments);
 
   if (error || !data?.length) return;
@@ -5096,7 +5104,7 @@ function canReviewAbsence(record) {
   if (typeof currentEmployee === "undefined" || !currentEmployee) return false;
   if (currentEmployee.is_admin) return true;
 
-  if (currentEmployee.role !== "Avdelingsleder" || record.type !== "Ønsker å avspasere") return false;
+  if (!isDepartmentLeadRole(currentEmployee.role) || record.type !== "Ønsker å avspasere") return false;
 
   const requester = employeesCache.find(e => e.name === record.name);
   return !!requester && requester.department === currentEmployee.department;
@@ -5107,7 +5115,7 @@ function canReviewAbsence(record) {
 // there's anything pending for them right now).
 function canReviewAnyAbsence() {
   if (typeof currentEmployee === "undefined" || !currentEmployee) return false;
-  return !!currentEmployee.is_admin || currentEmployee.role === "Avdelingsleder";
+  return !!currentEmployee.is_admin || isDepartmentLeadRole(currentEmployee.role);
 }
 
 // Pulled out of the Føringer log so approving/avslå/avventer has one clear
@@ -5179,7 +5187,7 @@ async function notifyDepartmentLeadersOfAbsenceRequest(record) {
   const { data, error } = await supabaseClient
     .from("kbfb_employees")
     .select("name")
-    .eq("role", "Avdelingsleder")
+    .or(DEPARTMENT_LEAD_ROLE_FILTER)
     .eq("department", requester.department);
 
   if (error || !data?.length) return;
@@ -5374,7 +5382,7 @@ function renderDepartmentAbsenceOverview() {
   // Admin-only doesn't need this card - the general Oversikt above
   // already lets Benjamin pick any employee from the dropdown. This card
   // is specifically for Avdelingsleder, who has no equivalent tool.
-  if (typeof currentEmployee === "undefined" || currentEmployee?.role !== "Avdelingsleder") {
+  if (typeof currentEmployee === "undefined" || !isDepartmentLeadRole(currentEmployee?.role)) {
     card.style.display = "none";
     return;
   }
