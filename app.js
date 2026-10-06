@@ -11183,6 +11183,10 @@ function renderTaskLists() {
         </label>
         ${t.note ? `<span class="muted">${escapeHtml(t.note)}</span>` : ""}
         ${t.due_date ? `<span class="task-due${isOverdue ? " task-due-overdue" : ""}">${formatNorwegianDate(t.due_date)}</span>` : ""}
+        <select class="task-copy-select" data-task-copy-id="${t.id}" title="Kopier til en møtemappe (f.eks. Ledermøte)" aria-label="Kopier til møtemappe">
+          <option value="">↗</option>
+          ${TASK_MEETING_PROJECTS.filter(p => p !== t.project).map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join("")}
+        </select>
         <button class="kitchen-delete" type="button" data-task-delete-id="${t.id}">Slett</button>
       </div>
     `;
@@ -11251,6 +11255,51 @@ function renderTaskLists() {
 
       await loadTasksFromSupabase();
       renderTaskLists();
+    });
+  });
+
+  // Kopierer oppgaven (tekst + notat) til en møtemappe, f.eks. "Ta opp på
+  // ledermøte". Originalen blir stående; finnes den allerede der, lages
+  // det ikke en dobbel.
+  activeEl.querySelectorAll("[data-task-copy-id]").forEach(select => {
+    select.addEventListener("change", async () => {
+      const target = select.value;
+      const first = select.options[0];
+      if (!target) return;
+
+      const task = tasksCache.find(item => String(item.id) === String(select.dataset.taskCopyId));
+      select.value = "";
+      if (!task) return;
+
+      const exists = tasksCache.some(item => item.project === target && !item.completed && item.text === task.text);
+      let result = "✓";
+
+      if (exists) {
+        result = "✓";
+        first.title = `Finnes allerede i ${target}`;
+      } else {
+        const { error } = await supabaseClient.from("kbfb_tasks").insert([{
+          project: target,
+          text: task.text,
+          note: task.note || null,
+          due_date: null,
+          priority: 4
+        }]);
+
+        if (error) {
+          console.error("Kunne ikke kopiere oppgave:", error);
+          result = "!";
+        } else {
+          await loadTasksFromSupabase();
+        }
+      }
+
+      first.textContent = result;
+      setTimeout(() => {
+        // Hele lista tegnes på nytt etter kopiering; bare nullstill hvis
+        // elementet fortsatt står der.
+        if (first.isConnected) first.textContent = "↗";
+      }, 1500);
     });
   });
 

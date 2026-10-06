@@ -4851,3 +4851,24 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   font-size: 0.85rem;
   opacity: 0.8;
 }
+
+/* Liten "kopier til møtemappe"-velger i oppgaveraden - ligger over raden
+   ved siden av Slett, så raden ikke blir høyere. */
+.task-row:has(.task-copy-select) {
+  padding-right: 128px;
+}
+
+.task-copy-select {
+  position: absolute;
+  top: 0;
+  right: 62px;
+  width: 52px;
+  padding: 5px 4px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--green-soft);
+  color: var(--green-dark);
+  font-weight: 900;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
