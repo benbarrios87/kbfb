@@ -5445,11 +5445,37 @@ function renderDepartmentAbsenceOverview() {
             ${omsorgQuota ? `<span>Omsorgsdager: <strong>${t.omsorgsdager}/${omsorgQuota}</strong> brukt</span>` : ""}
           </div>
           ${upcomingHtml || `<p class="muted">Ingen planlagte datoer.</p>`}
+          <details class="dept-history" data-dept-history="${escapeHtml(name)}" ${deptHistoryOpen.has(name) ? "open" : ""}>
+            <summary class="muted">Vis føringer (historikk)</summary>
+            <div class="leave-entries"></div>
+          </details>
         </div>
       `;
     }).join("")
     : `<p class="muted">Ingen ansatte å vise ennå.</p>`;
+
+  // Full historikk (alle år) per ansatt - bare lesing, siden pedagogen
+  // ikke kan endre andres føringer. Tegnes når delen åpnes.
+  listEl.querySelectorAll("[data-dept-history]").forEach(details => {
+    const name = details.dataset.deptHistory;
+    const fill = () => renderLeaveEntries(
+      details.querySelector(".leave-entries"),
+      absencesCache.filter(record => record.name === name)
+    );
+
+    if (details.open) fill();
+    details.addEventListener("toggle", () => {
+      if (details.open) {
+        deptHistoryOpen.add(name);
+        fill();
+      } else {
+        deptHistoryOpen.delete(name);
+      }
+    });
+  });
 }
+
+const deptHistoryOpen = new Set();
 
 const noApprovalNeededTypes = [
   "Overtid", "Avspasering brukt", "Avspasering opptjent",
@@ -5823,7 +5849,7 @@ function renderLeaveEntries(container, records, { showName = false } = {}) {
     .sort((a, b) => (b.start_date || "").localeCompare(a.start_date || ""));
 
   if (!all.length) {
-    container.innerHTML = `<p class="muted">Ingen føringer dette året.</p>`;
+    container.innerHTML = `<p class="muted">Ingen føringer å vise.</p>`;
     return;
   }
 
