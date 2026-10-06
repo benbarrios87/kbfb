@@ -4784,9 +4784,7 @@ function countWeekdays(startDate, endDate) {
 // egen) - all ekstra tid gir 50 %, uansett hvordan den ble ført.
 function isFiftyPercentOvertime(record) {
   if (record.type === "Overtid") return true;
-  // no_overtime = bevisst registrert som kun avspasering (f.eks.
-  // personalmøte uten å ha jobbet på dagtid), uten 50 % på lønn.
-  return record.type === "Avspasering opptjent" && !record.no_overtime && !findLinkedAbsence(record);
+  return record.type === "Avspasering opptjent" && !findLinkedAbsence(record);
 }
 
 // Overtid: alle får avspasering time for time OG 50 % overtid. Admin
@@ -4801,7 +4799,7 @@ function populateOvertimeMonthFilter() {
   const months = [...new Set([
     getCurrentMonthKey(),
     ...absencesCache
-      .filter(record => isFiftyPercentOvertime(record) && record.start_date)
+      .filter(record => (isFiftyPercentOvertime(record) || record.type === "Ekstra timer") && record.start_date)
       .map(record => record.start_date.slice(0, 7)),
     ...vikarSickDaysCache.filter(r => r.date).map(r => r.date.slice(0, 7)),
     ...subsCache.filter(r => r.date).map(r => r.date.slice(0, 7))
@@ -4916,12 +4914,43 @@ function renderSickLeaveSummary() {
     : `<p class="muted">Ingen egenmeldings- eller omsorgsdager i ${formatMonth(month)}.</p>`;
 }
 
+// Ekstra timer til vanlig lønn (f.eks. personalmøte uten å ha jobbet på
+// dagtid): ikke overtid og ikke avspasering, bare timer som skal ha
+// vanlig timelønn.
+function renderExtraHoursSummary() {
+  const container = document.getElementById("extraHoursSummary");
+  if (!container) return;
+
+  const month = overtimeMonthFilter?.value || getCurrentMonthKey();
+  const records = absencesCache.filter(record =>
+    record.type === "Ekstra timer" && record.start_date && record.start_date.slice(0, 7) === month
+  );
+  const groups = groupOvertimeByName(records);
+
+  container.innerHTML = records.length
+    ? groups.map(([name, info]) => `
+        <div class="overtime-person" ${personColorStyle(name)}>
+          <strong>${escapeHtml(name)} · ${formatHoursNo(info.hours)} t vanlig lønn</strong>
+          <details class="overtime-details">
+            <summary class="muted">Vis datoer (${info.entries.length})</summary>
+            <ul class="overtime-lines">${info.entries.map(entry => `
+              <li>
+                <strong>${formatHoursNo(entry.hours)} t</strong> · ${formatDateRange(entry.start_date, entry.end_date)}${entry.note ? ` · ${escapeHtml(entry.note)}` : ""}
+              </li>
+            `).join("")}</ul>
+          </details>
+        </div>
+      `).join("")
+    : `<p class="muted">Ingen ekstra timer til vanlig lønn i ${formatMonth(month)}.</p>`;
+}
+
 function renderOvertimeSummary() {
   if (!overtimeSummary) return;
 
   populateOvertimeMonthFilter();
   renderVikarSickDaysSummary();
   renderSickLeaveSummary();
+  renderExtraHoursSummary();
 
   if (document.getElementById("vikarPaySummary")) {
     // subsCache fylles av initializeSubs() på alle sider, men kan
@@ -5480,7 +5509,7 @@ function renderDepartmentAbsenceOverview() {
 const deptHistoryOpen = new Set();
 
 const noApprovalNeededTypes = [
-  "Overtid", "Avspasering brukt", "Avspasering opptjent",
+  "Overtid", "Ekstra timer", "Avspasering brukt", "Avspasering opptjent",
   "Egenmelding", "Sykemelding", "Omsorgsdager"
 ];
 
@@ -5571,8 +5600,8 @@ const OTHER_LEAVE_TYPES = ["Tjenestefri", "Velferdspermisjon", "Permisjon med l�
 
 // Hvilke felter hvert valg viser.
 const LEAVE_KIND_FIELDS = {
-  personalmote: ["date", "hours", "noOvertime"],
-  ekstra: ["date", "hours", "noOvertime", "note"],
+  personalmote: ["date", "hours", "ordinaryPay"],
+  ekstra: ["date", "hours", "ordinaryPay", "note"],
   avspasering: ["date", "multi", "hours", "note"],
   ferie: ["date", "multi", "note"],
   syk: ["sickType", "date", "multi", "note"],
@@ -5583,7 +5612,8 @@ const LEAVE_KIND_FIELDS = {
 
 function leaveKindForRecord(record) {
   switch (record.type) {
-    case "Overtid": return record.note === PERSONALMOTE_NOTE ? "personalmote" : "ekstra";
+    case "Overtid":
+    case "Ekstra timer": return record.note === PERSONALMOTE_NOTE ? "personalmote" : "ekstra";
     case "Ønsker å avspasere":
     case "Avspasering brukt": return "avspasering";
     case "Ferie": return "ferie";
@@ -5597,6 +5627,7 @@ function leaveKindForRecord(record) {
 
 function friendlyLeaveLabel(record) {
   if (record.type === "Overtid") return record.note === PERSONALMOTE_NOTE ? "Personalmøte" : "Jobbet ekstra";
+  if (record.type === "Ekstra timer") return record.note === PERSONALMOTE_NOTE ? "Personalmøte (vanlig lønn)" : "Ekstra timer (vanlig lønn)";
   if (record.type === "Ønsker å avspasere") return "Avspasering";
   if (record.type === "Avspasering brukt") return "Avspasering tatt ut";
   if (record.type === "Omsorgsdager") return "Sykt barn (omsorgsdag)";
@@ -5799,6 +5830,7 @@ function leaveAmountText(record) {
     return `${formatHoursNo(record.hours)} t · ${hasPair ? "avspasering og 50 % overtid" : "overtid (mangler avspasering)"}`;
   }
   if (record.type === "Avspasering opptjent") return `${formatHoursNo(record.hours)} t opptjent`;
+  if (record.type === "Ekstra timer") return `${formatHoursNo(record.hours)} t · vanlig lønn`;
 
   const days = countWeekdays(record.start_date, record.end_date || record.start_date);
   const dayText = `${days} ${days === 1 ? "dag" : "dager"}`;
@@ -6242,9 +6274,9 @@ function mountLeaveRegister(container, { getEmployeeName }) {
         <small class="muted" data-hours-help></small>
       </label>
 
-      <label class="wide-field checkbox-field" data-f="noOvertime">
-        <input type="checkbox" name="noOvertime" />
-        Kun avspasering, ikke overtid (f.eks. personalmøte uten å ha jobbet på dagtid)
+      <label class="wide-field checkbox-field" data-f="ordinaryPay">
+        <input type="checkbox" name="ordinaryPay" />
+        Bare ekstra timer til vanlig lønn (ikke overtid, ingen avspasering)
       </label>
 
       <label class="wide-field" data-f="note">
@@ -6417,11 +6449,14 @@ function mountLeaveRegister(container, { getEmployeeName }) {
       case "ekstra":
       case "opptjent": {
         const avs = stats.avspasering;
-        lines.push(arrow("Avspaseringen din", formatHoursNo(avs), formatHoursNo(avs + hours), " t"));
-        if (kind !== "opptjent") {
-          lines.push(field("noOvertime")?.checked
-            ? "Ingen overtid på lønn - bare avspasering."
-            : `50 % overtid på lønn for <strong>${formatHoursNo(hours)} t</strong>`);
+        const ordinaryPay = kind !== "opptjent" && !editing && !!field("ordinaryPay")?.checked;
+
+        if (ordinaryPay) {
+          lines.push(`Betales som <strong>vanlig lønn</strong> for ${formatHoursNo(hours)} t.`);
+          lines.push("Ingen avspasering og ingen 50 % overtid.");
+        } else {
+          lines.push(arrow("Avspaseringen din", formatHoursNo(avs), formatHoursNo(avs + hours), " t"));
+          if (kind !== "opptjent") lines.push(`50 % overtid på lønn for <strong>${formatHoursNo(hours)} t</strong>`);
         }
         lines.push("Trenger ikke godkjenning - lagres med en gang.");
         break;
@@ -6508,8 +6543,8 @@ function mountLeaveRegister(container, { getEmployeeName }) {
       el.hidden = !fields.includes(el.dataset.f);
     });
     // "Kun avspasering" velges bare når en ny føring lages, ikke ved endring.
-    if (editing) form.querySelector('[data-f="noOvertime"]').hidden = true;
-    else field("noOvertime").checked = false;
+    if (editing) form.querySelector('[data-f="ordinaryPay"]').hidden = true;
+    else field("ordinaryPay").checked = false;
 
     const name = getEmployeeName();
     const forWhom = currentEmployee?.is_admin && name && name !== currentEmployee.name ? ` for ${name}` : "";
@@ -6613,12 +6648,13 @@ function mountLeaveRegister(container, { getEmployeeName }) {
       return showStatus(errors[0], false);
     }
 
-    const noOvertime = !editing && fields.includes("noOvertime") && !!field("noOvertime")?.checked;
+    const ordinaryPay = !editing && fields.includes("ordinaryPay") && !!field("ordinaryPay")?.checked;
+    const ordinaryPayType = ordinaryPay || editing?.type === "Ekstra timer";
     let type;
     let status;
     switch (kind) {
       case "personalmote":
-      case "ekstra": type = noOvertime ? "Avspasering opptjent" : "Overtid"; status = "Registrert"; break;
+      case "ekstra": type = ordinaryPayType ? "Ekstra timer" : "Overtid"; status = "Registrert"; break;
       case "avspasering": type = editing?.type === "Avspasering brukt" ? "Avspasering brukt" : "Ønsker å avspasere"; status = "Ønsket"; break;
       case "ferie": type = "Ferie"; status = "Ønsket"; break;
       case "syk": type = form.querySelector('input[name="sickType"]:checked')?.value || "Egenmelding"; status = "Registrert"; break;
@@ -6638,10 +6674,7 @@ function mountLeaveRegister(container, { getEmployeeName }) {
       start_date: start,
       end_date: end,
       hours: kind === "personalmote" || kind === "ekstra" || kind === "opptjent" || kind === "avspasering" ? hours : null,
-      note: kind === "personalmote" ? PERSONALMOTE_NOTE : note,
-      // Kun avspasering (ingen 50 % overtid på lønn) - krever kolonnen
-      // no_overtime, se STEP 59.
-      ...(noOvertime ? { no_overtime: true } : {})
+      note: kind === "personalmote" ? PERSONALMOTE_NOTE : note
     };
 
     const submitButton = form.querySelector('button[type="submit"]');
