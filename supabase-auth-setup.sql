@@ -1976,3 +1976,29 @@ ALTER TABLE public.kbfb_kjorebok_entries ADD COLUMN IF NOT EXISTS submitted_at t
 -- =========================================================
 
 ALTER TABLE public.kbfb_employees ADD COLUMN IF NOT EXISTS full_name text;
+
+-- =========================================================
+-- STEP 62: kbfb_salaries (lønn per ansatt, bare admin)
+--   Samme innhold som add-lonn-ansatte.sql - se den filen.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_salaries (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  employee_id uuid NOT NULL UNIQUE REFERENCES public.kbfb_employees(id) ON DELETE CASCADE,
+  base_salary integer,
+  allowance integer,
+  allowance_note text,
+  position_pct numeric,
+  effective_from date,
+  backpay integer,
+  backpay_payday date,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_salaries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_salaries_admin_all" ON public.kbfb_salaries;
+CREATE POLICY "kbfb_salaries_admin_all" ON public.kbfb_salaries
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());

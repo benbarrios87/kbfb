@@ -6994,7 +6994,41 @@ async function loadAllEmployeesForAdmin() {
     if (employee.avatar_url) employeeAvatarCache[employee.name] = employee.avatar_url;
   });
 
+  await loadSalariesForAdmin();
+
   return adminEmployeesCache;
+}
+
+// Lønn per ansatt (kbfb_salaries, bare admin kan lese). Feiler stille hvis
+// add-lonn-ansatte.sql ikke er kjørt ennå - da vises bare en beskjed i kortet.
+let salariesCache = [];
+let salariesTableMissing = false;
+
+async function loadSalariesForAdmin() {
+  const { data, error } = await supabaseClient.from("kbfb_salaries").select("*");
+  salariesTableMissing = !!error;
+  if (error) console.warn("Kunne ikke hente lønn (er add-lonn-ansatte.sql kjørt?):", error);
+  salariesCache = data || [];
+}
+
+function salaryFor(employeeId) {
+  return salariesCache.find(s => String(s.employee_id) === String(employeeId)) || {};
+}
+
+function formatKr(value) {
+  return Math.round(Number(value) || 0).toLocaleString("nb-NO");
+}
+
+async function saveSalaryField(employeeId, field, value) {
+  const { error } = await supabaseClient
+    .from("kbfb_salaries")
+    .upsert({ employee_id: employeeId, [field]: value, updated_at: new Date().toISOString() }, { onConflict: "employee_id" });
+
+  if (error) {
+    console.error(`Kunne ikke lagre lønn (${field}):`, error);
+    return false;
+  }
+  return true;
 }
 
 async function updateEmployeeField(id, fields) {
@@ -7020,7 +7054,10 @@ const openEmployeeCards = new Set();
 
 function employeeCardSummaryHtml(employee) {
   const meta = [employee.role, employee.department].filter(Boolean).map(escapeHtml).join(" · ");
+  const salary = salaryFor(employee.id);
+  const backpayDue = salary.backpay > 0 && salary.backpay_payday && salary.backpay_payday >= toDateKey(new Date());
   const tags = [
+    backpayDue ? `<span class="emp-tag">Etterbetaling ${escapeHtml(formatShortDate(new Date(salary.backpay_payday + "T12:00:00")))}</span>` : "",
     employee.is_admin ? `<span class="emp-tag">Admin</span>` : "",
     employee.active ? "" : `<span class="emp-tag emp-tag-muted">Ikke aktiv</span>`,
     employee.user_id ? "" : `<span class="emp-tag emp-tag-warn">Ingen innlogging</span>`
@@ -7029,7 +7066,7 @@ function employeeCardSummaryHtml(employee) {
   return `
     ${avatarSpanFor(employee.name, "avatar-tiny")}
     <span class="emp-card-title">
-      <strong>${escapeHtml(employee.name)}</strong>
+      <strong>${escapeHtml((employee.full_name || "").trim() || employee.name)}</strong>
       <span class="muted">${meta || "Rolle ikke satt"}</span>
     </span>
     <span class="emp-tags">${tags}</span>
@@ -7043,6 +7080,60 @@ function employeeCheckboxHtml(employee, field, label, hint, checked) {
       <input type="checkbox" class="admin-field" data-id="${employee.id}" data-field="${field}" ${checked ? "checked" : ""} />
       <span><strong>${label}</strong><br /><span class="muted">${hint}</span></span>
     </label>
+  `;
+}
+
+// Lønn på ansattkortet: grunnlønn og tillegg er pr. år i 100 % stilling
+// (som i lønnsbrevet), stillingsprosenten regner om til faktisk årslønn.
+function employeeSalaryTotalsHtml(salary) {
+  const yearly100 = (Number(salary.base_salary) || 0) + (Number(salary.allowance) || 0);
+  if (!yearly100) return `<p class="muted emp-salary-total">Ingen lønn registrert.</p>`;
+
+  const pct = Number(salary.position_pct) || 100;
+  const actual = yearly100 * pct / 100;
+  const parts = [`Årslønn <strong>${formatKr(yearly100)}</strong> i 100 %`];
+  if (pct !== 100) parts.push(`<strong>${formatKr(actual)}</strong> i ${String(pct).replace(".", ",")} %`);
+  parts.push(`ca. ${formatKr(actual / 12)} pr. måned`);
+
+  const backpay = salary.backpay > 0
+    ? `<br />Etterbetaling ca. <strong>${formatKr(salary.backpay)}</strong>${salary.backpay_payday ? ` ved lønning ${escapeHtml(formatNorwegianDate(salary.backpay_payday))}` : ""}`
+    : "";
+
+  return `<p class="emp-salary-total">${parts.join(" · ")}${backpay}</p>`;
+}
+
+function employeeSalarySectionHtml(employee) {
+  if (salariesTableMissing) {
+    return `
+      <section class="emp-group">
+        <h4>Lønn</h4>
+        <p class="muted">Kjør add-lonn-ansatte.sql i Supabase for å kunne registrere lønn her.</p>
+      </section>
+    `;
+  }
+
+  const salary = salaryFor(employee.id);
+  const field = (key, label, type, extra = "") => `
+    <label class="emp-field">
+      <span class="emp-label">${label}</span>
+      <input type="${type}" class="admin-salary" data-id="${employee.id}" data-salary="${key}" value="${escapeHtml(salary[key] ?? "")}" ${extra} />
+    </label>
+  `;
+
+  return `
+    <section class="emp-group">
+      <h4>Lønn <span class="muted">(bare synlig for admin)</span></h4>
+      <div class="emp-fields">
+        ${field("base_salary", "Grunnlønn pr. år <span class=\"muted\">(100 %)</span>", "number", `min="0" step="100"`)}
+        ${field("allowance", "Tillegg pr. år", "number", `min="0" step="1"`)}
+        ${field("allowance_note", "Om tillegget <span class=\"muted\">(f.eks. midlertidig)</span>", "text")}
+        ${field("position_pct", "Stilling %", "number", `min="0" max="100" step="1"`)}
+        ${field("effective_from", "Gjelder fra", "date")}
+        ${field("backpay", "Etterbetaling <span class=\"muted\">(ca.)</span>", "number", `min="0" step="1"`)}
+        ${field("backpay_payday", "Etterbetales ved lønning", "date")}
+      </div>
+      <div data-salary-total-for="${employee.id}">${employeeSalaryTotalsHtml(salary)}</div>
+    </section>
   `;
 }
 
@@ -7069,7 +7160,7 @@ function employeeCardHtml(employee) {
         <div class="emp-hero">
           ${avatarSpanFor(employee.name, "emp-photo")}
           <div class="emp-hero-text">
-            <strong>${name}</strong>
+            <strong>${escapeHtml((employee.full_name || "").trim() || employee.name)}</strong>
             <span class="muted">${[employee.role, employee.department].filter(Boolean).map(escapeHtml).join(" · ") || "Rolle ikke satt"}</span>
             <label class="secondary-btn admin-avatar-upload-label">
               <span>${employeeAvatarCache[employee.name] ? "Bytt bilde" : "Last opp bilde"}</span>
@@ -7087,7 +7178,7 @@ function employeeCardHtml(employee) {
               <button type="button" class="secondary-btn rename-employee-btn" data-rename-id="${employee.id}" data-rename-name="${name}">Bytt navn</button>
             </div>
             <label class="emp-field">
-              <span class="emp-label">Fullt navn <span class="muted">(brukes i kjørebok)</span></span>
+              <span class="emp-label">Fullt navn <span class="muted">(brukes i lista, kjørebok og lønnsbrev)</span></span>
               <input type="text" class="admin-field" data-id="${employee.id}" data-field="full_name" value="${escapeHtml(employee.full_name)}" placeholder="Fornavn Etternavn" />
             </label>
             <label class="emp-field">
@@ -7140,6 +7231,8 @@ function employeeCardHtml(employee) {
           </div>
         </section>
         ` : ""}
+
+        ${hasLeave ? employeeSalarySectionHtml(employee) : ""}
 
         <section class="emp-group">
           <h4>Innlogging</h4>
@@ -7238,7 +7331,7 @@ function renderAdminEmployeeTable() {
   const visible = adminEmployeesCache.filter(employee => {
     if (filter === "active" && !employee.active) return false;
     if (filter === "inactive" && employee.active) return false;
-    return !query || (employee.name || "").toLowerCase().includes(query);
+    return !query || `${employee.name || ""} ${employee.full_name || ""}`.toLowerCase().includes(query);
   });
 
   if (adminEmployeeCount) {
@@ -7322,6 +7415,29 @@ function renderAdminEmployeeTable() {
       }
       await loadEmployeeSettingsFromSupabase();
       flashEmployeeSaved(field.dataset.empId, ok);
+    });
+  });
+
+  document.querySelectorAll(".admin-salary").forEach(field => {
+    field.addEventListener("change", async () => {
+      const id = field.dataset.id;
+      const key = field.dataset.salary;
+      const raw = field.value.trim();
+      let value = raw === "" ? null : raw;
+      if (value !== null && field.type === "number") {
+        value = Number(value);
+        if (!Number.isFinite(value) || value < 0) {
+          flashEmployeeSaved(id, false);
+          return;
+        }
+      }
+
+      const ok = await saveSalaryField(id, key, value);
+      await loadSalariesForAdmin();
+      const total = document.querySelector(`[data-salary-total-for="${id}"]`);
+      if (total) total.innerHTML = employeeSalaryTotalsHtml(salaryFor(id));
+      refreshEmployeeCardSummary(id);
+      flashEmployeeSaved(id, ok);
     });
   });
 
