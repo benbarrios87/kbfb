@@ -10810,17 +10810,135 @@ function exportKjorebokWord() {
   URL.revokeObjectURL(url);
 }
 
-// Ett ark per ansatt (samme gruppering som PDF/Word), bygget med ExcelJS
-// i stedet for SheetJS - SheetJS' gratis xlsx.full.min.js godtar en
-// cellestil (ws[ref].s = {...}) uten å klage, men skriver den rett og
-// slett ALDRI til selve .xlsx-filen (bekreftet ved å inspisere xl/styles.
-// xml i output - stilen var sporløst borte), så fet skrift/rammer var
-// umulig å få til uansett hva koden sa. ExcelJS støtter faktisk dette.
-// Satsene (Bil-El-Bil/km, Passasjer/km) vises som én felles rute øverst
-// i stedet for gjentatt på hver rad - matcher hvordan KBFBs egen
-// "Kjørebok 2026.xlsx"-mal er bygget - og radformlene for Sum kr peker
-// på nettopp de to cellene ($I$4/$I$5), så retter noen en sats i Excel
-// etterpå regner hele arket seg om automatisk.
+// Excel-eksport: fyller KBFBs egen "Kjørebok 2026.xlsx"-mal
+// (kjorebok-mal.xlsx i prosjektet) i stedet for å bygge et eget ark -
+// da blir filen helt lik malen (oppsett, farger, logo, utskriftsområde,
+// skjulte regnekolonner og formler). Ett ark per ansatt; har noen mer enn
+// 33 kjøringer (malens rader), fortsetter det på et nytt ark med samme
+// oppsett. ExcelJS brukes fordi SheetJS ikke skriver celle-stiler.
+const KJOREBOK_TEMPLATE_FIRST_ROW = 7;
+const KJOREBOK_TEMPLATE_LAST_ROW = 39;
+const KJOREBOK_TEMPLATE_ROWS = KJOREBOK_TEMPLATE_LAST_ROW - KJOREBOK_TEMPLATE_FIRST_ROW + 1;
+
+function fillKjorebokSheet(ws, { name, entries, carText, exportYear, bilSats, passasjerSats }) {
+  ws.getCell("B2").value = `KJØREBOK ${exportYear}`;
+  ws.getCell("D3").value = "Kirkerudbakken Friluftsbarnehage";
+  ws.getCell("D4").value = name;
+  ws.getCell("D5").value = carText;
+  ws.getCell("J4").value = bilSats;
+  ws.getCell("J5").value = passasjerSats;
+
+  let sumKm = 0;
+  let sumKr = 0;
+  let sumParking = 0;
+  let sumOther = 0;
+  let sumPassengerPrice = 0;
+
+  for (let i = 0; i < KJOREBOK_TEMPLATE_ROWS; i++) {
+    const r = KJOREBOK_TEMPLATE_FIRST_ROW + i;
+    const entry = entries[i];
+
+    const km = Number(entry?.km) || 0;
+    const passengers = Number(entry?.passengers) || 0;
+    const parking = Number(entry?.parking) || 0;
+    const other = Number(entry?.other_expenses) || 0;
+    const rowSum = calculateKjorebokSum(km, passengers, bilSats, passasjerSats);
+    const passengerPrice = passengers * passasjerSats * km;
+
+    sumKm += km;
+    sumKr += rowSum;
+    sumParking += parking;
+    sumOther += other;
+    sumPassengerPrice += passengerPrice;
+
+    ws.getCell(`B${r}`).value = entry?.date ? new Date(`${entry.date}T12:00:00Z`) : null;
+    ws.getCell(`B${r}`).numFmt = "dd.mm.yyyy";
+    ws.getCell(`C${r}`).value = entry?.route || null;
+    ws.getCell(`E${r}`).value = entry ? km : null;
+    ws.getCell(`F${r}`).value = entry ? passengers : null;
+    ws.getCell(`H${r}`).value = entry && parking ? parking : null;
+    ws.getCell(`I${r}`).value = entry && other ? other : null;
+    ws.getCell(`J${r}`).value = entry
+      ? ([entry.purpose, entry.passenger_name].filter(Boolean).join(" - ") || null)
+      : null;
+
+    // Formlene (felles-formler i malen) skrives eksplisitt per rad, med
+    // ferdig utregnet verdi, så summene vises også der Excel ikke
+    // regner ut selv (beskyttet visning, mobil, e-postforhåndsvisning).
+    ws.getCell(`G${r}`).value = {
+      formula: `IF(F${r}>0,(E${r}*$J$4)+((E${r}*$J$5)*F${r}),(E${r}*$J$4))`,
+      result: rowSum
+    };
+    ws.getCell(`M${r}`).value = { formula: `+F${r}*$J$5*E${r}`, result: passengerPrice };
+  }
+
+  const first = KJOREBOK_TEMPLATE_FIRST_ROW;
+  const last = KJOREBOK_TEMPLATE_LAST_ROW;
+  ws.getCell("E40").value = { formula: `SUM(E${first}:E${last})`, result: sumKm };
+  ws.getCell("G40").value = { formula: `SUM(G${first}:G${last})`, result: sumKr };
+  ws.getCell("H40").value = { formula: `SUM(H${first}:H${last})`, result: sumParking };
+  ws.getCell("I40").value = { formula: `SUM(I${first}:I${last})`, result: sumOther };
+  ws.getCell("J40").value = { formula: "+I40+H40+G40", result: sumOther + sumParking + sumKr };
+  ws.getCell("M40").value = { formula: `SUM(M${first}:M${last})`, result: sumPassengerPrice };
+}
+
+async function buildKjorebokWorkbook(groups, { exportYear, bilSats, passasjerSats }) {
+  const response = await fetch("kjorebok-mal.xlsx");
+  if (!response.ok) throw new Error("Fant ikke kjorebok-mal.xlsx");
+
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(await response.arrayBuffer());
+  wb.calcProperties = { fullCalcOnLoad: true };
+
+  const templateSheet = wb.worksheets[0];
+  let templateUsed = false;
+  const usedNames = new Set();
+
+  const uniqueSheetName = base => {
+    // Arknavn kan ikke være over 31 tegn eller inneholde [ ] : * ? / \
+    const safe = (base || "Ansatt").replace(/[\[\]:*?/\\]/g, "").slice(0, 28) || "Ansatt";
+    let candidate = safe;
+    let n = 2;
+    while (usedNames.has(candidate.toLowerCase())) candidate = `${safe} ${n++}`;
+    usedNames.add(candidate.toLowerCase());
+    return candidate;
+  };
+
+  groups.forEach(({ name, entries }) => {
+    const cars = [...new Set(entries.map(e => e.car_number).filter(Boolean))];
+    const carText = cars.join(", ");
+    const pages = [];
+    for (let i = 0; i < entries.length || i === 0; i += KJOREBOK_TEMPLATE_ROWS) {
+      pages.push(entries.slice(i, i + KJOREBOK_TEMPLATE_ROWS));
+    }
+
+    pages.forEach((pageEntries, pageIndex) => {
+      const sheetName = uniqueSheetName(pageIndex === 0 ? name : `${name} ${pageIndex + 1}`);
+      let ws;
+      if (!templateUsed) {
+        ws = templateSheet;
+        ws.name = sheetName;
+        templateUsed = true;
+      } else {
+        // Ny side = kopi av malarket (stiler, sammenslåinger, skjulte
+        // kolonner) pluss logoen, som ligger utenfor arkmodellen.
+        ws = wb.addWorksheet(sheetName);
+        const model = JSON.parse(JSON.stringify(templateSheet.model));
+        ws.model = Object.assign(model, {
+          id: ws.id,
+          name: sheetName,
+          orderNo: ws.orderNo,
+          mergeCells: templateSheet.model.merges
+        });
+      }
+
+      fillKjorebokSheet(ws, { name, entries: pageEntries, carText, exportYear, bilSats, passasjerSats });
+    });
+  });
+
+  return wb;
+}
+
 async function exportKjorebokExcel() {
   if (typeof ExcelJS === "undefined") {
     alert("Excel-eksport kunne ikke lastes (sjekk internettforbindelsen) - prøv igjen, eller bruk PDF/Word i mellomtiden.");
@@ -10834,159 +10952,27 @@ async function exportKjorebokExcel() {
   }
 
   const selectedMonth = kjorebokMonthFilter?.value || "all";
-  const periodLabel = selectedMonth === "all" ? "Alle måneder" : formatMonth(selectedMonth);
   const exportYear = selectedMonth === "all" ? new Date().getFullYear() : Number(selectedMonth.slice(0, 4));
 
-  const thinBorder = { style: "thin", color: { argb: "FFAAAAAA" } };
-  const boxBorder = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
-  const currencyFmt = '#,##0.00 "kr"';
-
-  const wb = new ExcelJS.Workbook();
-  wb.calcProperties = { fullCalcOnLoad: true };
-
-  groups.forEach(({ name, entries, totalKm }) => {
-    // Arknavn kan ikke være over 31 tegn eller inneholde [ ] : * ? / \
-    const safeSheetName = (name || "Ansatt").replace(/[\[\]:*?/\\]/g, "").slice(0, 31) || "Ansatt";
-    const ws = wb.addWorksheet(safeSheetName);
-
-    ws.columns = [
-      { width: 12 }, { width: 26 }, { width: 10 }, { width: 10 },
-      { width: 12 }, { width: 18 }, { width: 14 }, { width: 32 }, { width: 12 }
-    ];
-
-    ws.getCell("A2").value = `KJØREBOK ${exportYear}`;
-    ws.getCell("A2").font = { bold: true, size: 14 };
-
-    ws.getCell("A3").value = "Barnehage";
-    ws.getCell("B3").value = "Kirkerudbakken Friluftsbarnehage";
-    ws.getCell("A4").value = "Navn";
-    ws.getCell("B4").value = name;
-    ws.getCell("A5").value = "Periode";
-    ws.getCell("B5").value = periodLabel;
-
-    ws.getCell("F4").value = "Satser";
-    ws.getCell("F4").font = { bold: true };
-    ws.getCell("G4").value = "Bil-El-Bil / km:";
-    ws.getCell("I4").value = Number(kjorebokRatesCache.bil_sats) || 0;
-    ws.getCell("G5").value = "Passasjer/km:";
-    ws.getCell("I5").value = Number(kjorebokRatesCache.passasjer_sats) || 0;
-
-    const headerRowIndex = 7;
-    const headerLabels = [
-      "Dato", "Kjøring til - fra", "Antall km", "Ant. pass.", "Sum kr",
-      "Parkering / Bompenger", "Andre utlegg", "Formålet med turen / Passasjernavn", "Bil nr."
-    ];
-    const headerRow = ws.getRow(headerRowIndex);
-    headerLabels.forEach((label, i) => {
-      const cell = headerRow.getCell(i + 1);
-      cell.value = label;
-      cell.font = { bold: true };
-      cell.border = { bottom: { style: "medium" } };
-      cell.alignment = { wrapText: true, vertical: "bottom" };
+  let wb;
+  try {
+    wb = await buildKjorebokWorkbook(groups, {
+      exportYear,
+      bilSats: Number(kjorebokRatesCache.bil_sats) || 0,
+      passasjerSats: Number(kjorebokRatesCache.passasjer_sats) || 0
     });
-
-    const firstDataRow = headerRowIndex + 1;
-
-    // Formlene får også ferdig utregnet verdi (result). Uten den viser
-    // Excel i beskyttet visning, mobil, e-postforhåndsvisning og Google
-    // Disk tomme/0-celler til filen regnes ut - og da så det ut som om
-    // totalsummen manglet.
-    const bilSats = Number(kjorebokRatesCache.bil_sats) || 0;
-    const passasjerSats = Number(kjorebokRatesCache.passasjer_sats) || 0;
-    let sumKm = 0;
-    let sumKjoring = 0;
-    let sumParkering = 0;
-    let sumAndre = 0;
-
-    entries.forEach((entry, i) => {
-      const r = firstDataRow + i;
-      const row = ws.getRow(r);
-
-      const km = Number(entry.km) || 0;
-      const passengers = Number(entry.passengers) || 0;
-      const rowSum = calculateKjorebokSum(km, passengers, bilSats, passasjerSats);
-      sumKm += km;
-      sumKjoring += rowSum;
-      sumParkering += Number(entry.parking) || 0;
-      sumAndre += Number(entry.other_expenses) || 0;
-
-      row.getCell(1).value = new Date(`${entry.date}T12:00:00Z`);
-      row.getCell(1).numFmt = "dd.mm.yyyy";
-      row.getCell(1).alignment = { horizontal: "left" };
-      row.getCell(2).value = entry.route || "";
-      row.getCell(3).value = km;
-      row.getCell(4).value = passengers;
-      row.getCell(5).value = { formula: `IF(D${r}>0,(C${r}*$I$4)+((C${r}*$I$5)*D${r}),(C${r}*$I$4))`, result: rowSum };
-      row.getCell(5).numFmt = currencyFmt;
-      row.getCell(6).value = Number(entry.parking) || 0;
-      row.getCell(6).numFmt = currencyFmt;
-      row.getCell(7).value = Number(entry.other_expenses) || 0;
-      row.getCell(7).numFmt = currencyFmt;
-      row.getCell(8).value = [entry.purpose, entry.passenger_name].filter(Boolean).join(" - ");
-      row.getCell(9).value = entry.car_number || "";
-
-      for (let c = 1; c <= 9; c++) row.getCell(c).border = boxBorder;
-    });
-
-    const lastDataRow = firstDataRow + entries.length - 1;
-    const sumRowIndex = lastDataRow + 2; // én tom rad mellom data og sum
-    const sumRow = ws.getRow(sumRowIndex);
-
-    sumRow.getCell(1).value = "Sum";
-
-    if (entries.length > 0) {
-      sumRow.getCell(3).value = { formula: `SUM(C${firstDataRow}:C${lastDataRow})`, result: sumKm };
-      sumRow.getCell(5).value = { formula: `SUM(E${firstDataRow}:E${lastDataRow})`, result: sumKjoring };
-      sumRow.getCell(6).value = { formula: `SUM(F${firstDataRow}:F${lastDataRow})`, result: sumParkering };
-      sumRow.getCell(7).value = { formula: `SUM(G${firstDataRow}:G${lastDataRow})`, result: sumAndre };
-    } else {
-      sumRow.getCell(3).value = totalKm;
-      sumRow.getCell(5).value = 0;
-      sumRow.getCell(6).value = 0;
-      sumRow.getCell(7).value = 0;
-    }
-    sumRow.getCell(5).numFmt = currencyFmt;
-    sumRow.getCell(6).numFmt = currencyFmt;
-    sumRow.getCell(7).numFmt = currencyFmt;
-    sumRow.getCell(8).value = "Totalt (kr):";
-    sumRow.getCell(9).value = {
-      formula: `E${sumRowIndex}+F${sumRowIndex}+G${sumRowIndex}`,
-      result: entries.length > 0 ? sumKjoring + sumParkering + sumAndre : 0
-    };
-    sumRow.getCell(9).numFmt = currencyFmt;
-
-    for (let c = 1; c <= 9; c++) {
-      sumRow.getCell(c).font = { bold: true };
-      sumRow.getCell(c).border = { top: { style: "medium" } };
-    }
-
-    const signRowIndex = sumRowIndex + 2;
-    ws.getCell(`A${signRowIndex}`).value = "Dato og underskrift";
-    ws.getCell(`A${signRowIndex}`).border = { top: thinBorder };
-    ws.getCell(`E${signRowIndex}`).value = "Dato og underskrift Attestant";
-    ws.getCell(`E${signRowIndex}`).border = { top: thinBorder };
-
-    let noteRow = signRowIndex + 2;
-    [
-      "Privatkjøring skal ikke tas med på listen. Eventuelle utgifter til parkering, bompenger m.m. inngår ikke i den angitte km-satsen. Slike utgifter må dokumenteres med egne bilag.",
-      "Bilagene kan med fordel stiftes sammen på kjøreboka.",
-      "Fra 01.01.17 er bilgodtgjørelse over 3,50 øre pr kjørte km skattepliktig."
-    ].forEach(text => {
-      ws.getCell(`A${noteRow}`).value = text;
-      ws.getCell(`A${noteRow}`).font = { italic: true, size: 9, color: { argb: "FF666666" } };
-      noteRow++;
-    });
-
-    ws.getCell(`A${noteRow + 1}`).value = "K1-Kjørebok - km godtgjørelse";
-    ws.getCell(`A${noteRow + 1}`).font = { size: 8, color: { argb: "FF999999" } };
-  });
+  } catch (error) {
+    console.error("Kunne ikke lage Excel-fil:", error);
+    alert("Kunne ikke lage Excel-filen. Prøv igjen, eller bruk PDF/Word i mellomtiden.");
+    return;
+  }
 
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "kjorebok.xlsx";
+  link.download = selectedMonth === "all" ? "kjorebok.xlsx" : `kjorebok-${selectedMonth}.xlsx`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
