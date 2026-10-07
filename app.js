@@ -10842,6 +10842,7 @@ async function exportKjorebokExcel() {
   const currencyFmt = '#,##0.00 "kr"';
 
   const wb = new ExcelJS.Workbook();
+  wb.calcProperties = { fullCalcOnLoad: true };
 
   groups.forEach(({ name, entries, totalKm }) => {
     // Arknavn kan ikke være over 31 tegn eller inneholde [ ] : * ? / \
@@ -10886,15 +10887,36 @@ async function exportKjorebokExcel() {
 
     const firstDataRow = headerRowIndex + 1;
 
+    // Formlene får også ferdig utregnet verdi (result). Uten den viser
+    // Excel i beskyttet visning, mobil, e-postforhåndsvisning og Google
+    // Disk tomme/0-celler til filen regnes ut - og da så det ut som om
+    // totalsummen manglet.
+    const bilSats = Number(kjorebokRatesCache.bil_sats) || 0;
+    const passasjerSats = Number(kjorebokRatesCache.passasjer_sats) || 0;
+    let sumKm = 0;
+    let sumKjoring = 0;
+    let sumParkering = 0;
+    let sumAndre = 0;
+
     entries.forEach((entry, i) => {
       const r = firstDataRow + i;
       const row = ws.getRow(r);
 
-      row.getCell(1).value = formatNorwegianDate(entry.date);
+      const km = Number(entry.km) || 0;
+      const passengers = Number(entry.passengers) || 0;
+      const rowSum = calculateKjorebokSum(km, passengers, bilSats, passasjerSats);
+      sumKm += km;
+      sumKjoring += rowSum;
+      sumParkering += Number(entry.parking) || 0;
+      sumAndre += Number(entry.other_expenses) || 0;
+
+      row.getCell(1).value = new Date(`${entry.date}T12:00:00Z`);
+      row.getCell(1).numFmt = "dd.mm.yyyy";
+      row.getCell(1).alignment = { horizontal: "left" };
       row.getCell(2).value = entry.route || "";
-      row.getCell(3).value = Number(entry.km) || 0;
-      row.getCell(4).value = Number(entry.passengers) || 0;
-      row.getCell(5).value = { formula: `IF(D${r}>0,(C${r}*$I$4)+((C${r}*$I$5)*D${r}),(C${r}*$I$4))` };
+      row.getCell(3).value = km;
+      row.getCell(4).value = passengers;
+      row.getCell(5).value = { formula: `IF(D${r}>0,(C${r}*$I$4)+((C${r}*$I$5)*D${r}),(C${r}*$I$4))`, result: rowSum };
       row.getCell(5).numFmt = currencyFmt;
       row.getCell(6).value = Number(entry.parking) || 0;
       row.getCell(6).numFmt = currencyFmt;
@@ -10913,10 +10935,10 @@ async function exportKjorebokExcel() {
     sumRow.getCell(1).value = "Sum";
 
     if (entries.length > 0) {
-      sumRow.getCell(3).value = { formula: `SUM(C${firstDataRow}:C${lastDataRow})` };
-      sumRow.getCell(5).value = { formula: `SUM(E${firstDataRow}:E${lastDataRow})` };
-      sumRow.getCell(6).value = { formula: `SUM(F${firstDataRow}:F${lastDataRow})` };
-      sumRow.getCell(7).value = { formula: `SUM(G${firstDataRow}:G${lastDataRow})` };
+      sumRow.getCell(3).value = { formula: `SUM(C${firstDataRow}:C${lastDataRow})`, result: sumKm };
+      sumRow.getCell(5).value = { formula: `SUM(E${firstDataRow}:E${lastDataRow})`, result: sumKjoring };
+      sumRow.getCell(6).value = { formula: `SUM(F${firstDataRow}:F${lastDataRow})`, result: sumParkering };
+      sumRow.getCell(7).value = { formula: `SUM(G${firstDataRow}:G${lastDataRow})`, result: sumAndre };
     } else {
       sumRow.getCell(3).value = totalKm;
       sumRow.getCell(5).value = 0;
@@ -10927,7 +10949,10 @@ async function exportKjorebokExcel() {
     sumRow.getCell(6).numFmt = currencyFmt;
     sumRow.getCell(7).numFmt = currencyFmt;
     sumRow.getCell(8).value = "Totalt (kr):";
-    sumRow.getCell(9).value = { formula: `E${sumRowIndex}+F${sumRowIndex}+G${sumRowIndex}` };
+    sumRow.getCell(9).value = {
+      formula: `E${sumRowIndex}+F${sumRowIndex}+G${sumRowIndex}`,
+      result: entries.length > 0 ? sumKjoring + sumParkering + sumAndre : 0
+    };
     sumRow.getCell(9).numFmt = currencyFmt;
 
     for (let c = 1; c <= 9; c++) {
