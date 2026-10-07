@@ -6475,7 +6475,7 @@ function mountLeaveRegister(container, { getEmployeeName }) {
         lines.push(arrow("Avspaseringen din", formatHoursNo(avs), formatHoursNo(avs - used), " t"));
         if (days) lines.push(`Fri: ${formatDateRange(start, end)} (${hours ? `${formatHoursNo(hours)} t` : `${dayText(days)} × ${formatHoursNo(FULL_DAY_HOURS)} t`})`);
         if (avs - used < 0) lines.push(`<span class="leave-effect-warn">Du har ikke nok timer til gode. Snakk med styrer.</span>`);
-        lines.push("Må godkjennes. Du får beskjed.");
+        lines.push(currentEmployee?.is_admin ? "Godkjennes med en gang (du er styrer)." : "Må godkjennes. Du får beskjed.");
         break;
       }
       case "ferie": {
@@ -6483,7 +6483,7 @@ function mountLeaveRegister(container, { getEmployeeName }) {
         const left = quota - stats.ferie;
         lines.push(arrow(`Feriedager igjen i ${year}`, left, left - days));
         if (left - days < 0) lines.push(`<span class="leave-effect-warn">Det er flere dager enn du har igjen. Snakk med styrer.</span>`);
-        lines.push("Må godkjennes. Du får beskjed.");
+        lines.push(currentEmployee?.is_admin ? "Godkjennes med en gang (du er styrer)." : "Må godkjennes. Du får beskjed.");
         break;
       }
       case "syk": {
@@ -6513,7 +6513,7 @@ function mountLeaveRegister(container, { getEmployeeName }) {
         } else {
           lines.push(`${type}: <strong>${dayText(days)}</strong>`);
         }
-        lines.push("Må godkjennes. Du får beskjed.");
+        lines.push(currentEmployee?.is_admin ? "Godkjennes med en gang (du er styrer)." : "Må godkjennes. Du får beskjed.");
         break;
       }
     }
@@ -6671,9 +6671,9 @@ function mountLeaveRegister(container, { getEmployeeName }) {
       case "opptjent": type = "Avspasering opptjent"; status = "Registrert"; break;
     }
 
-    // Admin som registrerer for en annen: søknader er godkjent med en gang.
-    const adminForOther = currentEmployee?.is_admin && name !== currentEmployee.name;
-    if (status === "Ønsket" && adminForOther) status = "Godkjent";
+    // Admin (styrer) trenger ingen godkjenning - verken for seg selv eller andre:
+    // søknader er godkjent med en gang.
+    if (status === "Ønsket" && currentEmployee?.is_admin) status = "Godkjent";
     if (type === "Avspasering brukt") status = "Registrert";
 
     const record = {
