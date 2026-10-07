@@ -10352,7 +10352,6 @@ const kjorebokPurpose = document.getElementById("kjorebokPurpose");
 const kjorebokPassengerName = document.getElementById("kjorebokPassengerName");
 const kjorebokPassengerNameField = document.getElementById("kjorebokPassengerNameField");
 const kjorebokFilter = document.getElementById("kjorebokFilter");
-const kjorebokMonthFilter = document.getElementById("kjorebokMonthFilter");
 const kjorebokTableBody = document.getElementById("kjorebokTableBody");
 const kjorebokTableFoot = document.getElementById("kjorebokTableFoot");
 const kjorebokSubmitBtn = document.getElementById("kjorebokSubmitBtn");
@@ -10512,30 +10511,6 @@ function calculateKjorebokSum(km, passengers, bilSats, passasjerSats) {
   return base + passengerAmount;
 }
 
-function populateKjorebokMonthFilter() {
-  if (!kjorebokMonthFilter) return;
-
-  const currentValue = kjorebokMonthFilter.value || getCurrentMonthKey();
-
-  const months = [...new Set(
-    kjorebokEntriesCache
-      .filter(entry => entry.date)
-      .map(entry => entry.date.slice(0, 7))
-  )].sort((a, b) => b.localeCompare(a));
-
-  if (!months.includes(getCurrentMonthKey())) {
-    months.unshift(getCurrentMonthKey());
-  }
-
-  kjorebokMonthFilter.innerHTML =
-    `<option value="all">Alle måneder</option>` +
-    months.map(month => `<option value="${month}">${formatMonth(month)}</option>`).join("");
-
-  kjorebokMonthFilter.value = months.includes(currentValue) || currentValue === "all"
-    ? currentValue
-    : getCurrentMonthKey();
-}
-
 // Regnskapsfører krever passasjernavn dokumentert når det var
 // passasjerer med - ikke bare hvor mange. Feltet vises og blir
 // påkrevd bare når "Antall passasjerer" > 0.
@@ -10572,27 +10547,124 @@ function lockKjorebokFilterToSelf() {
   }
 }
 
+// Oversikten viser ALT som ikke er utbetalt (ingen månedsvisning). En
+// kjøretur regnes som utbetalt når den er sendt inn til utbetaling
+// (submitted_at satt) - da ligger den i Historikk i stedet.
 function getFilteredKjorebokEntries() {
   const selectedName = kjorebokFilter?.value || "all";
-  const selectedMonth = kjorebokMonthFilter?.value || "all";
 
-  return kjorebokEntriesCache.filter(entry => {
-    const matchesName = selectedName === "all" || entry.name === selectedName;
-    const matchesMonth = selectedMonth === "all" || (entry.date && entry.date.slice(0, 7) === selectedMonth);
-    return matchesName && matchesMonth;
+  return kjorebokEntriesCache.filter(entry =>
+    !entry.submitted_at && (selectedName === "all" || entry.name === selectedName)
+  );
+}
+
+function kjorebokExportYear(groups) {
+  const years = groups.flatMap(group => group.entries.map(entry => Number((entry.date || "").slice(0, 4))).filter(Boolean));
+  return years.length ? Math.max(...years) : new Date().getFullYear();
+}
+
+// Historikk: innsendte kjøreturer, én blokk per innsending (alle som ble
+// sendt samtidig), nyeste først. Respekterer "Vis ansatt".
+function renderKjorebokHistory() {
+  const container = document.getElementById("kjorebokHistory");
+  if (!container) return;
+
+  const selectedName = kjorebokFilter?.value || "all";
+  const submitted = kjorebokEntriesCache.filter(entry =>
+    entry.submitted_at && (selectedName === "all" || entry.name === selectedName)
+  );
+
+  if (!submitted.length) {
+    container.innerHTML = `<p class="muted">Ingenting sendt inn ennå.</p>`;
+    return;
+  }
+
+  const batches = {};
+  submitted.forEach(entry => {
+    if (!batches[entry.submitted_at]) batches[entry.submitted_at] = [];
+    batches[entry.submitted_at].push(entry);
   });
+
+  const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
+  const keys = Object.keys(batches).sort((a, b) => b.localeCompare(a));
+
+  container.innerHTML = keys.map(key => {
+    const groups = getGroupedKjorebokData(batches[key]);
+    const total = groups.reduce((sum, group) => sum + group.grandTotal, 0);
+    const sentDate = toDateKey(new Date(key));
+
+    return `
+      <details class="overtime-person" data-kjorebok-batch="${escapeHtml(key)}">
+        <summary>
+          <strong>Sendt ${formatNorwegianDate(sentDate)}</strong>
+          <span class="muted"> · ${groups.length} ${groups.length === 1 ? "ansatt" : "ansatte"} · ${batches[key].length} ${batches[key].length === 1 ? "kjøretur" : "kjøreturer"} · ${total.toFixed(2)} kr</span>
+        </summary>
+        ${groups.map(group => `
+          <div class="kjorebok-history-person">
+            <strong>${escapeHtml(group.name)}</strong>
+            <span class="muted">${group.totalKm.toFixed(1)} km · ${group.grandTotal.toFixed(2)} kr</span>
+            <ul class="overtime-lines">
+              ${group.entries.map(entry => `
+                <li>${formatNorwegianDate(entry.date)} · ${escapeHtml(entry.route || "")} · ${entry.km} km</li>
+              `).join("")}
+            </ul>
+          </div>
+        `).join("")}
+        <div class="arsplan-toolbar" style="margin-top: 8px;">
+          <button type="button" class="secondary-btn" data-kjorebok-batch-excel="${escapeHtml(key)}">📊 Last ned Excel</button>
+          ${isAdmin ? `<button type="button" class="kitchen-delete" data-kjorebok-batch-undo="${escapeHtml(key)}">Angre innsending</button>` : ""}
+        </div>
+      </details>
+    `;
+  }).join("");
+
+  container.querySelectorAll("[data-kjorebok-batch-excel]").forEach(button => {
+    button.addEventListener("click", () => {
+      const key = button.dataset.kjorebokBatchExcel;
+      exportKjorebokExcel(batches[key], `sendt-${toDateKey(new Date(key))}`);
+    });
+  });
+
+  container.querySelectorAll("[data-kjorebok-batch-undo]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const key = button.dataset.kjorebokBatchUndo;
+      if (!confirm("Angre innsendingen? Kjøreturene flyttes tilbake til Ikke utbetalt.")) return;
+
+      const ok = await markKjorebokSubmitted(batches[key].map(entry => entry.id), null);
+      if (ok) {
+        await loadKjorebokEntriesFromSupabase();
+        renderKjorebok();
+      }
+    });
+  });
+}
+
+async function markKjorebokSubmitted(ids, value) {
+  if (!ids.length) return true;
+
+  const { error } = await supabaseClient
+    .from("kbfb_kjorebok_entries")
+    .update({ submitted_at: value })
+    .in("id", ids);
+
+  if (error) {
+    console.error("Kunne ikke oppdatere innsending:", error);
+    alert("Kunne ikke lagre. Har du kjørt STEP 60 (kolonnen submitted_at) i Supabase?");
+    return false;
+  }
+  return true;
 }
 
 function renderKjorebok() {
   if (!kjorebokTableBody) return;
 
-  populateKjorebokMonthFilter();
+  renderKjorebokHistory();
 
   const records = getFilteredKjorebokEntries();
   const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
 
   if (!records.length) {
-    kjorebokTableBody.innerHTML = `<tr><td colspan="9" class="muted">Ingen kjøreturer ført ennå.</td></tr>`;
+    kjorebokTableBody.innerHTML = `<tr><td colspan="9" class="muted">Ingen kjøreturer som venter på utbetaling.</td></tr>`;
     if (kjorebokTableFoot) kjorebokTableFoot.innerHTML = "";
     return;
   }
@@ -10663,8 +10735,8 @@ function renderKjorebok() {
 // (samme som live-tabellen), grupperer per ansatt og regner ut
 // linjesummer/totaler ÉN gang, så alle tre eksportformatene garantert
 // viser akkurat samme tall.
-function getGroupedKjorebokData() {
-  const records = getFilteredKjorebokEntries();
+function getGroupedKjorebokData(records = null) {
+  records = records || getFilteredKjorebokEntries();
   const grouped = {};
 
   records.forEach(entry => {
@@ -10701,8 +10773,7 @@ function getGroupedKjorebokData() {
 function kjorebokPrintableHtml() {
   const groups = getGroupedKjorebokData();
 
-  const selectedMonth = kjorebokMonthFilter?.value || "all";
-  const periodLabel = selectedMonth === "all" ? "Alle måneder" : formatMonth(selectedMonth);
+  const periodLabel = "Ikke utbetalt";
 
   const sectionsHtml = groups.length
     ? groups.map(({ name, entries, totalKm, totalSum, totalParking, totalOther, grandTotal }) => {
@@ -10939,20 +11010,19 @@ async function buildKjorebokWorkbook(groups, { exportYear, bilSats, passasjerSat
   return wb;
 }
 
-async function exportKjorebokExcel() {
+async function exportKjorebokExcel(records = null, fileLabel = "") {
   if (typeof ExcelJS === "undefined") {
     alert("Excel-eksport kunne ikke lastes (sjekk internettforbindelsen) - prøv igjen, eller bruk PDF/Word i mellomtiden.");
     return;
   }
 
-  const groups = getGroupedKjorebokData();
+  const groups = getGroupedKjorebokData(records);
   if (!groups.length) {
     alert("Ingen kjøreturer å eksportere for dette utvalget.");
     return;
   }
 
-  const selectedMonth = kjorebokMonthFilter?.value || "all";
-  const exportYear = selectedMonth === "all" ? new Date().getFullYear() : Number(selectedMonth.slice(0, 4));
+  const exportYear = kjorebokExportYear(groups);
 
   let wb;
   try {
@@ -10972,7 +11042,7 @@ async function exportKjorebokExcel() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = selectedMonth === "all" ? "kjorebok.xlsx" : `kjorebok-${selectedMonth}.xlsx`;
+  link.download = fileLabel ? `kjorebok-${fileLabel}.xlsx` : "kjorebok.xlsx";
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -11003,7 +11073,6 @@ async function initializeKjorebok() {
   updateKjorebokPassengerNameVisibility();
 
   if (kjorebokFilter) kjorebokFilter.addEventListener("change", renderKjorebok);
-  if (kjorebokMonthFilter) kjorebokMonthFilter.addEventListener("change", renderKjorebok);
   if (kjorebokPassengers) kjorebokPassengers.addEventListener("input", updateKjorebokPassengerNameVisibility);
 
   if (kjorebokForm) {
@@ -11100,7 +11169,35 @@ async function initializeKjorebok() {
   if (wordBtn) wordBtn.addEventListener("click", exportKjorebokWord);
 
   const excelBtn = document.getElementById("kjorebokExcelBtn");
-  if (excelBtn) excelBtn.addEventListener("click", exportKjorebokExcel);
+  if (excelBtn) excelBtn.addEventListener("click", () => exportKjorebokExcel());
+
+  // "Sendt inn til utbetaling": alt som vises i Ikke utbetalt (valgt
+  // ansatt, eller alle) flyttes til Historikk og oversikten nullstilles.
+  const payoutBtn = document.getElementById("kjorebokSubmitPayoutBtn");
+  if (payoutBtn) {
+    payoutBtn.addEventListener("click", async () => {
+      const records = getFilteredKjorebokEntries();
+      if (!records.length) {
+        alert("Det er ingen kjøreturer som venter på utbetaling.");
+        return;
+      }
+
+      const groups = getGroupedKjorebokData(records);
+      const total = groups.reduce((sum, group) => sum + group.grandTotal, 0);
+      const who = groups.length === 1 ? groups[0].name : `${groups.length} ansatte`;
+
+      if (!confirm(`Markere ${records.length} kjøreturer (${total.toFixed(2)} kr) for ${who} som sendt inn til utbetaling? De flyttes til Historikk.`)) return;
+
+      payoutBtn.disabled = true;
+      const ok = await markKjorebokSubmitted(records.map(entry => entry.id), new Date().toISOString());
+      payoutBtn.disabled = false;
+
+      if (ok) {
+        await loadKjorebokEntriesFromSupabase();
+        renderKjorebok();
+      }
+    });
+  }
 }
 
 initializeKjorebok();

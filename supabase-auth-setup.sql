@@ -1958,3 +1958,12 @@ CREATE POLICY "kbfb_absences_insert_own_admin_or_avdelingsleder_sick" ON public.
 --   kolonne eller policy er nødvendig. (En tidligere versjon la til
 --   kolonnen no_overtime; den brukes ikke og kan ignoreres.)
 -- =========================================================
+
+-- =========================================================
+-- STEP 60: kbfb_kjorebok_entries.submitted_at
+--   "Sendt inn til utbetaling" på kjorebok.html: kjøreturer med
+--   submitted_at satt vises i Historikk (gruppert per innsending) i
+--   stedet for i Ikke utbetalt. NULL = ikke utbetalt ennå.
+-- =========================================================
+
+ALTER TABLE public.kbfb_kjorebok_entries ADD COLUMN IF NOT EXISTS submitted_at timestamptz;

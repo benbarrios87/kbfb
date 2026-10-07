@@ -159,7 +159,8 @@
       </section>
 
       <section class="card">
-        <h2>Oversikt</h2>
+        <h2>Ikke utbetalt</h2>
+        <p class="muted">Alle kjøreturer som ikke er sendt inn til utbetaling ennå. Når de er sendt inn, flyttes de til Historikk og oversikten nullstilles.</p>
 
         <div class="filters">
           <label class="compact-filter">
@@ -168,17 +169,13 @@
               <option value="all">Alle</option>
             </select>
           </label>
-
-          <label class="compact-filter">
-            Måned
-            <select id="kjorebokMonthFilter"></select>
-          </label>
         </div>
 
         <div class="arsplan-toolbar" style="margin: 12px 0;">
           <button type="button" class="secondary-btn" id="kjorebokPrintBtn">🖨️ Last ned PDF</button>
           <button type="button" class="secondary-btn" id="kjorebokWordBtn">📄 Last ned Word</button>
           <button type="button" class="secondary-btn" id="kjorebokExcelBtn">📊 Last ned Excel</button>
+          <button type="button" class="primary-btn" id="kjorebokSubmitPayoutBtn" data-admin-only>✓ Sendt inn til utbetaling</button>
         </div>
 
         <div class="table-wrap">
@@ -201,6 +198,14 @@
           </table>
         </div>
       </section>
+
+      <details class="card">
+        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Historikk (sendt til utbetaling)</h2></summary>
+        <p class="muted">Kjøreturer som er sendt inn. Åpne en innsending for å se hvem og hva som var med, eller last ned Excel på nytt.</p>
+        <div id="kjorebokHistory" class="summary-list">
+          <p class="muted">Ingenting sendt inn ennå.</p>
+        </div>
+      </details>
 
       <details class="card" data-admin-only>
         <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Satser</h2></summary>
