@@ -7054,10 +7054,7 @@ const openEmployeeCards = new Set();
 
 function employeeCardSummaryHtml(employee) {
   const meta = [employee.role, employee.department].filter(Boolean).map(escapeHtml).join(" · ");
-  const salary = salaryFor(employee.id);
-  const backpayDue = salary.backpay > 0 && salary.backpay_payday && salary.backpay_payday >= toDateKey(new Date());
   const tags = [
-    backpayDue ? `<span class="emp-tag">Etterbetaling ${escapeHtml(formatShortDate(new Date(salary.backpay_payday + "T12:00:00")))}</span>` : "",
     employee.is_admin ? `<span class="emp-tag">Admin</span>` : "",
     employee.active ? "" : `<span class="emp-tag emp-tag-muted">Ikke aktiv</span>`,
     employee.user_id ? "" : `<span class="emp-tag emp-tag-warn">Ingen innlogging</span>`
@@ -7095,11 +7092,7 @@ function employeeSalaryTotalsHtml(salary) {
   if (pct !== 100) parts.push(`<strong>${formatKr(actual)}</strong> i ${String(pct).replace(".", ",")} %`);
   parts.push(`ca. ${formatKr(actual / 12)} pr. måned`);
 
-  const backpay = salary.backpay > 0
-    ? `<br />Etterbetaling ca. <strong>${formatKr(salary.backpay)}</strong>${salary.backpay_payday ? ` ved lønning ${escapeHtml(formatNorwegianDate(salary.backpay_payday))}` : ""}`
-    : "";
-
-  return `<p class="emp-salary-total">${parts.join(" · ")}${backpay}</p>`;
+  return `<p class="emp-salary-total">${parts.join(" · ")}</p>`;
 }
 
 function employeeSalarySectionHtml(employee) {
@@ -7129,8 +7122,6 @@ function employeeSalarySectionHtml(employee) {
         ${field("allowance_note", "Om tillegget <span class=\"muted\">(f.eks. midlertidig)</span>", "text")}
         ${field("position_pct", "Stilling %", "number", `min="0" max="100" step="1"`)}
         ${field("effective_from", "Gjelder fra", "date")}
-        ${field("backpay", "Etterbetaling <span class=\"muted\">(ca.)</span>", "number", `min="0" step="1"`)}
-        ${field("backpay_payday", "Etterbetales ved lønning", "date")}
       </div>
       <div data-salary-total-for="${employee.id}">${employeeSalaryTotalsHtml(salary)}</div>
     </section>

@@ -1990,8 +1990,6 @@ CREATE TABLE IF NOT EXISTS public.kbfb_salaries (
   allowance_note text,
   position_pct numeric,
   effective_from date,
-  backpay integer,
-  backpay_payday date,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 

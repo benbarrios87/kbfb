@@ -1,5 +1,5 @@
 -- Lønn per ansatt (Personalliste på Admin): grunnlønn, tillegg,
--- stillingsprosent og etterbetaling ved neste lønning.
+-- og stillingsprosent.
 -- Kjør én gang i Supabase -> SQL Editor. Trygt å kjøre flere ganger.
 --
 -- Egen tabell (ikke kolonner på kbfb_employees), fordi alle innloggede
@@ -15,8 +15,6 @@ CREATE TABLE IF NOT EXISTS public.kbfb_salaries (
   allowance_note text,          -- f.eks. "midlertidig"
   position_pct numeric,         -- stillingsprosent, f.eks. 70
   effective_from date,          -- lønnen gjelder fra
-  backpay integer,              -- etterbetaling (ca.)
-  backpay_payday date,          -- lønningsdagen etterbetalingen kommer
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
