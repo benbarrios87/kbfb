@@ -204,6 +204,14 @@ function colorForEmployee(employee) {
   return employeeColorPalette[spread].value;
 }
 
+// Fullt navn (med etternavn) til utskrifter som kjørebok. "name" er
+// nøkkelen som kobler personen til vakter, fravær osv. og endres helst
+// ikke, så etternavnet ligger i eget felt (full_name) på ansattkortet.
+function employeeFullName(name) {
+  const employee = employeesCache.find(e => e.name === name);
+  return (employee?.full_name || "").trim() || name;
+}
+
 // Style-attributt som farger et kort med den ansattes egen farge (pastell
 // bakgrunn + tydeligere kant) - brukt i Lønn-oversikten på Admin.
 function personColorStyle(name, fallbackColor = "") {
@@ -7079,6 +7087,10 @@ function employeeCardHtml(employee) {
               <button type="button" class="secondary-btn rename-employee-btn" data-rename-id="${employee.id}" data-rename-name="${name}">Bytt navn</button>
             </div>
             <label class="emp-field">
+              <span class="emp-label">Fullt navn <span class="muted">(brukes i kjørebok)</span></span>
+              <input type="text" class="admin-field" data-id="${employee.id}" data-field="full_name" value="${escapeHtml(employee.full_name)}" placeholder="Fornavn Etternavn" />
+            </label>
+            <label class="emp-field">
               <span class="emp-label">Rolle</span>
               <select class="admin-field" data-id="${employee.id}" data-field="role">${roleSelectOptionsHtml(employee.role)}</select>
             </label>
@@ -10795,7 +10807,7 @@ function kjorebokPrintableHtml() {
 
       return `
         <div class="kjorebok-print-section">
-          <h2>${escapeHtml(name)}</h2>
+          <h2>${escapeHtml(employeeFullName(name))}</h2>
           <p class="kjorebok-print-meta">Periode: ${escapeHtml(periodLabel)}</p>
           <table>
             <thead>
@@ -10894,7 +10906,7 @@ const KJOREBOK_TEMPLATE_ROWS = KJOREBOK_TEMPLATE_LAST_ROW - KJOREBOK_TEMPLATE_FI
 function fillKjorebokSheet(ws, { name, entries, carText, exportYear, bilSats, passasjerSats }) {
   ws.getCell("B2").value = `KJØREBOK ${exportYear}`;
   ws.getCell("D3").value = "Kirkerudbakken Friluftsbarnehage";
-  ws.getCell("D4").value = name;
+  ws.getCell("D4").value = employeeFullName(name);
   ws.getCell("D5").value = carText;
   ws.getCell("J4").value = bilSats;
   ws.getCell("J5").value = passasjerSats;
@@ -10984,7 +10996,7 @@ async function buildKjorebokWorkbook(groups, { exportYear, bilSats, passasjerSat
     }
 
     pages.forEach((pageEntries, pageIndex) => {
-      const sheetName = uniqueSheetName(pageIndex === 0 ? name : `${name} ${pageIndex + 1}`);
+      const sheetName = uniqueSheetName(pageIndex === 0 ? employeeFullName(name) : `${employeeFullName(name)} ${pageIndex + 1}`);
       let ws;
       if (!templateUsed) {
         ws = templateSheet;

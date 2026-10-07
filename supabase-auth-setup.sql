@@ -1967,3 +1967,12 @@ CREATE POLICY "kbfb_absences_insert_own_admin_or_avdelingsleder_sick" ON public.
 -- =========================================================
 
 ALTER TABLE public.kbfb_kjorebok_entries ADD COLUMN IF NOT EXISTS submitted_at timestamptz;
+
+-- =========================================================
+-- STEP 61: kbfb_employees.full_name
+--   Fullt navn (med etternavn) til kjørebok og andre utskrifter.
+--   "name" er nøkkelen som kobler personen til vakter, fravær osv. og
+--   endres helst ikke, så etternavnet ligger i et eget felt.
+-- =========================================================
+
+ALTER TABLE public.kbfb_employees ADD COLUMN IF NOT EXISTS full_name text;
