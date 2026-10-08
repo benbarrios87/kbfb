@@ -1534,12 +1534,22 @@ if (directMessageForm) {
       return;
     }
 
-    sendPushNotification(recipients, `Beskjed fra ${currentEmployee.name}`, text, "dashboard.html");
-
     directMessageForm.reset();
+    const baseStatus = toName === "all" ? `Sendt til ${recipients.length} ansatte ✓` : "Sendt ✓";
+    if (directMessageStatus) directMessageStatus.textContent = `${baseStatus} Sender varsel ...`;
+
+    const push = await sendPushNotification(recipients, `Beskjed fra ${currentEmployee.name}`, text, "dashboard.html");
+
+    // Beskjeden ligger uansett på Hjem til mottakeren har trykket "Lest";
+    // her sier vi ærlig om telefonvarselet også kom fram.
+    let pushStatus;
+    if (push.error) pushStatus = "Varselet til telefon feilet - beskjeden ligger på Hjem.";
+    else if (push.sent === 0) pushStatus = "Ingen telefonvarsel (ingen har skrudd på varsler) - beskjeden ligger på Hjem.";
+    else pushStatus = `Telefonvarsel levert til ${push.sent} ${push.sent === 1 ? "enhet" : "enheter"}.`;
+
     if (directMessageStatus) {
-      directMessageStatus.textContent = toName === "all" ? `Sendt til ${recipients.length} ansatte ✓` : "Sendt ✓";
-      setTimeout(() => { directMessageStatus.textContent = ""; }, 3000);
+      directMessageStatus.textContent = `${baseStatus} ${pushStatus}`;
+      setTimeout(() => { directMessageStatus.textContent = ""; }, 8000);
     }
   });
 }
@@ -1564,6 +1574,7 @@ async function loadMyDirectMessages() {
 
   myDirectMessagesCache = data || [];
   renderMyDirectMessages();
+  loadHomeNavBadge();
 }
 
 function renderMyDirectMessages() {
@@ -2485,16 +2496,28 @@ async function initPushToggle() {
 
 // Fire-and-forget - a failed push should never block the action that
 // triggered it (sending a swap request, accepting one, ...).
+// Returnerer { sent, error }: sent = antall enheter varselet ble levert til,
+// error = tekst hvis selve varsel-funksjonen feilet. De fleste kallere
+// bryr seg ikke om svaret; "Send beskjed" viser det til styrer.
 async function sendPushNotification(employeeNames, title, body, url) {
   const targets = [...new Set(employeeNames)].filter(name => name && name !== currentEmployee?.name);
-  if (!targets.length) return;
+  if (!targets.length) return { sent: 0, error: null };
 
   try {
-    await supabaseClient.functions.invoke("send-push-notification", {
+    const { data, error } = await supabaseClient.functions.invoke("send-push-notification", {
       body: { to: targets, title, body, url },
     });
+
+    if (error || data?.error) {
+      const message = await describeFunctionError(error, data);
+      console.error("Push-varsel feilet:", message);
+      return { sent: 0, error: message };
+    }
+
+    return { sent: Number(data?.sent) || 0, error: null };
   } catch (error) {
     console.error("Kunne ikke sende push-varsel:", error);
+    return { sent: 0, error: String(error) };
   }
 }
 
@@ -2908,8 +2931,14 @@ async function loadSentSwapRequests() {
 // Runs on every page (not just vakter.html) so the "Vakter" nav link
 // shows a badge no matter where someone is when a swap request comes in.
 async function loadSwapNavBadge() {
-  const badges = document.querySelectorAll(".nav-badge");
-  if (!badges.length || typeof currentEmployee === "undefined" || !currentEmployee) return;
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  loadHomeNavBadge();
+
+  // Bare badgen i menylenken til Vakter - andre .nav-badge på sidene
+  // (f.eks. antall til godkjenning på Admin) styres av sine egne funksjoner.
+  const badges = document.querySelectorAll('nav a[href="vakter.html"] .nav-badge');
+  if (!badges.length) return;
 
   const { count, error } = await supabaseClient
     .from("kbfb_shift_swap_requests")
@@ -2923,6 +2952,37 @@ async function loadSwapNavBadge() {
   }
 
   badges.forEach(badge => {
+    badge.textContent = count || "";
+    badge.style.display = count ? "inline-flex" : "none";
+  });
+}
+
+// Antall uleste beskjeder fra styrer som tall på "Hjem" i menyen, på alle
+// sider - ellers ser man beskjeden bare hvis man åpner Hjem.
+async function loadHomeNavBadge() {
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+  const links = document.querySelectorAll('nav a[href="dashboard.html"]');
+  if (!links.length) return;
+
+  const { count, error } = await supabaseClient
+    .from("kbfb_direct_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("to_name", currentEmployee.name)
+    .eq("read", false);
+
+  if (error) {
+    console.error("Kunne ikke hente uleste beskjeder:", error);
+    return;
+  }
+
+  links.forEach(link => {
+    let badge = link.querySelector(".nav-badge");
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "nav-badge";
+      link.appendChild(badge);
+    }
     badge.textContent = count || "";
     badge.style.display = count ? "inline-flex" : "none";
   });
