@@ -4922,6 +4922,135 @@ function renderSickLeaveSummary() {
     : `<p class="muted">Ingen egenmeldings- eller omsorgsdager i ${formatMonth(month)}.</p>`;
 }
 
+/* ----- Lønnskjøring: "Husk til lønnskjøring"-notater (kun admin) ----- */
+
+let payrollNotesCache = [];
+
+async function loadPayrollNotes() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_payroll_notes")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Kunne ikke hente lønnsnotater:", error);
+    return null;
+  }
+
+  payrollNotesCache = data || [];
+  return payrollNotesCache;
+}
+
+function payrollNoteHtml(note) {
+  const who = note.employee_name
+    ? `<strong ${personColorStyle(note.employee_name)} class="payroll-note-who">${escapeHtml(note.employee_name)}</strong> `
+    : "";
+
+  return `
+    <div class="payroll-note${note.done ? " payroll-note-done" : ""}">
+      <label>
+        <input type="checkbox" data-payroll-note-toggle="${note.id}" ${note.done ? "checked" : ""} />
+        <span>${who}${escapeHtml(note.text)}</span>
+      </label>
+      <button class="kitchen-delete" type="button" data-payroll-note-delete="${note.id}" title="Slett notatet">✕</button>
+    </div>
+  `;
+}
+
+function renderPayrollNotes() {
+  const openEl = document.getElementById("payrollNotes");
+  const doneEl = document.getElementById("payrollNotesDone");
+  if (!openEl || !doneEl) return;
+
+  const select = document.getElementById("payrollNoteEmployee");
+  if (select && select.options.length <= 1 && employeesCache.length) {
+    populateEmployeeSelect("payrollNoteEmployee", { blankText: "Gjelder ingen bestemt" });
+  }
+
+  const open = payrollNotesCache.filter(note => !note.done);
+  const done = payrollNotesCache.filter(note => note.done)
+    .sort((a, b) => (b.done_at || "").localeCompare(a.done_at || ""))
+    .slice(0, 30);
+
+  openEl.innerHTML = open.length
+    ? open.map(payrollNoteHtml).join("")
+    : `<p class="muted">Ingenting å huske akkurat nå.</p>`;
+  doneEl.innerHTML = done.length ? done.map(payrollNoteHtml).join("") : `<p class="muted">Ingen ferdige ennå.</p>`;
+
+  const badge = document.getElementById("payrollNotesBadge");
+  if (badge) {
+    badge.textContent = open.length;
+    badge.style.display = open.length ? "" : "none";
+  }
+
+  document.querySelectorAll("[data-payroll-note-toggle]").forEach(box => {
+    box.addEventListener("change", async () => {
+      const { error } = await supabaseClient
+        .from("kbfb_payroll_notes")
+        .update({ done: box.checked, done_at: box.checked ? new Date().toISOString() : null })
+        .eq("id", box.dataset.payrollNoteToggle);
+
+      if (error) {
+        console.error("Kunne ikke oppdatere lønnsnotat:", error);
+        alert("Kunne ikke lagre. Har du kjørt STEP 62 i Supabase?");
+        box.checked = !box.checked;
+        return;
+      }
+
+      await loadPayrollNotes();
+      renderPayrollNotes();
+    });
+  });
+
+  document.querySelectorAll("[data-payroll-note-delete]").forEach(button => {
+    button.addEventListener("click", async () => {
+      if (!confirm("Slette dette notatet?")) return;
+      await supabaseClient.from("kbfb_payroll_notes").delete().eq("id", button.dataset.payrollNoteDelete);
+      await loadPayrollNotes();
+      renderPayrollNotes();
+    });
+  });
+}
+
+async function initializePayrollNotes() {
+  const form = document.getElementById("payrollNoteForm");
+  if (!form) return;
+
+  if (!employeesCache.length) await loadEmployeesFromSupabase();
+
+  const loaded = await loadPayrollNotes();
+  if (loaded === null) {
+    document.getElementById("payrollNotes").innerHTML =
+      `<p class="muted">Kunne ikke hente notatene. Har du kjørt STEP 62 i Supabase?</p>`;
+    return;
+  }
+  renderPayrollNotes();
+
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const text = document.getElementById("payrollNoteText").value.trim();
+    const employee = document.getElementById("payrollNoteEmployee").value || null;
+    if (!text) return;
+
+    const { error } = await supabaseClient
+      .from("kbfb_payroll_notes")
+      .insert([{ text, employee_name: employee }]);
+
+    if (error) {
+      console.error("Kunne ikke lagre lønnsnotat:", error);
+      alert("Kunne ikke lagre notatet. Har du kjørt STEP 62 i Supabase?");
+      return;
+    }
+
+    form.reset();
+    await loadPayrollNotes();
+    renderPayrollNotes();
+  });
+}
+
+initializePayrollNotes();
+
 // Ekstra timer til vanlig lønn (f.eks. personalmøte uten å ha jobbet på
 // dagtid): ikke overtid og ikke avspasering, bare timer som skal ha
 // vanlig timelønn.

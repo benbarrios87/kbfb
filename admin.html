@@ -177,10 +177,24 @@
           <div>
             <span class="details-toggle-icon">▸</span>
             <p class="eyebrow">Lønn</p>
-            <h2 style="display: inline;">Lønn</h2>
+            <h2 style="display: inline;">Lønnskjøring <span class="nav-badge" id="payrollNotesBadge" style="display: none;"></span></h2>
           </div>
         </summary>
-        <p class="muted">Alt til lønn for valgt måned: overtid per ansatt, timelønn per vikar, og egenmeldings-/omsorgsdager.</p>
+        <p class="muted">Alt til lønnskjøringen: det du må huske, og for valgt måned overtid per ansatt, timelønn per vikar og egenmeldings-/omsorgsdager.</p>
+
+        <h3 style="margin-top: 16px;">Husk til lønnskjøring</h3>
+        <form id="payrollNoteForm" class="payroll-note-form">
+          <select id="payrollNoteEmployee" aria-label="Gjelder ansatt"></select>
+          <input id="payrollNoteText" type="text" placeholder="F.eks. husk tillegg på … eller etterbetal …" required />
+          <button class="primary-btn" type="submit">Legg til</button>
+        </form>
+        <div id="payrollNotes" class="payroll-notes">
+          <p class="muted">Laster...</p>
+        </div>
+        <details class="followup-details">
+          <summary class="muted">Ferdig ført</summary>
+          <div id="payrollNotesDone" class="payroll-notes"></div>
+        </details>
 
         <label class="compact-filter">
           Måned

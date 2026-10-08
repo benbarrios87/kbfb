@@ -4914,3 +4914,52 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   font-size: 0.9rem;
   line-height: 1.6;
 }
+
+/* Lønnskjøring: "Husk"-notater */
+.payroll-note-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.payroll-note-form input[type="text"] {
+  flex: 1 1 240px;
+}
+
+.payroll-notes {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.payroll-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+}
+
+.payroll-note label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  cursor: pointer;
+}
+
+.payroll-note-done span {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.payroll-note-who {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: 999px;
+  margin-right: 4px;
+  color: #243225;
+}

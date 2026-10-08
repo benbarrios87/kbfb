@@ -2000,3 +2000,27 @@ CREATE POLICY "kbfb_salaries_admin_all" ON public.kbfb_salaries
   FOR ALL TO authenticated
   USING (public.kbfb_is_admin())
   WITH CHECK (public.kbfb_is_admin());
+
+-- =========================================================
+-- STEP 62: kbfb_payroll_notes ("Husk til lønnskjøring" på Admin)
+--   Små notater til lønn (husk tillegg, etterbetal ...), eventuelt knyttet
+--   til en ansatt. Åpne notater vises alltid, uavhengig av måned; når de
+--   er ført krysses de av og ligger igjen under "Ferdig ført". Kun admin.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_payroll_notes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  text text NOT NULL,
+  employee_name text,
+  done boolean NOT NULL DEFAULT false,
+  done_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_payroll_notes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_payroll_notes_admin_all" ON public.kbfb_payroll_notes;
+CREATE POLICY "kbfb_payroll_notes_admin_all" ON public.kbfb_payroll_notes
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());
