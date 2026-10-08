@@ -10740,7 +10740,7 @@ function renderKjorebokHistory() {
   container.querySelectorAll("[data-kjorebok-batch-excel]").forEach(button => {
     button.addEventListener("click", () => {
       const key = button.dataset.kjorebokBatchExcel;
-      exportKjorebokExcel(batches[key], `sendt-${toDateKey(new Date(key))}`);
+      exportKjorebokExcel(batches[key], toDateKey(new Date(key)));
     });
   });
 
@@ -10975,6 +10975,15 @@ function kjorebokPrintableHtml() {
     </html>`;
 }
 
+// Filnavn som sier hvem og når, f.eks. "Kjørebok Mari Hansen 2026-10-08"
+// eller "Kjørebok alle ansatte 2026-10-08" - ikke bare "kjorebok" hver
+// gang. sentDate settes for innsendinger fra Historikk ("... sendt ...").
+function kjorebokFileBase(groups, sentDate = "") {
+  const who = groups.length === 1 ? employeeFullName(groups[0].name) : "alle ansatte";
+  const when = sentDate ? `sendt ${sentDate}` : toDateKey(new Date());
+  return `Kjørebok ${who} ${when}`.replace(/[\\/:*?"<>|]/g, "").trim();
+}
+
 function exportKjorebokPdf() {
   const win = window.open("", "_blank");
   if (!win) {
@@ -10984,6 +10993,8 @@ function exportKjorebokPdf() {
 
   win.document.write(kjorebokPrintableHtml());
   win.document.close();
+  // Nettleseren foreslår tittelen som filnavn når man lagrer som PDF.
+  win.document.title = kjorebokFileBase(getGroupedKjorebokData());
   win.focus();
   setTimeout(() => win.print(), 300);
 }
@@ -10993,7 +11004,7 @@ function exportKjorebokWord() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "kjorebok.doc";
+  link.download = `${kjorebokFileBase(getGroupedKjorebokData())}.doc`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -11129,7 +11140,7 @@ async function buildKjorebokWorkbook(groups, { exportYear, bilSats, passasjerSat
   return wb;
 }
 
-async function exportKjorebokExcel(records = null, fileLabel = "") {
+async function exportKjorebokExcel(records = null, sentDate = "") {
   if (typeof ExcelJS === "undefined") {
     alert("Excel-eksport kunne ikke lastes (sjekk internettforbindelsen) - prøv igjen, eller bruk PDF/Word i mellomtiden.");
     return;
@@ -11161,7 +11172,7 @@ async function exportKjorebokExcel(records = null, fileLabel = "") {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = fileLabel ? `kjorebok-${fileLabel}.xlsx` : "kjorebok.xlsx";
+  link.download = `${kjorebokFileBase(groups, sentDate)}.xlsx`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
