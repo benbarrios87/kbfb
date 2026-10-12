@@ -123,7 +123,12 @@
         <form id="documentUploadForm" class="form-grid">
           <label class="wide-field">
             Filer
-            <input id="documentFiles" type="file" multiple required />
+            <input id="documentFiles" type="file" multiple />
+          </label>
+
+          <label class="wide-field">
+            Eller hele mappen <span class="muted">(hver undermappe blir en kategori automatisk)</span>
+            <input id="documentFolder" type="file" webkitdirectory multiple />
           </label>
 
           <label>

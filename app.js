@@ -12340,8 +12340,26 @@ async function initializeFilarkiv() {
   form.addEventListener("submit", async event => {
     event.preventDefault();
 
-    const files = [...document.getElementById("documentFiles").files];
-    const category = document.getElementById("documentCategory").value.trim() || null;
+    const formCategory = document.getElementById("documentCategory").value.trim() || null;
+
+    // Hel mappe: undermappenavnet blir kategorien ("04 HMS og beredskap"
+    // -> "HMS og beredskap"; tall-prefikset brukes bare til rekkefølge).
+    // Velges selve kategorimappa, brukes dens navn.
+    const categoryFromPath = file => {
+      const parts = (file.webkitRelativePath || "").split("/").filter(Boolean);
+      if (parts.length < 2) return null;
+      const folder = parts.length >= 3 ? parts[1] : parts[0];
+      return folder.replace(/^\d+\s+/, "").trim() || null;
+    };
+    const skipFile = file => /^(_|thumbs\.db$|~\$)/i.test(file.name) || /\.(tmp|lnk|ini)$/i.test(file.name);
+
+    const picked = [...document.getElementById("documentFiles").files];
+    const folderFiles = [...(document.getElementById("documentFolder")?.files || [])];
+    const entries = [
+      ...picked.map(file => ({ file, category: formCategory })),
+      ...folderFiles.filter(file => !skipFile(file)).map(file => ({ file, category: categoryFromPath(file) || formCategory }))
+    ];
+    const files = entries.map(entry => entry.file);
     if (!files.length) return;
 
     const submitButton = form.querySelector('button[type="submit"]');
@@ -12350,7 +12368,7 @@ async function initializeFilarkiv() {
     let uploaded = 0;
     const failed = [];
 
-    for (const [index, file] of files.entries()) {
+    for (const [index, { file, category }] of entries.entries()) {
       if (status) status.textContent = `Laster opp ${index + 1} av ${files.length}: ${file.name} ...`;
 
       // Supabase Storage tåler ikke alle tegn i filnøkler (æøå, mellomrom
