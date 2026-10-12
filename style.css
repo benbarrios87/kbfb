@@ -5065,3 +5065,53 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
 .document-feedback-form input[type="text"] {
   flex: 1 1 200px;
 }
+
+/* Filarkiv: søk, kategorivelger og sammenleggbare kategorier */
+.document-search {
+  width: 100%;
+  margin: 8px 0 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font: inherit;
+  background: #fffdf7;
+}
+
+.document-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.document-chip {
+  border: 1px solid var(--line);
+  background: #fffdf7;
+  color: var(--green-dark);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.document-chip-active {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+
+.document-group {
+  margin-bottom: 8px;
+}
+
+.document-group > summary {
+  cursor: pointer;
+  padding: 8px 2px;
+  list-style: none;
+}
+
+.document-group[open] > summary {
+  border-bottom: 2px solid var(--green-soft);
+  margin-bottom: 8px;
+}

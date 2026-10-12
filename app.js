@@ -12116,6 +12116,9 @@ async function loadDocuments() {
 
 let documentFeedbackCache = [];
 const documentFeedbackOpen = new Set();
+const documentGroupsOpen = new Set();
+let documentSearchText = "";
+let documentCategoryFilter = "";
 
 const DOCUMENT_FEEDBACK_KINDS = {
   kommentar: "Kommentar",
@@ -12183,15 +12186,63 @@ function renderDocuments() {
     return;
   }
 
-  const byCategory = {};
+  // Søk + kategorivelger. Kategoriene (med antall) vises som valg øverst;
+  // søket matcher tittel, filnavn og kategori, alle ordene må treffe.
+  const searchWords = documentSearchText.toLowerCase().split(/\s+/).filter(Boolean);
+  const categoryOf = doc => doc.category || "Andre dokumenter";
+
+  const allCategories = {};
   documentsCache.forEach(doc => {
-    const key = doc.category || "Andre dokumenter";
+    const key = categoryOf(doc);
+    allCategories[key] = (allCategories[key] || 0) + 1;
+  });
+  const categoryNames = Object.keys(allCategories).sort((a, b) => a.localeCompare(b, "no"));
+  if (documentCategoryFilter && !allCategories[documentCategoryFilter]) documentCategoryFilter = "";
+
+  const chipsEl = document.getElementById("documentCategoryChips");
+  if (chipsEl) {
+    chipsEl.innerHTML = [
+      `<button type="button" class="document-chip${documentCategoryFilter ? "" : " document-chip-active"}" data-document-category="">Alle (${documentsCache.length})</button>`,
+      ...categoryNames.map(name =>
+        `<button type="button" class="document-chip${documentCategoryFilter === name ? " document-chip-active" : ""}" data-document-category="${escapeHtml(name)}">${escapeHtml(name)} (${allCategories[name]})</button>`
+      )
+    ].join("");
+
+    chipsEl.querySelectorAll("[data-document-category]").forEach(button => {
+      button.addEventListener("click", () => {
+        documentCategoryFilter = button.dataset.documentCategory;
+        renderDocuments();
+      });
+    });
+  }
+
+  const visibleDocs = documentsCache.filter(doc => {
+    if (documentCategoryFilter && categoryOf(doc) !== documentCategoryFilter) return false;
+    if (!searchWords.length) return true;
+    const haystack = `${doc.title} ${doc.file_name} ${categoryOf(doc)}`.toLowerCase();
+    return searchWords.every(word => haystack.includes(word));
+  });
+
+  if (!visibleDocs.length) {
+    list.innerHTML = `<p class="muted">Ingen dokumenter passer med søket.</p>`;
+    return;
+  }
+
+  const byCategory = {};
+  visibleDocs.forEach(doc => {
+    const key = categoryOf(doc);
     if (!byCategory[key]) byCategory[key] = [];
     byCategory[key].push(doc);
   });
 
-  list.innerHTML = Object.keys(byCategory).sort((a, b) => a.localeCompare(b, "no")).map(category => `
-    <h3 class="document-category">${escapeHtml(category)}</h3>
+  // Kategoriene er sammenleggbare: lukket som standard når det er mange,
+  // åpne når man søker, har valgt en kategori eller bare én passer.
+  const names = Object.keys(byCategory).sort((a, b) => a.localeCompare(b, "no"));
+  const expandAll = searchWords.length > 0 || !!documentCategoryFilter || names.length === 1;
+
+  list.innerHTML = names.map(category => `
+    <details class="document-group" data-document-group="${escapeHtml(category)}" ${expandAll || documentGroupsOpen.has(category) ? "open" : ""}>
+      <summary><span class="details-toggle-icon">▸</span> <strong>${escapeHtml(category)}</strong> <span class="muted">(${byCategory[category].length})</span></summary>
     ${byCategory[category].map(doc => {
       const feedback = documentFeedbackCache.filter(item => item.document_id === doc.id);
       const open = feedback.filter(item => !item.resolved);
@@ -12214,7 +12265,16 @@ function renderDocuments() {
       ${panelOpen ? documentFeedbackPanelHtml(doc, feedback, isAdmin) : ""}
     `;
     }).join("")}
+    </details>
   `).join("");
+
+  list.querySelectorAll("[data-document-group]").forEach(group => {
+    group.addEventListener("toggle", () => {
+      const name = group.dataset.documentGroup;
+      if (group.open) documentGroupsOpen.add(name);
+      else documentGroupsOpen.delete(name);
+    });
+  });
 
   list.querySelectorAll("[data-document-feedback-toggle]").forEach(button => {
     button.addEventListener("click", () => {
@@ -12332,6 +12392,11 @@ async function initializeFilarkiv() {
     await loadDocumentFeedback();
     renderDocuments();
   }
+
+  document.getElementById("documentSearch")?.addEventListener("input", event => {
+    documentSearchText = event.target.value.trim();
+    renderDocuments();
+  });
 
   const form = document.getElementById("documentUploadForm");
   const status = document.getElementById("documentUploadStatus");
