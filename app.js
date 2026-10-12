@@ -12259,6 +12259,7 @@ function renderDocuments() {
             <span class="muted">${escapeHtml([documentSizeText(doc.size_bytes), doc.created_at ? formatNorwegianDate(String(doc.created_at).slice(0, 10)) : ""].filter(Boolean).join(" · "))}</span>
           </span>
         </button>
+        <button type="button" class="document-feedback-toggle" data-document-download="${doc.id}" title="Last ned">⬇</button>
         <button type="button" class="document-feedback-toggle" data-document-feedback-toggle="${doc.id}" title="Innspill og kommentarer">💬${open.length ? ` ${open.length}` : ""}</button>
         ${isAdmin ? `<button type="button" class="kitchen-delete" data-document-delete="${doc.id}" title="Slett dokumentet">✕</button>` : ""}
       </div>
@@ -12337,17 +12338,30 @@ function renderDocuments() {
     });
   });
 
+  // Visning uten nedlasting: PDF, bilder og tekst vises rett i nettleseren;
+  // Word/Excel/PowerPoint vises i Microsofts gratis visningstjeneste (den
+  // henter filen via en kortlevd lenke). Alt annet lastes ned.
+  const documentViewMode = fileName => {
+    const ext = (fileName.split(".").pop() || "").toLowerCase();
+    if (["pdf", "jpg", "jpeg", "png", "gif", "webp", "txt"].includes(ext)) return "inline";
+    if (["doc", "docx", "xls", "xlsx", "ppt", "pptx", "pps", "ppsx", "odt"].includes(ext)) return "office";
+    return "download";
+  };
+
   list.querySelectorAll("[data-document-open]").forEach(button => {
     button.addEventListener("click", async () => {
       const doc = documentsCache.find(d => String(d.id) === String(button.dataset.documentOpen));
       if (!doc) return;
 
+      const mode = documentViewMode(doc.file_name);
+
       // Åpnes i et eget vindu som lages FØR vi venter på lenka, ellers
       // blokkerer nettleseren popupen.
       const win = window.open("", "_blank");
+      const options = mode === "download" ? { download: doc.file_name } : undefined;
       const { data, error } = await supabaseClient.storage
         .from("filarkiv")
-        .createSignedUrl(doc.file_path, 120, { download: false });
+        .createSignedUrl(doc.file_path, mode === "office" ? 3600 : 300, options);
 
       if (error || !data?.signedUrl) {
         console.error("Kunne ikke åpne dokument:", error);
@@ -12356,8 +12370,31 @@ function renderDocuments() {
         return;
       }
 
-      if (win) win.location = data.signedUrl;
-      else window.location.href = data.signedUrl;
+      const target = mode === "office"
+        ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(data.signedUrl)}`
+        : data.signedUrl;
+
+      if (win) win.location = target;
+      else window.location.href = target;
+    });
+  });
+
+  list.querySelectorAll("[data-document-download]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const doc = documentsCache.find(d => String(d.id) === String(button.dataset.documentDownload));
+      if (!doc) return;
+
+      const { data, error } = await supabaseClient.storage
+        .from("filarkiv")
+        .createSignedUrl(doc.file_path, 120, { download: doc.file_name });
+
+      if (error || !data?.signedUrl) {
+        console.error("Kunne ikke laste ned dokument:", error);
+        alert("Kunne ikke laste ned dokumentet. Prøv igjen.");
+        return;
+      }
+
+      window.location.href = data.signedUrl;
     });
   });
 
