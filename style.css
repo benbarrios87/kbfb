@@ -4993,3 +4993,75 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   color: inherit;
   cursor: pointer;
 }
+
+/* Filarkiv: innspill på dokumenter */
+.document-feedback-toggle {
+  border: 0;
+  background: var(--green-soft);
+  color: var(--green-dark);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.document-flag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fff4d6;
+  color: #8a5a00;
+  vertical-align: middle;
+}
+
+.document-flag-utdatert {
+  background: #fde8e8;
+  color: #8d1c1c;
+}
+
+.document-flag-kommentar {
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+
+.document-feedback {
+  display: grid;
+  gap: 8px;
+  margin: -4px 0 10px 18px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--green-soft);
+  background: var(--paper);
+  border-radius: 0 12px 12px 0;
+}
+
+.document-feedback-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.document-feedback-item p {
+  margin: 2px 0 0;
+}
+
+.document-feedback-resolved {
+  opacity: 0.55;
+}
+
+.document-feedback-actions {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.document-feedback-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.document-feedback-form input[type="text"] {
+  flex: 1 1 200px;
+}

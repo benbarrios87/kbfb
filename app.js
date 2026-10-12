@@ -12114,6 +12114,64 @@ async function loadDocuments() {
   return documentsCache;
 }
 
+let documentFeedbackCache = [];
+const documentFeedbackOpen = new Set();
+
+const DOCUMENT_FEEDBACK_KINDS = {
+  kommentar: "Kommentar",
+  utdatert: "Utdatert",
+  oppdateres: "Må oppdateres"
+};
+
+async function loadDocumentFeedback() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_document_feedback")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Kunne ikke hente innspill til dokumenter:", error);
+    return null;
+  }
+
+  documentFeedbackCache = data || [];
+  return documentFeedbackCache;
+}
+
+function documentFeedbackPanelHtml(doc, feedback, isAdmin) {
+  const me = typeof currentEmployee !== "undefined" ? currentEmployee?.name : null;
+
+  const items = feedback.length
+    ? feedback.map(item => `
+        <div class="document-feedback-item${item.resolved ? " document-feedback-resolved" : ""}">
+          <div>
+            <strong>${escapeHtml(item.author)}</strong>
+            <span class="document-flag document-flag-${escapeHtml(item.kind)}">${escapeHtml(DOCUMENT_FEEDBACK_KINDS[item.kind] || item.kind)}</span>
+            <span class="muted">${item.created_at ? formatNorwegianDate(String(item.created_at).slice(0, 10)) : ""}</span>
+            ${item.text ? `<p>${escapeHtml(item.text)}</p>` : ""}
+          </div>
+          <div class="document-feedback-actions">
+            ${isAdmin ? `<button type="button" class="kitchen-reopen" data-document-feedback-resolve="${item.id}" data-resolve-to="${item.resolved ? "0" : "1"}">${item.resolved ? "Åpne igjen" : "Løst ✓"}</button>` : ""}
+            ${isAdmin || item.author === me ? `<button type="button" class="kitchen-delete" data-document-feedback-delete="${item.id}" title="Slett innspillet">✕</button>` : ""}
+          </div>
+        </div>
+      `).join("")
+    : `<p class="muted">Ingen innspill ennå.</p>`;
+
+  return `
+    <div class="document-feedback">
+      ${items}
+      <form class="document-feedback-form" data-document-feedback-form="${doc.id}">
+        <select aria-label="Type innspill">
+          ${Object.entries(DOCUMENT_FEEDBACK_KINDS).map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}
+        </select>
+        <input type="text" placeholder="Skriv kort hva som bør endres eller kommenteres" />
+        <button class="primary-btn" type="submit">Send</button>
+      </form>
+    </div>
+  `;
+}
+
 function renderDocuments() {
   const list = document.getElementById("documentArchiveList");
   if (!list) return;
@@ -12134,19 +12192,90 @@ function renderDocuments() {
 
   list.innerHTML = Object.keys(byCategory).sort((a, b) => a.localeCompare(b, "no")).map(category => `
     <h3 class="document-category">${escapeHtml(category)}</h3>
-    ${byCategory[category].map(doc => `
+    ${byCategory[category].map(doc => {
+      const feedback = documentFeedbackCache.filter(item => item.document_id === doc.id);
+      const open = feedback.filter(item => !item.resolved);
+      const flags = open.filter(item => item.kind !== "kommentar");
+      const flagText = flags.some(item => item.kind === "utdatert") ? "⚠ Utdatert" : flags.length ? "⚠ Må oppdateres" : "";
+      const panelOpen = documentFeedbackOpen.has(String(doc.id));
+
+      return `
       <div class="document-card document-card-file">
         <button type="button" class="document-open" data-document-open="${doc.id}">
           <span class="document-card-icon">${documentFileIcon(doc.file_name)}</span>
           <span class="document-card-body">
-            <strong>${escapeHtml(doc.title)}</strong>
+            <strong>${escapeHtml(doc.title)}${flagText ? ` <span class="document-flag">${flagText}</span>` : ""}</strong>
             <span class="muted">${escapeHtml([documentSizeText(doc.size_bytes), doc.created_at ? formatNorwegianDate(String(doc.created_at).slice(0, 10)) : ""].filter(Boolean).join(" · "))}</span>
           </span>
         </button>
+        <button type="button" class="document-feedback-toggle" data-document-feedback-toggle="${doc.id}" title="Innspill og kommentarer">💬${open.length ? ` ${open.length}` : ""}</button>
         ${isAdmin ? `<button type="button" class="kitchen-delete" data-document-delete="${doc.id}" title="Slett dokumentet">✕</button>` : ""}
       </div>
-    `).join("")}
+      ${panelOpen ? documentFeedbackPanelHtml(doc, feedback, isAdmin) : ""}
+    `;
+    }).join("")}
   `).join("");
+
+  list.querySelectorAll("[data-document-feedback-toggle]").forEach(button => {
+    button.addEventListener("click", () => {
+      const id = String(button.dataset.documentFeedbackToggle);
+      if (documentFeedbackOpen.has(id)) documentFeedbackOpen.delete(id);
+      else documentFeedbackOpen.add(id);
+      renderDocuments();
+    });
+  });
+
+  list.querySelectorAll("[data-document-feedback-form]").forEach(form => {
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+
+      const documentId = form.dataset.documentFeedbackForm;
+      const kind = form.querySelector("select").value;
+      const text = form.querySelector("input[type=text]").value.trim();
+
+      // "Utdatert"/"Må oppdateres" kan sendes uten tekst; en kommentar trenger tekst.
+      if (kind === "kommentar" && !text) return;
+      if (typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+      const { error } = await supabaseClient.from("kbfb_document_feedback").insert([{
+        document_id: documentId,
+        author: currentEmployee.name,
+        kind,
+        text: text || null
+      }]);
+
+      if (error) {
+        console.error("Kunne ikke lagre innspill:", error);
+        alert("Kunne ikke lagre innspillet. Har du kjørt STEP 64 i Supabase?");
+        return;
+      }
+
+      await loadDocumentFeedback();
+      renderDocuments();
+    });
+  });
+
+  list.querySelectorAll("[data-document-feedback-resolve]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const resolve = button.dataset.resolveTo === "1";
+      await supabaseClient
+        .from("kbfb_document_feedback")
+        .update({ resolved: resolve, resolved_at: resolve ? new Date().toISOString() : null })
+        .eq("id", button.dataset.documentFeedbackResolve);
+
+      await loadDocumentFeedback();
+      renderDocuments();
+    });
+  });
+
+  list.querySelectorAll("[data-document-feedback-delete]").forEach(button => {
+    button.addEventListener("click", async () => {
+      if (!confirm("Slette dette innspillet?")) return;
+      await supabaseClient.from("kbfb_document_feedback").delete().eq("id", button.dataset.documentFeedbackDelete);
+      await loadDocumentFeedback();
+      renderDocuments();
+    });
+  });
 
   list.querySelectorAll("[data-document-open]").forEach(button => {
     button.addEventListener("click", async () => {
@@ -12200,6 +12329,7 @@ async function initializeFilarkiv() {
   if (loaded === null) {
     list.innerHTML = `<p class="muted">Kunne ikke hente dokumentene. Har du kjørt STEP 63 i Supabase?</p>`;
   } else {
+    await loadDocumentFeedback();
     renderDocuments();
   }
 
