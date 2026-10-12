@@ -2024,3 +2024,53 @@ CREATE POLICY "kbfb_payroll_notes_admin_all" ON public.kbfb_payroll_notes
   FOR ALL TO authenticated
   USING (public.kbfb_is_admin())
   WITH CHECK (public.kbfb_is_admin());
+
+-- =========================================================
+-- STEP 63: Filarkiv - dokumenter (kbfb_documents) + privat "filarkiv"-bucket
+--   Admin laster opp flere filer om gangen på filarkiv.html; alle
+--   innloggede kan åpne dem. Bucketen er PRIVAT (ikke public) - filer
+--   åpnes via korte signerte lenker, så de ikke kan lastes ned av
+--   utenforstående med en vanlig URL.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_documents (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  category text,
+  file_path text NOT NULL,
+  file_name text NOT NULL,
+  size_bytes bigint,
+  uploaded_by text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_documents ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_documents_select" ON public.kbfb_documents;
+CREATE POLICY "kbfb_documents_select" ON public.kbfb_documents
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "kbfb_documents_admin_write" ON public.kbfb_documents;
+CREATE POLICY "kbfb_documents_admin_write" ON public.kbfb_documents
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('filarkiv', 'filarkiv', false)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "filarkiv_admin_upload" ON storage.objects;
+CREATE POLICY "filarkiv_admin_upload" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'filarkiv' AND public.kbfb_is_admin());
+
+DROP POLICY IF EXISTS "filarkiv_admin_delete" ON storage.objects;
+CREATE POLICY "filarkiv_admin_delete" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'filarkiv' AND public.kbfb_is_admin());
+
+DROP POLICY IF EXISTS "filarkiv_authenticated_read" ON storage.objects;
+CREATE POLICY "filarkiv_authenticated_read" ON storage.objects
+  FOR SELECT TO authenticated
+  USING (bucket_id = 'filarkiv');

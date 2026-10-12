@@ -4963,3 +4963,33 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   margin-right: 4px;
   color: #243225;
 }
+
+/* Filarkiv: opplastede filer (knapp som åpner signert lenke) */
+.document-category {
+  margin: 14px 0 4px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--green-dark);
+}
+
+.document-card-file {
+  padding: 10px 14px;
+  gap: 10px;
+}
+
+.document-open {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}

@@ -12076,6 +12076,206 @@ async function initializeTasks() {
 
 initializeTasks();
 
+/* ---------- FILARKIV (filarkiv.html) ----------
+   Admin laster opp flere filer om gangen til en privat bucket; alle
+   innloggede kan åpne dem via korte signerte lenker. */
+
+let documentsCache = [];
+
+function documentFileIcon(fileName) {
+  const ext = (fileName.split(".").pop() || "").toLowerCase();
+  if (["pdf"].includes(ext)) return "📕";
+  if (["doc", "docx", "odt"].includes(ext)) return "📄";
+  if (["xls", "xlsx", "csv"].includes(ext)) return "📊";
+  if (["ppt", "pptx"].includes(ext)) return "📽️";
+  if (["jpg", "jpeg", "png", "gif", "webp", "heic"].includes(ext)) return "🖼️";
+  return "📎";
+}
+
+function documentSizeText(bytes) {
+  const size = Number(bytes) || 0;
+  if (size >= 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1).replace(".", ",")} MB`;
+  if (size >= 1024) return `${Math.round(size / 1024)} kB`;
+  return size ? `${size} B` : "";
+}
+
+async function loadDocuments() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_documents")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Kunne ikke hente dokumenter:", error);
+    return null;
+  }
+
+  documentsCache = data || [];
+  return documentsCache;
+}
+
+function renderDocuments() {
+  const list = document.getElementById("documentArchiveList");
+  if (!list) return;
+
+  const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
+
+  if (!documentsCache.length) {
+    list.innerHTML = `<p class="muted">Ingen dokumenter lastet opp ennå.</p>`;
+    return;
+  }
+
+  const byCategory = {};
+  documentsCache.forEach(doc => {
+    const key = doc.category || "Andre dokumenter";
+    if (!byCategory[key]) byCategory[key] = [];
+    byCategory[key].push(doc);
+  });
+
+  list.innerHTML = Object.keys(byCategory).sort((a, b) => a.localeCompare(b, "no")).map(category => `
+    <h3 class="document-category">${escapeHtml(category)}</h3>
+    ${byCategory[category].map(doc => `
+      <div class="document-card document-card-file">
+        <button type="button" class="document-open" data-document-open="${doc.id}">
+          <span class="document-card-icon">${documentFileIcon(doc.file_name)}</span>
+          <span class="document-card-body">
+            <strong>${escapeHtml(doc.title)}</strong>
+            <span class="muted">${escapeHtml([documentSizeText(doc.size_bytes), doc.created_at ? formatNorwegianDate(String(doc.created_at).slice(0, 10)) : ""].filter(Boolean).join(" · "))}</span>
+          </span>
+        </button>
+        ${isAdmin ? `<button type="button" class="kitchen-delete" data-document-delete="${doc.id}" title="Slett dokumentet">✕</button>` : ""}
+      </div>
+    `).join("")}
+  `).join("");
+
+  list.querySelectorAll("[data-document-open]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const doc = documentsCache.find(d => String(d.id) === String(button.dataset.documentOpen));
+      if (!doc) return;
+
+      // Åpnes i et eget vindu som lages FØR vi venter på lenka, ellers
+      // blokkerer nettleseren popupen.
+      const win = window.open("", "_blank");
+      const { data, error } = await supabaseClient.storage
+        .from("filarkiv")
+        .createSignedUrl(doc.file_path, 120, { download: false });
+
+      if (error || !data?.signedUrl) {
+        console.error("Kunne ikke åpne dokument:", error);
+        win?.close();
+        alert("Kunne ikke åpne dokumentet. Prøv igjen.");
+        return;
+      }
+
+      if (win) win.location = data.signedUrl;
+      else window.location.href = data.signedUrl;
+    });
+  });
+
+  list.querySelectorAll("[data-document-delete]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const doc = documentsCache.find(d => String(d.id) === String(button.dataset.documentDelete));
+      if (!doc) return;
+      if (!confirm(`Slette "${doc.title}"? Dette kan ikke angres.`)) return;
+
+      await supabaseClient.storage.from("filarkiv").remove([doc.file_path]);
+      const { error } = await supabaseClient.from("kbfb_documents").delete().eq("id", doc.id);
+      if (error) {
+        console.error("Kunne ikke slette dokument:", error);
+        alert("Kunne ikke slette dokumentet.");
+        return;
+      }
+
+      await loadDocuments();
+      renderDocuments();
+    });
+  });
+}
+
+async function initializeFilarkiv() {
+  const list = document.getElementById("documentArchiveList");
+  if (!list) return;
+
+  const loaded = await loadDocuments();
+  if (loaded === null) {
+    list.innerHTML = `<p class="muted">Kunne ikke hente dokumentene. Har du kjørt STEP 63 i Supabase?</p>`;
+  } else {
+    renderDocuments();
+  }
+
+  const form = document.getElementById("documentUploadForm");
+  const status = document.getElementById("documentUploadStatus");
+  if (!form) return;
+
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const files = [...document.getElementById("documentFiles").files];
+    const category = document.getElementById("documentCategory").value.trim() || null;
+    if (!files.length) return;
+
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+
+    let uploaded = 0;
+    const failed = [];
+
+    for (const [index, file] of files.entries()) {
+      if (status) status.textContent = `Laster opp ${index + 1} av ${files.length}: ${file.name} ...`;
+
+      // Supabase Storage tåler ikke alle tegn i filnøkler (æøå, mellomrom
+      // osv.), så lagringsnavnet gjøres trygt - det opprinnelige navnet
+      // beholdes i tabellen og vises i arkivet.
+      const safeName = file.name
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .replace(/[^A-Za-z0-9._-]+/g, "_");
+      const path = `${Date.now()}-${Math.round(Math.random() * 1e6)}-${safeName}`;
+
+      const { error: uploadError } = await supabaseClient.storage
+        .from("filarkiv")
+        .upload(path, file, { contentType: file.type || "application/octet-stream" });
+
+      if (uploadError) {
+        console.error("Kunne ikke laste opp fil:", file.name, uploadError);
+        failed.push(file.name);
+        continue;
+      }
+
+      const { error: insertError } = await supabaseClient.from("kbfb_documents").insert([{
+        title: file.name.replace(/\.[^.]+$/, ""),
+        category,
+        file_path: path,
+        file_name: file.name,
+        size_bytes: file.size,
+        uploaded_by: (typeof currentEmployee !== "undefined" && currentEmployee?.name) || null
+      }]);
+
+      if (insertError) {
+        console.error("Kunne ikke lagre dokument:", file.name, insertError);
+        await supabaseClient.storage.from("filarkiv").remove([path]);
+        failed.push(file.name);
+        continue;
+      }
+
+      uploaded++;
+    }
+
+    submitButton.disabled = false;
+    form.reset();
+
+    if (status) {
+      status.textContent = failed.length
+        ? `${uploaded} lastet opp. Disse feilet: ${failed.join(", ")}. Har du kjørt STEP 63 i Supabase?`
+        : `${uploaded} ${uploaded === 1 ? "dokument" : "dokumenter"} lastet opp ✓`;
+    }
+
+    await loadDocuments();
+    renderDocuments();
+  });
+}
+
+initializeFilarkiv();
+
 /* ---------- HJELP (hjelp.html) ----------
    Enkelt søk: viser bare spørsmålene som inneholder ordene man skriver
    (i spørsmålet eller svaret), åpner dem, og skjuler tomme temaer. */

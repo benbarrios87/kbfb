@@ -110,10 +110,39 @@
       </section>
 
       <section class="card">
-        <h2>📁 Mer kommer etter hvert</h2>
-        <p class="muted">
-          Flere dokumenter legges til her etter hvert. Si ifra til Benjamin hvis noe haster.
-        </p>
+        <h2>Opplastede dokumenter</h2>
+        <div id="documentArchiveList" class="document-list">
+          <p class="muted">Laster...</p>
+        </div>
+      </section>
+
+      <section class="card" data-admin-only>
+        <h2>Last opp dokumenter</h2>
+        <p class="muted">Velg én eller flere filer om gangen. Alle innloggede ansatte kan åpne dem.</p>
+
+        <form id="documentUploadForm" class="form-grid">
+          <label class="wide-field">
+            Filer
+            <input id="documentFiles" type="file" multiple required />
+          </label>
+
+          <label>
+            Mappe / kategori
+            <input id="documentCategory" type="text" list="documentCategories" placeholder="F.eks. Personal" />
+            <datalist id="documentCategories">
+              <option value="Personal"></option>
+              <option value="Styre og SU"></option>
+              <option value="HMS"></option>
+              <option value="Økonomi"></option>
+              <option value="Foreldre"></option>
+              <option value="Nordplus"></option>
+              <option value="Maler og skjemaer"></option>
+            </datalist>
+          </label>
+
+          <button class="primary-btn form-button" type="submit">Last opp</button>
+        </form>
+        <p id="documentUploadStatus" class="muted" style="margin-top: 10px;"></p>
       </section>
     </main>
   </div>
