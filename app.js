@@ -5932,6 +5932,75 @@ function daysSinceLastSick(name) {
   return Math.max(0, Math.round(ms / 86400000));
 }
 
+// Kommentarene under "Dager siden sist syk" blir mer og mer absurde jo
+// lenger man har vært frisk (à la timer spilt i Football Manager). Hvert
+// trinn har flere varianter; hvilken som vises velges av antall dager, så
+// den skifter fra dag til dag i stedet for å stå fast.
+const SICK_STREAK_COMMENTS = [
+  { from: 0, lines: [
+    "God bedring! Ta det rolig - resten kan vente.",
+    "Hvil i dag. Det er akkurat det kroppen ber om."
+  ] },
+  { from: 1, lines: [
+    "God bedring! Kaffemaskinen har holdt varmen til deg.",
+    "Velkommen tilbake - alle har savnet deg. Spesielt kaffemaskinen.",
+    "Ta det med ro, du trenger ikke bevise noe."
+  ] },
+  { from: 7, lines: [
+    "Over en uke! Immunforsvaret ditt har startet fanklubb.",
+    "Godt jobba! Ingenting å melde.",
+    "Én uke og ingen sykdom - en usannsynlig bragd for en barnehage."
+  ] },
+  { from: 30, lines: [
+    "En hel måned! Barn kommer med alt mulig, og du står fortsatt.",
+    "Sterkt! Du er kanskje allergisk mot å bli syk.",
+    "Over en måned. Snart må noen sjekke om du er en robot."
+  ] },
+  { from: 90, lines: [
+    "Over tre måneder - forskerne vil gjerne låne deg.",
+    "Tre måneder uten snufs. Hva spiser du til frokost, egentlig?",
+    "Imponerende. Immunforsvaret ditt kunne gjerne fått en lønnsøkning."
+  ] },
+  { from: 180, lines: [
+    "Et halvt år! Er du menneske eller en duracell-kanin?",
+    "Seks måneder uten sykdag. Barna smitter deg tydeligvis ikke engang.",
+    "Over et halvt år - legen din begynner å lure på om du fortsatt eksisterer."
+  ] },
+  { from: 365, lines: [
+    "Over et år - helt rått!",
+    "Et helt år. Dette begynner å bli mistenkelig friskt.",
+    "Over ett år uten sykdag. Noen bør lage en plakett."
+  ] },
+  { from: 540, lines: [
+    "Halvannet år. Er du laget av Kvikk Lunsj?",
+    "Halvannet år i frisk luft. Skogen har tydeligvis gjort jobben.",
+    "Du har vært frisk lenger enn de fleste har hatt samme mobil."
+  ] },
+  { from: 730, lines: [
+    "To år! Husker du i det hele tatt hvordan et nyseanfall føles?",
+    "To år uten syk. Det er vitenskapelig umulig, men likevel her er vi.",
+    "Fastlegen har sendt deg en julehilsen: 'Savner deg, men ikke så mye.'"
+  ] },
+  { from: 1095, lines: [
+    "Tre år! Er det egentlig du som smitter virusene?",
+    "Tre år uten sykdag. Vi vurderer å døpe en tur etter deg.",
+    "Du er en lokal legende. Ikke gå ut i tordenvær."
+  ] },
+  { from: 1825, lines: [
+    "Fem år. Vi har sluttet å regne.",
+    "Fem år uten sykdag. Er du i det hele tatt en del av samme art som oss andre?",
+    "Fem år! Dette er ikke lenger statistikk, det er mytologi."
+  ] }
+];
+
+function sickStreakCheer(days) {
+  let level = SICK_STREAK_COMMENTS[0];
+  SICK_STREAK_COMMENTS.forEach(candidate => {
+    if (days >= candidate.from) level = candidate;
+  });
+  return level.lines[days % level.lines.length];
+}
+
 function sickStreakTile(name) {
   const days = daysSinceLastSick(name);
 
@@ -5945,13 +6014,7 @@ function sickStreakTile(name) {
     `;
   }
 
-  let cheer;
-  if (days < 7) cheer = "God bedring!";
-  else if (days < 30) cheer = "Godt jobba!";
-  else if (days < 90) cheer = "Sterkt!";
-  else if (days < 180) cheer = "Over tre måneder - kjempebra!";
-  else if (days < 365) cheer = "Over et halvt år - imponerende!";
-  else cheer = "Over et år - helt rått!";
+  const cheer = sickStreakCheer(days);
 
   return `
     <div class="leave-stat leave-stat-streak">
