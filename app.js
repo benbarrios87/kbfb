@@ -10724,29 +10724,49 @@ function startEditingKjorebokEntry(entry) {
   document.getElementById("kjorebokFormSection")?.scrollIntoView({ behavior: "smooth" });
 }
 
-// Kopier en tidligere tur: fyller skjemaet med samme rute, km, passasjerer,
-// utlegg, bil og formål, men som en NY føring (ikke endring) med dagens
-// dato - man justerer datoen og trykker Lagre kjøring.
-function copyKjorebokEntry(entry) {
-  stopEditingKjorebokEntry();
+// Kopier en tidligere tur: lagres med en gang som en NY føring med
+// dagens dato (samme rute, km, passasjerer, utlegg, bil og formål), og
+// dukker opp i "Ikke utbetalt". Trenger det justeres, bruker man Endre.
+// Satsene er dagens satser (som for alle nye føringer).
+async function copyKjorebokEntry(entry, button) {
+  if (typeof currentEmployee === "undefined" || !currentEmployee) return;
 
-  if (kjorebokName && !kjorebokName.disabled) kjorebokName.value = entry.name;
-  if (kjorebokDate) kjorebokDate.value = toDateKey(new Date());
-  if (kjorebokRoute) kjorebokRoute.value = entry.route || "";
-  if (kjorebokKm) kjorebokKm.value = entry.km;
-  if (kjorebokPassengers) kjorebokPassengers.value = entry.passengers || 0;
-  if (kjorebokParking) kjorebokParking.value = entry.parking || 0;
-  if (kjorebokOther) kjorebokOther.value = entry.other_expenses || 0;
-  if (kjorebokCarNumber) kjorebokCarNumber.value = entry.car_number || "";
-  if (kjorebokPurpose) kjorebokPurpose.value = entry.purpose || "";
-  if (kjorebokPassengerName) kjorebokPassengerName.value = entry.passenger_name || "";
-  updateKjorebokPassengerNameVisibility();
+  // Vanlige ansatte kan bare føre på seg selv (samme regel som skjemaet).
+  if (!currentEmployee.is_admin && entry.name !== currentEmployee.name) return;
+
+  if (button) button.disabled = true;
+
+  const record = {
+    name: entry.name,
+    date: toDateKey(new Date()),
+    route: entry.route || "",
+    km: Number(entry.km) || 0,
+    passengers: Number(entry.passengers) || 0,
+    parking: Number(entry.parking) || 0,
+    other_expenses: Number(entry.other_expenses) || 0,
+    purpose: entry.purpose || "",
+    passenger_name: entry.passenger_name || "",
+    car_number: entry.car_number || "",
+    bil_sats: kjorebokRatesCache.bil_sats,
+    passasjer_sats: kjorebokRatesCache.passasjer_sats
+  };
+
+  const saved = await saveKjorebokEntryToSupabase(record);
+  if (button) button.disabled = false;
+
+  if (!saved) {
+    alert("Kunne ikke kopiere kjøreturen. Prøv igjen.");
+    return;
+  }
+
+  await loadKjorebokEntriesFromSupabase();
+  renderKjorebok();
 
   const status = document.getElementById("kjorebokFormStatus");
-  if (status) status.textContent = "Kopiert fra tidligere tur - velg dato og trykk Lagre kjøring.";
-
-  document.getElementById("kjorebokFormSection")?.scrollIntoView({ behavior: "smooth" });
-  kjorebokDate?.focus();
+  if (status) {
+    status.textContent = `Kopiert og lagret med dagens dato (${formatNorwegianDate(record.date)}). Bruk Endre hvis noe skal justeres.`;
+    setTimeout(() => { status.textContent = ""; }, 6000);
+  }
 }
 
 document.addEventListener("click", event => {
@@ -10754,7 +10774,7 @@ document.addEventListener("click", event => {
   if (!button) return;
 
   const entry = kjorebokEntriesCache.find(item => String(item.id) === String(button.dataset.kjorebokCopy));
-  if (entry) copyKjorebokEntry(entry);
+  if (entry) copyKjorebokEntry(entry, button);
 });
 
 function stopEditingKjorebokEntry() {
