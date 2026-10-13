@@ -5001,9 +5001,49 @@ async function loadPayrollNotes() {
   return payrollNotesCache;
 }
 
+// "Hvem det gjelder" kan være flere - lagres i employee_name som navn
+// skilt med ", " (ansattnavn inneholder ikke komma), og vises som en
+// fargebrikke per person.
+const PAYROLL_WHO_SEPARATOR = ", ";
+
+function payrollWhoNames() {
+  return [...document.querySelectorAll("#payrollNoteWhoList input:checked")].map(box => box.value);
+}
+
+function updatePayrollWhoSummary() {
+  const summary = document.getElementById("payrollNoteWhoSummary");
+  if (!summary) return;
+
+  const names = payrollWhoNames();
+  summary.textContent = !names.length
+    ? "Gjelder ingen bestemt"
+    : names.length <= 2 ? names.join(" og ") : `${names.length} ansatte valgt`;
+}
+
+function populatePayrollWho() {
+  const list = document.getElementById("payrollNoteWhoList");
+  if (!list || list.dataset.populated === String(employeesCache.length) || !employeesCache.length) return;
+
+  const checked = new Set(payrollWhoNames());
+  list.innerHTML = employeesCache
+    .filter(employee => employee.role !== "Gjest")
+    .map(employee => `
+      <label class="payroll-who-option">
+        <input type="checkbox" value="${escapeHtml(employee.name)}" ${checked.has(employee.name) ? "checked" : ""} />
+        ${escapeHtml(employee.name)}
+      </label>
+    `).join("");
+  list.dataset.populated = String(employeesCache.length);
+
+  list.querySelectorAll("input").forEach(box => box.addEventListener("change", updatePayrollWhoSummary));
+  updatePayrollWhoSummary();
+}
+
 function payrollNoteHtml(note) {
   const who = note.employee_name
-    ? `<strong ${personColorStyle(note.employee_name)} class="payroll-note-who">${escapeHtml(note.employee_name)}</strong> `
+    ? note.employee_name.split(PAYROLL_WHO_SEPARATOR).filter(Boolean)
+        .map(name => `<strong ${personColorStyle(name)} class="payroll-note-who">${escapeHtml(name)}</strong>`)
+        .join(" ") + " "
     : "";
 
   return `
@@ -5022,10 +5062,7 @@ function renderPayrollNotes() {
   const doneEl = document.getElementById("payrollNotesDone");
   if (!openEl || !doneEl) return;
 
-  const select = document.getElementById("payrollNoteEmployee");
-  if (select && select.options.length <= 1 && employeesCache.length) {
-    populateEmployeeSelect("payrollNoteEmployee", { blankText: "Gjelder ingen bestemt" });
-  }
+  populatePayrollWho();
 
   const open = payrollNotesCache.filter(note => !note.done);
   const done = payrollNotesCache.filter(note => note.done)
@@ -5090,7 +5127,7 @@ async function initializePayrollNotes() {
     event.preventDefault();
 
     const text = document.getElementById("payrollNoteText").value.trim();
-    const employee = document.getElementById("payrollNoteEmployee").value || null;
+    const employee = payrollWhoNames().join(PAYROLL_WHO_SEPARATOR) || null;
     if (!text) return;
 
     const { error } = await supabaseClient
@@ -5104,6 +5141,7 @@ async function initializePayrollNotes() {
     }
 
     form.reset();
+    updatePayrollWhoSummary();
     await loadPayrollNotes();
     renderPayrollNotes();
   });

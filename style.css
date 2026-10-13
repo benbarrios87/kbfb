@@ -5115,3 +5115,42 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   border-bottom: 2px solid var(--green-soft);
   margin-bottom: 8px;
 }
+
+/* Lønnskjøring: velg flere ansatte på et notat */
+.payroll-who {
+  position: relative;
+}
+
+.payroll-who > summary {
+  cursor: pointer;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fffdf7;
+  list-style: none;
+  min-width: 180px;
+}
+
+.payroll-who-list {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 220px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 4px;
+}
+
+.payroll-who-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}

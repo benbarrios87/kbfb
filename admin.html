@@ -184,7 +184,10 @@
 
         <h3 style="margin-top: 16px;">Husk til lønnskjøring</h3>
         <form id="payrollNoteForm" class="payroll-note-form">
-          <select id="payrollNoteEmployee" aria-label="Gjelder ansatt"></select>
+          <details class="payroll-who">
+            <summary id="payrollNoteWhoSummary">Gjelder ingen bestemt</summary>
+            <div id="payrollNoteWhoList" class="payroll-who-list"></div>
+          </details>
           <input id="payrollNoteText" type="text" placeholder="F.eks. husk tillegg på … eller etterbetal …" required />
           <button class="primary-btn" type="submit">Legg til</button>
         </form>
