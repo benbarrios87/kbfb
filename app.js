@@ -7128,9 +7128,51 @@ async function initializeAbsences() {
   }
 
   await loadAbsencesFromSupabase();
+
+  // Styrer trenger ikke godkjenning: søknader hun la inn FØR dette ble
+  // automatisk (eller som ble stående som "venter") godkjennes nå. RLS
+  // tillater ikke at man setter status på egne føringer, så de legges inn
+  // på nytt som godkjent og den gamle slettes.
+  if (await autoApproveOwnPendingAbsences()) await loadAbsencesFromSupabase();
+
   await loadVikarSickDaysFromSupabase();
 
   renderAbsences();
+}
+
+async function autoApproveOwnPendingAbsences() {
+  if (typeof currentEmployee === "undefined" || !currentEmployee?.is_admin) return false;
+
+  const pending = absencesCache.filter(record =>
+    record.name === currentEmployee.name && (record.status === "Ønsket" || record.status === "Avventer")
+  );
+  if (!pending.length) return false;
+
+  let changed = false;
+
+  for (const old of pending) {
+    const copy = {
+      name: old.name,
+      type: old.type,
+      start_date: old.start_date,
+      end_date: old.end_date,
+      hours: old.hours,
+      note: old.note,
+      status: "Godkjent"
+    };
+
+    const saved = await saveAbsenceToSupabase(copy);
+    if (!saved) continue;
+
+    await deleteAbsenceFromSupabase(old.id);
+    changed = true;
+
+    if (shiftTypesFromAbsence[copy.type]) {
+      await applyApprovedAbsenceToShifts({ ...copy, id: saved.id });
+    }
+  }
+
+  return changed;
 }
 
 initializeAbsences();
