@@ -187,6 +187,31 @@
           <div id="photoShareFeed" class="compact-feed" style="margin-top: 14px;"></div>
         </article>
 
+        <article class="card dash-card large" id="agendaSuggestCard" data-hide-from-guest>
+          <h2>📋 Tillegg til møteagenda</h2>
+          <p class="muted">Har du noe som bør tas opp på et møte? Skriv det her, så havner det på agendaen.</p>
+
+          <form id="agendaSuggestForm" class="quick-note-form">
+            <label>
+              Møte
+              <select id="agendaSuggestProject">
+                <option value="Personalmøte">Personalmøte</option>
+                <option value="Foreldremøte">Foreldremøte</option>
+                <option value="SU-møte">SU-møte</option>
+                <option value="Styremøte">Styremøte</option>
+                <option value="Ledermøte">Ledermøte</option>
+              </select>
+            </label>
+            <label>
+              Hva vil du ta opp?
+              <input type="text" id="agendaSuggestText" maxlength="200" placeholder="F.eks. rutiner for utlån av sykler" required />
+            </label>
+            <button class="primary-btn form-button" type="submit">Legg til på agenda</button>
+          </form>
+          <p id="agendaSuggestStatus" class="muted"></p>
+          <div id="agendaSuggestMine" class="compact-feed"></div>
+        </article>
+
         <article class="card dash-card large kind-message-card" id="kindMessageCard">
           <h2>💛 Hyggelig beskjed</h2>
           <p class="muted">Send noe hyggelig til en kollega. Viser bare de siste 3.</p>

@@ -11986,6 +11986,7 @@ function renderTaskLists() {
   if (!activeEl || !completedEl) return;
 
   if (headingEl) headingEl.textContent = taskSelectedProject;
+  renderAgendaSuggestions();
 
   const projectTasks = tasksCache.filter(t => t.project === taskSelectedProject);
   const active = projectTasks
@@ -12201,12 +12202,280 @@ function stopEditingTask() {
   if (cancelBtn) cancelBtn.style.display = "none";
 }
 
+/* ---------- MØTEAGENDA ----------
+   Ansatte kan melde inn tillegg til en møteagenda (fra Hjem). Admin ser
+   dem under møtemappa på Oppgaver, og i "Gjennomfør møte" (helskjerm)
+   står de sammen med oppgavene, med avkrysning. */
+
+let agendaSuggestionsCache = [];
+
+async function loadAgendaSuggestions() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_agenda_suggestions")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Kunne ikke hente agenda-tillegg:", error);
+    return null;
+  }
+
+  agendaSuggestionsCache = data || [];
+  return agendaSuggestionsCache;
+}
+
+function openAgendaSuggestionsFor(project) {
+  return agendaSuggestionsCache.filter(item => item.project === project && !item.done);
+}
+
+// Hjem: ansatte melder inn tillegg + ser egne åpne forslag.
+async function initializeAgendaSuggestForm() {
+  const form = document.getElementById("agendaSuggestForm");
+  if (!form) return;
+
+  const status = document.getElementById("agendaSuggestStatus");
+  const mine = document.getElementById("agendaSuggestMine");
+
+  const renderMine = () => {
+    if (!mine || typeof currentEmployee === "undefined" || !currentEmployee) return;
+    const items = agendaSuggestionsCache.filter(item => item.author === currentEmployee.name && !item.done);
+    mine.innerHTML = items.length
+      ? `<p class="muted">Dine tillegg som ikke er tatt opp ennå:</p>` + items.map(item => `
+          <div class="compact-item">
+            <strong>${escapeHtml(item.project)}</strong>
+            <span>${escapeHtml(item.text)}</span>
+            <button type="button" class="kitchen-delete" data-agenda-suggest-delete="${item.id}" style="margin-top: 4px;">Fjern</button>
+          </div>
+        `).join("")
+      : "";
+
+    mine.querySelectorAll("[data-agenda-suggest-delete]").forEach(button => {
+      button.addEventListener("click", async () => {
+        await supabaseClient.from("kbfb_agenda_suggestions").delete().eq("id", button.dataset.agendaSuggestDelete);
+        await loadAgendaSuggestions();
+        renderMine();
+      });
+    });
+  };
+
+  await loadAgendaSuggestions();
+  renderMine();
+
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (typeof currentEmployee === "undefined" || !currentEmployee) return;
+
+    const project = document.getElementById("agendaSuggestProject").value;
+    const text = document.getElementById("agendaSuggestText").value.trim();
+    if (!text) return;
+
+    const { error } = await supabaseClient.from("kbfb_agenda_suggestions").insert([{
+      project,
+      text,
+      author: currentEmployee.name
+    }]);
+
+    if (error) {
+      console.error("Kunne ikke lagre agenda-tillegg:", error);
+      if (status) status.textContent = "Kunne ikke lagre. Prøv igjen.";
+      return;
+    }
+
+    form.reset();
+    if (status) {
+      status.textContent = `Lagt til på agendaen for ${project} ✓`;
+      setTimeout(() => { status.textContent = ""; }, 4000);
+    }
+
+    await loadAgendaSuggestions();
+    renderMine();
+  });
+}
+
+initializeAgendaSuggestForm();
+
+// Oppgaver (admin): tillegg fra ansatte under valgt møtemappe.
+function renderAgendaSuggestions() {
+  const container = document.getElementById("agendaSuggestions");
+  const startBtn = document.getElementById("meetingStartBtn");
+  const isMeeting = TASK_MEETING_PROJECTS.includes(taskSelectedProject);
+
+  if (startBtn) startBtn.style.display = isMeeting ? "" : "none";
+  if (!container) return;
+
+  const items = isMeeting ? openAgendaSuggestionsFor(taskSelectedProject) : [];
+  if (!items.length) {
+    container.style.display = "none";
+    container.innerHTML = "";
+    return;
+  }
+
+  container.style.display = "";
+  container.innerHTML = `
+    <p class="muted"><strong>Tillegg fra ansatte (${items.length})</strong></p>
+    ${items.map(item => `
+      <div class="summary-item task-row">
+        <strong>${escapeHtml(item.text)}</strong>
+        <span class="muted">Fra ${escapeHtml(item.author)}</span>
+        <div style="display: flex; gap: 6px;">
+          <button type="button" class="kitchen-reopen" data-agenda-to-task="${item.id}">Legg til som oppgave</button>
+          <button type="button" class="kitchen-delete" data-agenda-dismiss="${item.id}">✕</button>
+        </div>
+      </div>
+    `).join("")}
+  `;
+
+  container.querySelectorAll("[data-agenda-to-task]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const item = agendaSuggestionsCache.find(s => String(s.id) === String(button.dataset.agendaToTask));
+      if (!item) return;
+
+      button.disabled = true;
+      const { error } = await supabaseClient.from("kbfb_tasks").insert([{
+        project: item.project,
+        text: item.text,
+        note: `Fra ${item.author}`,
+        due_date: null,
+        priority: 4
+      }]);
+
+      if (error) {
+        console.error("Kunne ikke lage oppgave av tillegg:", error);
+        button.disabled = false;
+        return;
+      }
+
+      await supabaseClient.from("kbfb_agenda_suggestions").update({ done: true }).eq("id", item.id);
+      await loadAgendaSuggestions();
+      await loadTasksFromSupabase();
+      renderTaskLists();
+    });
+  });
+
+  container.querySelectorAll("[data-agenda-dismiss]").forEach(button => {
+    button.addEventListener("click", async () => {
+      await supabaseClient.from("kbfb_agenda_suggestions").update({ done: true }).eq("id", button.dataset.agendaDismiss);
+      await loadAgendaSuggestions();
+      renderAgendaSuggestions();
+    });
+  });
+}
+
+// "Gjennomfør møte": agenda i helskjerm med avkrysning. Oppgavene som
+// var åpne da møtet startet (og tilleggene fra ansatte) står på lista;
+// det som krysses av holdes synlig, gjennomstreket, til møtet avsluttes.
+function startMeeting(project) {
+  const taskIds = tasksCache.filter(t => t.project === project && !t.completed)
+    .sort((a, b) => (a.priority - b.priority) || (a.due_date || "9999").localeCompare(b.due_date || "9999"))
+    .map(t => t.id);
+  const suggestionIds = openAgendaSuggestionsFor(project).map(s => s.id);
+
+  const overlay = document.createElement("div");
+  overlay.className = "meeting-overlay";
+  document.body.appendChild(overlay);
+  document.body.style.overflow = "hidden";
+
+  const close = async () => {
+    if (document.fullscreenElement) await document.exitFullscreen?.().catch(() => {});
+    overlay.remove();
+    document.body.style.overflow = "";
+    await loadTasksFromSupabase();
+    await loadAgendaSuggestions();
+    renderTaskLists();
+  };
+
+  const render = () => {
+    const tasks = taskIds.map(id => tasksCache.find(t => t.id === id)).filter(Boolean);
+    const suggestions = suggestionIds.map(id => agendaSuggestionsCache.find(s => s.id === id)).filter(Boolean);
+
+    const total = tasks.length + suggestions.length;
+    const done = tasks.filter(t => t.completed).length + suggestions.filter(s => s.done).length;
+
+    overlay.innerHTML = `
+      <div class="meeting-header">
+        <div>
+          <p class="eyebrow">Møte</p>
+          <h1>${escapeHtml(project)} - agenda</h1>
+          <p class="muted">${formatNorwegianDate(toDateKey(new Date()))} · ${done} av ${total} punkter tatt opp</p>
+        </div>
+        <button type="button" class="primary-btn" id="meetingEndBtn">Avslutt møte</button>
+      </div>
+
+      ${total ? "" : `<p class="muted">Ingen punkter på agendaen.</p>`}
+
+      <div class="meeting-list">
+        ${tasks.map((task, index) => `
+          <label class="meeting-item${task.completed ? " meeting-item-done" : ""}">
+            <input type="checkbox" data-meeting-task="${task.id}" ${task.completed ? "checked" : ""} />
+            <span>
+              <strong>${index + 1}. ${escapeHtml(task.text)}</strong>
+              ${task.note ? `<span class="muted">${escapeHtml(task.note)}</span>` : ""}
+              ${task.due_date ? `<span class="muted">Frist ${formatNorwegianDate(task.due_date)}</span>` : ""}
+            </span>
+          </label>
+        `).join("")}
+
+        ${suggestions.length ? `<h2 class="meeting-subheading">Tillegg fra de ansatte</h2>` : ""}
+        ${suggestions.map(item => `
+          <label class="meeting-item${item.done ? " meeting-item-done" : ""}">
+            <input type="checkbox" data-meeting-suggestion="${item.id}" ${item.done ? "checked" : ""} />
+            <span>
+              <strong>${escapeHtml(item.text)}</strong>
+              <span class="muted">Fra ${escapeHtml(item.author)}</span>
+            </span>
+          </label>
+        `).join("")}
+      </div>
+    `;
+
+    overlay.querySelector("#meetingEndBtn").addEventListener("click", close);
+
+    overlay.querySelectorAll("[data-meeting-task]").forEach(box => {
+      box.addEventListener("change", async () => {
+        const task = tasksCache.find(t => String(t.id) === String(box.dataset.meetingTask));
+        if (!task) return;
+
+        const completed = box.checked;
+        const completedAt = completed ? new Date().toISOString() : null;
+        task.completed = completed;
+        task.completed_at = completedAt;
+        render();
+
+        await supabaseClient.from("kbfb_tasks")
+          .update({ completed, completed_at: completedAt })
+          .eq("id", task.id);
+      });
+    });
+
+    overlay.querySelectorAll("[data-meeting-suggestion]").forEach(box => {
+      box.addEventListener("change", async () => {
+        const item = agendaSuggestionsCache.find(s => String(s.id) === String(box.dataset.meetingSuggestion));
+        if (!item) return;
+
+        item.done = box.checked;
+        render();
+
+        await supabaseClient.from("kbfb_agenda_suggestions")
+          .update({ done: box.checked })
+          .eq("id", item.id);
+      });
+    });
+  };
+
+  render();
+  overlay.requestFullscreen?.().catch(() => {});
+}
+
 async function initializeTasks() {
   const container = document.getElementById("taskActiveList");
   if (!container) return;
 
   await loadTasksFromSupabase();
+  await loadAgendaSuggestions();
   renderTaskLists();
+
+  document.getElementById("meetingStartBtn")?.addEventListener("click", () => startMeeting(taskSelectedProject));
 
   const cancelEditBtn = document.getElementById("taskCancelEditBtn");
   if (cancelEditBtn) {

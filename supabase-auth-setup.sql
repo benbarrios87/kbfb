@@ -2115,3 +2115,42 @@ DROP POLICY IF EXISTS "kbfb_document_feedback_delete_own_or_admin" ON public.kbf
 CREATE POLICY "kbfb_document_feedback_delete_own_or_admin" ON public.kbfb_document_feedback
   FOR DELETE TO authenticated
   USING (author = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
+
+-- =========================================================
+-- STEP 65: kbfb_agenda_suggestions (tillegg til møteagenda fra ansatte)
+--   Ansatte melder inn et punkt til et møte (Hjem); admin ser dem under
+--   møtemappa på Oppgaver og i "Gjennomfør møte". Alle innloggede kan
+--   lese (så man ser hva som allerede er meldt inn); man legger bare inn
+--   på eget navn og kan fjerne sitt eget; admin kan alt.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_agenda_suggestions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project text NOT NULL,
+  text text NOT NULL,
+  author text NOT NULL,
+  done boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_agenda_suggestions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_agenda_suggestions_select" ON public.kbfb_agenda_suggestions;
+CREATE POLICY "kbfb_agenda_suggestions_select" ON public.kbfb_agenda_suggestions
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "kbfb_agenda_suggestions_insert_own" ON public.kbfb_agenda_suggestions;
+CREATE POLICY "kbfb_agenda_suggestions_insert_own" ON public.kbfb_agenda_suggestions
+  FOR INSERT TO authenticated
+  WITH CHECK (author = public.kbfb_current_employee_name());
+
+DROP POLICY IF EXISTS "kbfb_agenda_suggestions_update_admin" ON public.kbfb_agenda_suggestions;
+CREATE POLICY "kbfb_agenda_suggestions_update_admin" ON public.kbfb_agenda_suggestions
+  FOR UPDATE TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());
+
+DROP POLICY IF EXISTS "kbfb_agenda_suggestions_delete_own_or_admin" ON public.kbfb_agenda_suggestions;
+CREATE POLICY "kbfb_agenda_suggestions_delete_own_or_admin" ON public.kbfb_agenda_suggestions
+  FOR DELETE TO authenticated
+  USING (author = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
