@@ -10724,6 +10724,39 @@ function startEditingKjorebokEntry(entry) {
   document.getElementById("kjorebokFormSection")?.scrollIntoView({ behavior: "smooth" });
 }
 
+// Kopier en tidligere tur: fyller skjemaet med samme rute, km, passasjerer,
+// utlegg, bil og formål, men som en NY føring (ikke endring) med dagens
+// dato - man justerer datoen og trykker Lagre kjøring.
+function copyKjorebokEntry(entry) {
+  stopEditingKjorebokEntry();
+
+  if (kjorebokName && !kjorebokName.disabled) kjorebokName.value = entry.name;
+  if (kjorebokDate) kjorebokDate.value = toDateKey(new Date());
+  if (kjorebokRoute) kjorebokRoute.value = entry.route || "";
+  if (kjorebokKm) kjorebokKm.value = entry.km;
+  if (kjorebokPassengers) kjorebokPassengers.value = entry.passengers || 0;
+  if (kjorebokParking) kjorebokParking.value = entry.parking || 0;
+  if (kjorebokOther) kjorebokOther.value = entry.other_expenses || 0;
+  if (kjorebokCarNumber) kjorebokCarNumber.value = entry.car_number || "";
+  if (kjorebokPurpose) kjorebokPurpose.value = entry.purpose || "";
+  if (kjorebokPassengerName) kjorebokPassengerName.value = entry.passenger_name || "";
+  updateKjorebokPassengerNameVisibility();
+
+  const status = document.getElementById("kjorebokFormStatus");
+  if (status) status.textContent = "Kopiert fra tidligere tur - velg dato og trykk Lagre kjøring.";
+
+  document.getElementById("kjorebokFormSection")?.scrollIntoView({ behavior: "smooth" });
+  kjorebokDate?.focus();
+}
+
+document.addEventListener("click", event => {
+  const button = event.target.closest?.("[data-kjorebok-copy]");
+  if (!button) return;
+
+  const entry = kjorebokEntriesCache.find(item => String(item.id) === String(button.dataset.kjorebokCopy));
+  if (entry) copyKjorebokEntry(entry);
+});
+
 function stopEditingKjorebokEntry() {
   editingKjorebokId = null;
   if (kjorebokSubmitBtn) kjorebokSubmitBtn.textContent = "Lagre kjøring";
@@ -10951,7 +10984,7 @@ function renderKjorebokHistory() {
             <span class="muted">${group.totalKm.toFixed(1)} km · ${group.grandTotal.toFixed(2)} kr</span>
             <ul class="overtime-lines">
               ${group.entries.map(entry => `
-                <li>${formatNorwegianDate(entry.date)} · ${escapeHtml(entry.route || "")} · ${entry.km} km</li>
+                <li>${formatNorwegianDate(entry.date)} · ${escapeHtml(entry.route || "")} · ${entry.km} km <button type="button" class="kjorebok-copy-btn" data-kjorebok-copy="${entry.id}" title="Lag en ny kjøretur basert på denne">Kopier</button></li>
               `).join("")}
             </ul>
           </div>
@@ -11033,6 +11066,7 @@ function renderKjorebok() {
       <td>${formatKjorebokPurposeDisplay(entry)}</td>
       <td>${canModify ? `
         <button class="secondary-btn" data-edit-kjorebok-id="${entry.id}">Endre</button>
+        <button class="secondary-btn" data-kjorebok-copy="${entry.id}" title="Lag en ny kjøretur basert på denne">Kopier</button>
         <button class="kitchen-delete" data-kjorebok-id="${entry.id}">Slett</button>
       ` : ""}</td>
     </tr>
