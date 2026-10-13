@@ -132,6 +132,25 @@
         </form>
       </section>
 
+      <details class="card" data-admin-only>
+        <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">📌 Faste beskjeder (gjentas hver uke)</h2></summary>
+        <p class="muted">Skriv det én gang, så står det på riktig ukedag hver uke i Kjøkkenboka og på Hjem.</p>
+
+        <form id="recurringNoteForm" class="payroll-note-form">
+          <select id="recurringNoteDay" aria-label="Ukedag">
+            <option value="-1">Hver dag</option>
+            <option value="0">Hver mandag</option>
+            <option value="1">Hver tirsdag</option>
+            <option value="2">Hver onsdag</option>
+            <option value="3">Hver torsdag</option>
+            <option value="4">Hver fredag</option>
+          </select>
+          <input id="recurringNoteText" type="text" placeholder="F.eks. Husk å fylle på vedsekken" required />
+          <button class="primary-btn" type="submit">Legg til</button>
+        </form>
+        <div id="recurringNoteList" class="payroll-notes"></div>
+      </details>
+
       <section class="card">
         <div class="section-heading">
           <div>

@@ -19,6 +19,9 @@ applySeasonTheme();
 // der. Ligger øverst fordi Årshjul også bruker lista ("Ta opp på møte").
 const TASK_MEETING_PROJECTS = ["Ledermøte", "Styremøte", "Foreldremøte", "Personalmøte", "SU-møte"];
 
+// Faste beskjeder (Kjøkkenboka) - øverst så visningen aldri treffer den før den er satt.
+let recurringNotesCache = [];
+
 // Avdelingsleder, Pedagogisk leder og Pedleder er samme nivå her (en
 // avdelingsleder er også pedagogisk leder). Brukes der rollen gir innsyn i
 // avdelingens fravær, godkjenning av avspasering og redigering av vaktplan.
@@ -821,14 +824,23 @@ function renderDashboardKitchenNotes() {
   if (kitchenPriorityTag) kitchenPriorityTag.textContent = `📌 Kjøkkenboka ${dayLabel}`;
 
   const notes = sortNotesByMentionedTime(notesCache.filter(note => note.date === targetKey));
+  // Faste beskjeder for ukedagen (0 = mandag ... 4 = fredag; getDay: 1-5).
+  const fixedNotes = recurringNotesForDay(target.getDay() - 1);
 
-  dashboardKitchenNotes.innerHTML = notes.length
-    ? notes.map(note => `
+  const fixedHtml = fixedNotes.map(note => `
+      <div class="compact-item">
+        <strong>📌 Fast beskjed</strong>
+        <span>${escapeHtml(note.text)}</span>
+      </div>
+    `).join("");
+
+  dashboardKitchenNotes.innerHTML = notes.length || fixedNotes.length
+    ? fixedHtml + notes.map(note => `
       <div class="compact-item">
         <strong>${escapeHtml(note.author)}</strong>
         <span>${escapeHtml(note.text)}</span>
       </div>
-    `).join("") + renderDayReadBar(targetKey)
+    `).join("") + (notes.length ? renderDayReadBar(targetKey) : "")
     : `<p class="muted">Ingen beskjeder ${dayLabel}.</p>`;
 
   dashboardKitchenNotes.querySelectorAll("[data-read-date]").forEach(button => {
@@ -3369,6 +3381,12 @@ function renderQuickNotes() {
       <div class="kitchen-day">
         <h3>${dayName}<span class="kitchen-day-date">${formatShortDate(date)}</span></h3>
 
+        ${recurringNotesForDay(dayIndex).map(note => `
+          <article class="kitchen-entry kitchen-entry-fixed">
+            <p>📌 ${escapeHtml(note.text)}</p>
+          </article>
+        `).join("")}
+
         ${dayNotes.length ? dayNotes.map(note => `
           <article class="kitchen-entry">
             <div class="kitchen-entry-top">
@@ -3500,12 +3518,95 @@ if (quickNoteForm) {
   });
 }
 
+/* ----- Faste beskjeder (gjentas hver uke) ----- */
+
+const RECURRING_WEEKDAY_NAMES = ["mandag", "tirsdag", "onsdag", "torsdag", "fredag"];
+
+async function loadRecurringNotes() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_recurring_notes")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    // Tabellen finnes ikke før STEP 66 er kjørt - da vises bare vanlige beskjeder.
+    console.error("Kunne ikke hente faste beskjeder:", error);
+    recurringNotesCache = [];
+    return;
+  }
+
+  recurringNotesCache = data || [];
+}
+
+// dayIndex: 0 = mandag ... 4 = fredag. Beskjeder for "hver dag" (-1) vises alle dager.
+function recurringNotesForDay(dayIndex) {
+  return recurringNotesCache.filter(note => note.weekday === -1 || note.weekday === dayIndex);
+}
+
+function renderRecurringNoteAdmin() {
+  const list = document.getElementById("recurringNoteList");
+  if (!list) return;
+
+  if (!recurringNotesCache.length) {
+    list.innerHTML = `<p class="muted">Ingen faste beskjeder ennå.</p>`;
+    return;
+  }
+
+  list.innerHTML = recurringNotesCache.map(note => `
+    <div class="payroll-note">
+      <label>
+        <span><strong>${note.weekday === -1 ? "Hver dag" : `Hver ${RECURRING_WEEKDAY_NAMES[note.weekday]}`}</strong> · ${escapeHtml(note.text)}</span>
+      </label>
+      <button class="kitchen-delete" type="button" data-recurring-note-delete="${note.id}" title="Fjern den faste beskjeden">✕</button>
+    </div>
+  `).join("");
+
+  list.querySelectorAll("[data-recurring-note-delete]").forEach(button => {
+    button.addEventListener("click", async () => {
+      if (!confirm("Fjerne denne faste beskjeden?")) return;
+      await supabaseClient.from("kbfb_recurring_notes").delete().eq("id", button.dataset.recurringNoteDelete);
+      await loadRecurringNotes();
+      renderRecurringNoteAdmin();
+      renderQuickNotes();
+      renderDashboardKitchenNotes();
+    });
+  });
+}
+
+document.getElementById("recurringNoteForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+
+  const text = document.getElementById("recurringNoteText").value.trim();
+  const weekday = Number(document.getElementById("recurringNoteDay").value);
+  if (!text) return;
+
+  const { error } = await supabaseClient.from("kbfb_recurring_notes").insert([{
+    weekday,
+    text,
+    created_by: (typeof currentEmployee !== "undefined" && currentEmployee?.name) || null
+  }]);
+
+  if (error) {
+    console.error("Kunne ikke lagre fast beskjed:", error);
+    alert("Kunne ikke lagre. Har du kjørt STEP 66 i Supabase?");
+    return;
+  }
+
+  event.target.reset();
+  await loadRecurringNotes();
+  renderRecurringNoteAdmin();
+  renderQuickNotes();
+  renderDashboardKitchenNotes();
+});
+
 async function initializeNotes() {
   await Promise.all([
     loadNotesFromSupabase(),
     loadNoteReactionsFromSupabase(),
-    loadDayReadsFromSupabase()
+    loadDayReadsFromSupabase(),
+    loadRecurringNotes()
   ]);
+  renderRecurringNoteAdmin();
   renderQuickNotes();
   renderDashboardKitchenNotes();
 }

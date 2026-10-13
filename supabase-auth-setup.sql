@@ -2154,3 +2154,31 @@ DROP POLICY IF EXISTS "kbfb_agenda_suggestions_delete_own_or_admin" ON public.kb
 CREATE POLICY "kbfb_agenda_suggestions_delete_own_or_admin" ON public.kbfb_agenda_suggestions
   FOR DELETE TO authenticated
   USING (author = public.kbfb_current_employee_name() OR public.kbfb_is_admin());
+
+-- =========================================================
+-- STEP 66: kbfb_recurring_notes ("Faste beskjeder" i Kjøkkenboka)
+--   Beskjeder som gjentas hver uke på en bestemt ukedag (eller alle
+--   hverdager) og vises i Kjøkkenboka og på Hjem uten å skrives på nytt.
+--   weekday: 0 = mandag ... 4 = fredag, -1 = alle hverdager.
+--   Alle innloggede leser; kun admin skriver.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_recurring_notes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  weekday int NOT NULL CHECK (weekday BETWEEN -1 AND 4),
+  text text NOT NULL,
+  created_by text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_recurring_notes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_recurring_notes_select" ON public.kbfb_recurring_notes;
+CREATE POLICY "kbfb_recurring_notes_select" ON public.kbfb_recurring_notes
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "kbfb_recurring_notes_admin_write" ON public.kbfb_recurring_notes;
+CREATE POLICY "kbfb_recurring_notes_admin_write" ON public.kbfb_recurring_notes
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());
