@@ -12828,6 +12828,7 @@ function renderDocuments() {
         </button>
         <button type="button" class="document-feedback-toggle" data-document-download="${doc.id}" title="Last ned">⬇</button>
         <button type="button" class="document-feedback-toggle" data-document-feedback-toggle="${doc.id}" title="Innspill og kommentarer">💬${open.length ? ` ${open.length}` : ""}</button>
+        ${isAdmin ? `<button type="button" class="document-feedback-toggle" data-document-rename="${doc.id}" title="Endre navn eller kategori">✏️</button>` : ""}
         ${isAdmin ? `<button type="button" class="kitchen-delete" data-document-delete="${doc.id}" title="Slett dokumentet">✕</button>` : ""}
       </div>
       ${panelOpen ? documentFeedbackPanelHtml(doc, feedback, isAdmin) : ""}
@@ -12962,6 +12963,38 @@ function renderDocuments() {
       }
 
       window.location.href = data.signedUrl;
+    });
+  });
+
+  // Endre visningsnavn (og eventuelt kategori). Selve filen i lagringen
+  // beholder sitt interne navn; "file_name" brukes ved nedlasting, så det
+  // oppdateres med samme filendelse som originalen.
+  list.querySelectorAll("[data-document-rename]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const doc = documentsCache.find(d => String(d.id) === String(button.dataset.documentRename));
+      if (!doc) return;
+
+      const newTitle = prompt("Nytt navn på dokumentet:", doc.title);
+      if (newTitle === null) return;
+
+      const title = newTitle.trim();
+      if (!title) return;
+
+      const newCategory = prompt("Kategori (la stå for å beholde, tøm for ingen kategori):", doc.category || "");
+      const category = newCategory === null ? doc.category : (newCategory.trim() || null);
+
+      const ext = (doc.file_name.match(/\.[^.]+$/) || [""])[0];
+      const update = { title, category, file_name: title.toLowerCase().endsWith(ext.toLowerCase()) ? title : `${title}${ext}` };
+
+      const { error } = await supabaseClient.from("kbfb_documents").update(update).eq("id", doc.id);
+      if (error) {
+        console.error("Kunne ikke endre dokument:", error);
+        alert("Kunne ikke endre dokumentet. Prøv igjen.");
+        return;
+      }
+
+      await loadDocuments();
+      renderDocuments();
     });
   });
 
