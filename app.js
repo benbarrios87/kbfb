@@ -21,6 +21,8 @@ const TASK_MEETING_PROJECTS = ["Ledermøte", "Styremøte", "Foreldremøte", "Per
 
 // Faste beskjeder (Kjøkkenboka) - øverst så visningen aldri treffer den før den er satt.
 let recurringNotesCache = [];
+let sickShiftsCache = { weekKey: null, rows: [], loadedAt: 0 };
+let sickShiftsLoadingKey = null;
 
 // Avdelingsleder, Pedagogisk leder og Pedleder er samme nivå her (en
 // avdelingsleder er også pedagogisk leder). Brukes der rollen gir innsyn i
@@ -827,14 +829,24 @@ function renderDashboardKitchenNotes() {
   // Faste beskjeder for ukedagen (0 = mandag ... 4 = fredag; getDay: 1-5).
   const fixedNotes = recurringNotesForDay(target.getDay() - 1);
 
-  const fixedHtml = fixedNotes.map(note => `
+  // Syke i dag (SYK/SB i vaktplanen - settes også når fravær registreres).
+  const sickToday = sickShiftEntriesFor(getMonday(target), target.getDay() - 1);
+  ensureSickShiftsLoaded(getMonday(target), renderDashboardKitchenNotes);
+
+  const sickHtml = sickToday.map(entry => `
+      <div class="compact-item">
+        <strong>🤒 ${escapeHtml(entry.employee)} - ${entry.label}</strong>
+      </div>
+    `).join("");
+
+  const fixedHtml = sickHtml + fixedNotes.map(note => `
       <div class="compact-item">
         <strong>📌 Fast beskjed</strong>
         <span>${escapeHtml(note.text)}</span>
       </div>
     `).join("");
 
-  dashboardKitchenNotes.innerHTML = notes.length || fixedNotes.length
+  dashboardKitchenNotes.innerHTML = notes.length || fixedNotes.length || sickToday.length
     ? fixedHtml + notes.map(note => `
       <div class="compact-item">
         <strong>${escapeHtml(note.author)}</strong>
@@ -3371,6 +3383,7 @@ function renderQuickNotes() {
   }
 
   renderResponsibilityBanner(toDateKey(kitchenViewedWeekStart));
+  ensureSickShiftsLoaded(kitchenViewedWeekStart, renderQuickNotes);
 
   quickNoteFeed.innerHTML = dayNamesLong.map((dayName, dayIndex) => {
     const date = addDays(kitchenViewedWeekStart, dayIndex);
@@ -3380,6 +3393,12 @@ function renderQuickNotes() {
     return `
       <div class="kitchen-day">
         <h3>${dayName}<span class="kitchen-day-date">${formatShortDate(date)}</span></h3>
+
+        ${sickShiftEntriesFor(kitchenViewedWeekStart, dayIndex).map(entry => `
+          <article class="kitchen-entry kitchen-entry-fixed">
+            <p>🤒 ${escapeHtml(entry.employee)} - ${entry.label}</p>
+          </article>
+        `).join("")}
 
         ${recurringNotesForDay(dayIndex).map(note => `
           <article class="kitchen-entry kitchen-entry-fixed">
@@ -3396,7 +3415,7 @@ function renderQuickNotes() {
             <p>${escapeHtml(note.text)}</p>
             ${renderReactionBar(note.id)}
           </article>
-        `).join("") : `<p class="muted">Ingen beskjeder.</p>`}
+        `).join("") : (recurringNotesForDay(dayIndex).length || sickShiftEntriesFor(kitchenViewedWeekStart, dayIndex).length ? "" : `<p class="muted">Ingen beskjeder.</p>`)}
 
         ${dayNotes.length ? renderDayReadBar(dateKey) : ""}
       </div>
@@ -3536,6 +3555,54 @@ async function loadRecurringNotes() {
   }
 
   recurringNotesCache = data || [];
+}
+
+/* ----- Syke i Kjøkkenboka -----
+   Hvem som er syk (SYK) eller har sykt barn (SB) hentes fra vaktplanen for
+   uka. Både "SYK i vaktplanen" og "registrer fravær" havner der, så
+   Kjøkkenboka viser "Benjamin - Syk" for dagen uten at noen skriver det.
+   Rettes eller fjernes vakten, forsvinner linjen også. */
+
+
+function sickShiftEntriesFor(weekStart, dayIndex) {
+  if (dayIndex < 0 || dayIndex > 4) return [];
+  const weekKey = toDateKey(weekStart);
+  if (sickShiftsCache.weekKey !== weekKey) return [];
+
+  const seen = new Set();
+  return sickShiftsCache.rows
+    .filter(row => row.day_index === dayIndex)
+    .filter(row => {
+      const key = `${row.employee}|${row.shift_value}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map(row => ({ employee: row.employee, label: row.shift_value === "SB" ? "Sykt barn" : "Syk" }))
+    .sort((a, b) => a.employee.localeCompare(b.employee, "no"));
+}
+
+// Henter uka én gang (og på nytt når uka byttes), og kjører så "rerender".
+function ensureSickShiftsLoaded(weekStart, rerender) {
+  const weekKey = toDateKey(weekStart);
+  const fresh = sickShiftsCache.weekKey === weekKey && Date.now() - sickShiftsCache.loadedAt < 60000;
+  if (fresh || sickShiftsLoadingKey === weekKey) return;
+
+  sickShiftsLoadingKey = weekKey;
+  supabaseClient
+    .from("kbfb_shifts")
+    .select("employee, day_index, shift_value")
+    .eq("week_start", weekKey)
+    .in("shift_value", ["SYK", "SB"])
+    .then(({ data, error }) => {
+      sickShiftsLoadingKey = null;
+      if (error) {
+        console.error("Kunne ikke hente syke fra vaktplanen:", error);
+        return;
+      }
+      sickShiftsCache = { weekKey, rows: data || [], loadedAt: Date.now() };
+      rerender();
+    });
 }
 
 // dayIndex: 0 = mandag ... 4 = fredag. Beskjeder for "hver dag" (-1) vises alle dager.
