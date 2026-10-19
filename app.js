@@ -1881,7 +1881,7 @@ const monthViewContent = document.getElementById("monthViewContent");
 let viewedWeekStart = getMonday(new Date());
 const realCurrentWeekStart = getMonday(new Date());
 
-const shiftValues = ["", "TV", "TM", "MV", "SV", "F", "AVS", "Tjenestefri", "Velferdsperm", "PERM", "PLANDAG", "SYK", "SB", "MØTE", "ANNET"];
+const shiftValues = ["", "TV", "TM", "MV", "SV", "F", "AVS", "Tjenestefri", "Velferdsperm", "PLANDAG", "SYK", "SB", "MØTE", "ANNET"];
 
 function getCurrentWeekKey() {
   return toDateKey(viewedWeekStart);
@@ -4921,8 +4921,8 @@ async function updateAbsenceStatusInSupabase(id, status) {
 const shiftTypesFromAbsence = {
   "Ferie": "F",
   "Tjenestefri": "Tjenestefri",
-  "Permisjon med lønn": "PERM",
-  "Permisjon uten lønn": "PERM",
+  "Permisjon med lønn": "Velferdsperm",
+  "Permisjon uten lønn": "Velferdsperm",
   "Velferdspermisjon": "Velferdsperm",
   "Ønsker å avspasere": "AVS",
   "Egenmelding": "SYK",
