@@ -2182,3 +2182,15 @@ CREATE POLICY "kbfb_recurring_notes_admin_write" ON public.kbfb_recurring_notes
   FOR ALL TO authenticated
   USING (public.kbfb_is_admin())
   WITH CHECK (public.kbfb_is_admin());
+
+-- =========================================================
+-- STEP 67 (valgfri): flytt eksisterende vaktplan-celler for velferdspermisjon
+--   til den nye vaktkoden "Velferdsperm".
+--   "Velferdspermisjon" i fravær gir nå vaktkoden "Velferdsperm" (egen
+--   kode ved siden av "PERM", som fortsatt brukes for permisjon med/uten
+--   lønn). Vil du at ALLE eksisterende PERM-celler i vaktplanen skal bli
+--   "Velferdsperm", kjør linjen under - ellers ligger gamle PERM-celler
+--   urørt og fortsetter å virke som før.
+-- =========================================================
+
+-- UPDATE public.kbfb_shifts SET shift_value = 'Velferdsperm' WHERE shift_value = 'PERM';

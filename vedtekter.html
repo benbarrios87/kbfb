@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vedtekter | KBFB Personal</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="images/icon-192.png" type="image/png" />
+  <meta name="theme-color" content="#234d31" />
+  <link rel="apple-touch-icon" href="images/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="KBFB" />
+</head>
+
+<body>
+  <div class="layout">
+    <aside class="sidebar nature-sidebar">
+      <div class="brand">
+        <div class="brand-icon">🌲</div>
+        <h2>KBFB</h2>
+        <p>Personalrommet</p>
+      </div>
+
+      <nav>
+        <a href="dashboard.html">🏠 Hjem</a>
+        <a href="vakter.html">📅 Vakter<span class="nav-badge" style="display:none;"></span></a>
+        <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
+        <a data-admin-only href="oppgaver.html">🗒️ Oppgaver</a>
+
+        <details class="nav-folder" open>
+          <summary>📁 Personal</summary>
+          <div class="nav-folder-links">
+            <a data-hide-from-vikar href="datoer.html">📆 Datoer</a>
+            <a href="vikarer.html">🕒 Vikarer</a>
+            <a data-hide-from-vikar data-hide-from-guest href="ferieogavspasering.html">🌴 Ferie og fravær</a>
+            <a data-hide-from-vikar data-hide-from-guest href="kjorebok.html">🚗 Kjørebok</a>
+            <a data-hide-from-guest href="personalhandbok.html">📕 Personalhåndbok</a>
+            <a class="active" data-hide-from-guest href="vedtekter.html">⚖️ Vedtekter</a>
+          </div>
+        </details>
+
+        <details class="nav-folder" data-hide-from-vikar>
+          <summary>📁 Ressurser</summary>
+          <div class="nav-folder-links">
+            <a href="filarkiv.html">📁 Filarkiv</a>
+            <a href="aarshjul.html">🗓️ Årshjul</a>
+            <a href="arsplan.html">📘 Årsplan</a>
+            <a href="turbank.html">🏕️ Turbank (kommer)</a>
+          </div>
+        </details>
+
+        <details class="nav-folder">
+          <summary>📁 Praktisk</summary>
+          <div class="nav-folder-links">
+            <a href="bestillinger.html">🛒 Bestillinger</a>
+            <a data-hide-from-vikar href="kalender.html">📍 Hvor er Benjamin?</a>
+          </div>
+        </details>
+
+        <details class="nav-folder" data-admin-only>
+          <summary>📁 Admin</summary>
+          <div class="nav-folder-links">
+            <a href="nokkeltall.html">📊 Nøkkeltall</a>
+            <a href="admin.html">⚙️ Admin</a>
+            <a href="hms.html">🏥 HMS</a>
+            <a href="lederutfordring.html">🎯 Lederutfordringen</a>
+          </div>
+        </details>
+        <a class="nav-help" href="hjelp.html">❓ Hjelp og spørsmål</a>
+      </nav>
+
+      <div class="sidebar-feedback" data-hide-from-guest>
+        <p>💬 Innspill?</p>
+        <form id="feedbackForm">
+          <textarea id="feedbackText" rows="2" placeholder="Skriv her..." required></textarea>
+          <button type="submit">Send</button>
+        </form>
+        <p id="feedbackStatus"></p>
+      </div>
+
+      <div class="sidebar-footer">
+        <span class="user-badge" id="userBadge"></span>
+        <button class="logout-btn" id="logoutBtn">Logg ut</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="forest-hero compact">
+        <div>
+          <p class="eyebrow">Kirkerudbakken friluftsbarnehage SA</p>
+          <h1>Vedtekter</h1>
+          <p class="muted">Revidert og vedtatt 03.05.2024</p>
+        </div>
+        <div class="hero-badge">⚖️ Oppslagsverk</div>
+      </section>
+
+      <section class="card">
+        <p class="muted" style="margin: 0;">
+          Vedtektene har to deler: <strong>Del 1</strong> følger av samvirkeloven (hvordan foretaket drives:
+          medlemskap, styre, årsmøte), og <strong>Del 2</strong> er barnehagens vedtekter etter barnehageloven
+          (opptak, foreldrebetaling, åpningstid, samarbeidsutvalg). Trykk på et punkt under for å lese det.
+        </p>
+      </section>
+
+      <section class="card" id="vedtekterInnhold">
+        <h2 style="margin-top: 0;">📑 Hurtigvalg</h2>
+        <p class="muted" style="margin: 0 0 8px;">Det folk oftest lurer på:</p>
+        <div class="handbok-toc">
+          <a href="#d2-opptak">Opptak</a>
+          <a href="#d2-oppsigelse">Oppsigelse av plass</a>
+          <a href="#d2-betaling">Foreldrebetaling</a>
+          <a href="#d2-apningstid">Åpningstid og planleggingsdager</a>
+          <a href="#d2-innsats">Foreldreinnsats</a>
+          <a href="#d2-su">Samarbeidsutvalg</a>
+          <a href="#d1-styre">Styret</a>
+          <a href="#d1-arsmote">Årsmøtet</a>
+        </div>
+      </section>
+
+      <h2 class="vedtekter-part">Del 1 - Vedtekter som følger av samvirkeloven</h2>
+
+      <details class="card" id="d1-navn">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 1 Foretaksnavn</h2></div></summary>
+        <div class="handbok-body">
+          <p>Foretakets navn er Kirkerudbakken friluftsbarnehage SA. Foretaket er et samvirkeforetak. Medlemmene hefter ikke overfor kreditorene for foretakets forpliktelser.</p>
+          <p>Foretaket har sitt forretningskontor i Bærum kommune.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d1-virksomhet">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 2 Virksomhet</h2></div></summary>
+        <div class="handbok-body">
+          <p>Foretaket skal drive barnehage.</p>
+          <p>Virksomhetens avkastning blir stående i virksomheten.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d1-medlemskap">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 3 Eierforhold / medlemskap</h2></div></summary>
+        <div class="handbok-body">
+          <p>Den som får tilbud om barnehageplass i barnehagen må sammen med aksept av barnehageplassen søke om innmelding i foretaket. Det skal være et medlemskap pr barn i barnehagen og et medlem kan dermed ha flere medlemskap. Foreldre eller foresatte forvalter medlemskapet sammen og medlemskap kan etter avtale med daglig leder overdras mellom foreldre eller foresatte som har felles barn.</p>
+          <p>Det skal betales <strong>kr 10.000</strong> i andelsinnskudd for hvert medlemskap. Andelsinnskuddet skal ikke forrentes.</p>
+          <p>Medlemmene skal ikke betale medlemskontingent.</p>
+          <p>Når barnet slutter i barnehagen regnes medlemskapet som opphørt. Når medlemskapet opphører har medlemmet krav på å få utbetalt andelsinnskuddet i løpet av 2 måneder.</p>
+          <p>Ved tilbakebetaling av andelsinnskudd kan foretakets krav mot medlemmet motregnes.</p>
+          <p>Medlemskapene kan ikke omsettes, pantsettes eller tas utlegg i.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d1-overskudd">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 4 Anvendelse av årsoverskudd</h2></div></summary>
+        <div class="handbok-body">
+          <p>Beslutning om anvendelse av årsoverskudd treffes av årsmøtet etter forslag fra styret. Foretakets årsoverskudd skal ikke anvendes til annet enn godskrivning av foretakets egenkapital.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d1-styre">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 5 Styre</h2></div></summary>
+        <div class="handbok-body">
+          <p>Foretaket skal ha et styre med minst 3 og høyst 5 medlemmer. Det skal være 1 varamedlem.</p>
+          <p>Styremedlemmene velges av årsmøtet. Styret konstituerer seg selv senest to måneder etter årsmøtet. I perioden fra årsmøtet og frem til nytt styre har konstituert seg selv, skal det sittende styret tjenestegjøre.</p>
+          <p>Styremedlemmene velges for to år av gangen. Styremedlem kan gjenvelges for ett år av gangen, men total tjenestetid kan maksimalt være i samsvar med Samvirkelovens bestemmelser.</p>
+          <p>Styret har ansvar for en forsvarlig organisering av virksomheten i tråd med gjeldende lover og vedtektenes bestemmelser. Styrearbeidet skal følge styreinstruks som fastsettes av styret.</p>
+          <p>Foretaket forpliktes av underskrift av styrets leder eller daglig leder.</p>
+          <p>Styret er beslutningsdyktig når minst 3 medlemmer er til stede. Beslutninger fattes med alminnelig flertall. I tilfelle stemmelikhet, har styrets leder dobbeltstemme.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d1-daglig-leder">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 6 Daglig leder</h2></div></summary>
+        <div class="handbok-body">
+          <p>Foretaket skal ha en daglig leder. Daglig leder ansettes av styret. Daglig leder deltar på styremøtene uten stemmerett og kan ikke ha styreverv i foretaket.</p>
+          <p>Daglig leder har ansvaret for den daglige administrative og pedagogiske ledelse i henhold til stillingsinstruks fastsatt av styret.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d1-arsmote">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 7 Årsmøtet</h2></div></summary>
+        <div class="handbok-body">
+          <p>Årsmøtet er foretakets øverste myndighet.</p>
+          <p>Det skal avholdes årsmøte en gang i året <strong>innen utgangen av april måned</strong>.</p>
+          <p>Innkalling til årsmøtet foretas av styret med minst <strong>8 dagers varsel</strong>.</p>
+          <p>Styreleder eller den styret har utpekt, åpner årsmøtet.</p>
+          <p>På årsmøtet skal følgende saker behandles:</p>
+          <ol>
+            <li>Godkjenning av innkalling og dagsorden</li>
+            <li>Valg av møteleder, referent og to medlemmer til å underskrive protokollen</li>
+            <li>Årsregnskap og disponering av årsoverskuddet</li>
+            <li>Valg av revisor</li>
+            <li>Valg av medlemmer til styre og samarbeidsutvalg</li>
+            <li>Andre saker som etter lov eller vedtekter hører inn under årsmøtet.</li>
+          </ol>
+          <p>Årsmøtet er beslutningsdyktig når medlemmer, inkludert fullmakter, som representerer minst 2/3 av totalt antall medlemskap er representert. Hvis årsmøtet ikke er beslutningsdyktig skal styret innkalle til nytt årsmøte som er beslutningsdyktig uansett frammøte.</p>
+          <p>Hvert medlemskap gir en stemme på årsmøtet. Vedtak i årsmøtet fattes med flertallet av avgitte stemmer i møtet, så sant ikke annet er fastsatt i loven.</p>
+          <p>Beslutninger om vedtektsendringer fattes med 2/3 flertall av de avgitte stemmene.</p>
+          <p>Vedtektsendringer etter samvirkeloven § 54 (2) fattes med 4/5 flertall av de avgitte stemmene.</p>
+          <p>Stifternes vedtektsfestede rett ved opptak av barn kan ikke endres uten samtykke fra alle stifterne.</p>
+          <h3>Ekstraordinært årsmøte</h3>
+          <p>Styret kan kalle inn til ekstraordinært årsmøte. Styret skal også kalle inn til ekstraordinært årsmøte når revisor eller minst 1/5 av medlemmene krever det skriftlig.</p>
+          <p>Ekstraordinært årsmøte behandler kun de sakene som er varslet i innkallingen.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d1-opplosning">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 8 Oppløsning av foretaket og fordeling av nettoformuen</h2></div></summary>
+        <div class="handbok-body">
+          <p>Vedtak om oppløsning av foretaket blir gjort av årsmøtet med samme flertall som for vedtektsendring.</p>
+          <p>Ved oppløsning har foretakets medlemmer rett til å få utbetalt sine andelsinnskudd dersom det er midler i foretaket etter at det har dekket sine forpliktelser.</p>
+          <p>Medlemmene har ikke krav på å få utbetalt renter på andelsinnskudd.</p>
+          <p>Gjenværende midler utover dette skal gå til beslektede formål som bestemmes i samråd med kommunen.</p>
+        </div>
+      </details>
+
+      <h2 class="vedtekter-part">Del 2 - Barnehagens vedtekter etter barnehageloven</h2>
+
+      <details class="card" id="d2-eierskap">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 1 Eierskap</h2></div></summary>
+        <div class="handbok-body">
+          <p>Kirkerudbakken friluftsbarnehage eies av foreldre/foresatte som til enhver tid har barn i barnehagen.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d2-formal">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 2 Virksomhet og formål</h2></div></summary>
+        <div class="handbok-body">
+          <p>Barnehagen skal i samarbeid og forståelse med hjemmet ivareta barnas behov for omsorg og lek, og fremme læring og danning som grunnlag for allsidig utvikling. Barnehagen skal bygge på grunnleggende verdier i kristen og humanistisk arv og tradisjon, slik som respekt for menneskeverdet og naturen, på åndsfrihet, nestekjærlighet, tilgivelse, likeverd og solidaritet, verdier som kommer til uttrykk i ulike religioner og livssyn og som er forankret i menneskerettighetene.</p>
+          <p>Barna skal få utfolde skaperglede, undring og utforskertrang. De skal lære å ta vare på seg selv, hverandre og naturen. Barna skal utvikle grunnleggende kunnskaper og ferdigheter. De skal ha rett til medvirkning tilpasset alder og forutsetninger.</p>
+          <p>Barnehagen skal møte barna med tillit og respekt, og anerkjenne barndommens egenverdi. Den skal bidra til trivsel og glede i lek og læring, og være et utfordrende og trygt sted for fellesskap og vennskap. Barnehagen skal fremme demokrati og likestilling og motarbeide alle former for diskriminering.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d2-opptak">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 3 Opptakskriterier</h2></div></summary>
+        <div class="handbok-body">
+          <p>Kirkerudbakken Friluftsbarnehage er en foreldreeiet barnehage med <strong>34 barn</strong> i alderen 1-6 år fordelt på to avdelinger. Ved opptak til barnehagen skal det søkes å oppnå en fordeling av barn mellom aldersgrupper (klubber) og avdelinger som gir full kapasitetsutnyttelse. Det skal også etterstrebes balanse mellom kjønnene. Innstilling om opptak av barn i barnehagen foretas av daglig leder etter følgende prioritering:</p>
+          <ol>
+            <li>Barn med nedsatt funksjonsevne har rett til prioritet ved opptak i barnehage. Det skal foretas en sakkyndig vurdering for å vurdere om barnet har nedsatt funksjonsevne. Barn det er fattet vedtak om etter lov om barnevernstjeneste §§ 4-12 og 4-4 annet og fjerde ledd, har rett til prioritet ved opptak i barnehage.</li>
+            <li>Barn og barnebarn av stifterne av Kirkerudbakken friluftsbarnehage. Disse er: Inger Lise og Morten Berner, Åshild Båsen og Kjetil Eide, Beate Keyser Frølich og Jan Martin Ståvi, Lise Gundersby og Knut Rognlien.</li>
+            <li>Søsken av nåværende og tidligere barn i barnehagen, prioritert etter ansiennitet. Ansiennitet til både nåværende og tidligere barn teller i ansiennitetsberegningen.</li>
+            <li>Andre barn. Barnehagens behov for alder og kjønn bestemmer prioritet.</li>
+          </ol>
+          <p>Dersom opptak etter punkt 3 og/eller punkt 4 medfører vesentlige skjevheter med hensyn til alder og kjønn kan punkt 3 og/eller punkt 4 fravikes slik at det blir jevn fordeling.</p>
+          <p>Står flere søkere likt gjøres opptaket ved loddtrekning.</p>
+          <p>Barn som har fått plass i Kirkerudbakken friluftsbarnehage beholder plassen frem til barnehagens sommerstengning det året barnet skal begynne på skolen.</p>
+          <p>Eventuelle klager knyttet til opptak må fremsettes skriftlig til kommunen innen <strong>tre uker</strong> fra søker har mottatt svar. Reglene for klageadgang finnes i forskrift om saksbehandlingsregler ved opptak i barnehage eller tilsvarende som har erstattet denne.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d2-oppsigelse">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 4 Opptaksperiode og oppsigelsesfrist</h2></div></summary>
+        <div class="handbok-body">
+          <p>Opptak av barn skjer hele året etter gjeldende opptakskriterier, men hovedsakelig ved hovedopptak hvor søknadsfristen er <strong>1. mars</strong>.</p>
+          <p>Medlem kan si opp barnehageplassen med <strong>3 måneders varsel</strong> til barnehagens daglige leder. Betalingsplikten løper i oppsigelsestiden uansett om plassen nyttes eller ikke. Dersom plassen ikke nyttes og barnehagen får inn nytt barn i oppsigelsestiden skal betalingsplikten reduseres forholdsmessig.</p>
+          <p>Foretaket kan si opp barnehageplassen med 3 måneders varsel. Oppsigelse fra foretakets side krever saklig grunn.</p>
+          <p>Oppsigelsen av barnehageplassen skal være skriftlig.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d2-betaling">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 5 Fastsettelse av foreldrebetaling</h2></div></summary>
+        <div class="handbok-body">
+          <p>Foreldrebetalingen betales på forskudd den 1. i hver måned, og for <strong>11 måneder</strong> i året. Barnehagen har gjeldende maksimalpris. Kirkerudbakken friluftsbarnehage følger kommunens bestemmelser om søskenmoderasjon og redusert oppholdsbetaling.</p>
+          <p>Ved barns sykdom betales ordinær sats. Ved lengre tids sykefravær kan betaling bortfalle etter nærmere vurdering og beslutning foretatt av styret.</p>
+          <p>Foreldrerådet kan fastsette at det i tillegg til foreldrebetalingen skal betales matpenger.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d2-innskudd">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 6 Innskuddsbetaling</h2></div></summary>
+        <div class="handbok-body">
+          <p>Alle som takker ja til barnehageplass i Kirkerudbakken friluftsbarnehage skal betale <strong>kr 10.000</strong> i andelsinnskudd for hvert medlemskap. Andelsinnskuddet skal ikke forrentes.</p>
+          <p>Når barnet slutter i barnehagen regnes medlemskapet som opphørt. Når medlemskapet opphører har medlemmet krav på å få utbetalt andelsinnskuddet i løpet av 2 måneder.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d2-su">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 7 Foreldreråd og samarbeidsutvalg</h2></div></summary>
+        <div class="handbok-body">
+          <p>For å sikre samarbeidet med barnas hjem, skal hver barnehage ha et foreldreråd og et samarbeidsutvalg.</p>
+          <p>Foreldrerådet består av foreldrene/de foresatte til alle barna og skal fremme deres fellesinteresser og bidra til at samarbeidet mellom barnehagen og foreldregruppen skaper et godt barnehagemiljø. Er det i forskrift etter § 15 satt maksimalgrense for foreldrebetaling, kan bare foreldrerådet samtykke i foreldrebetaling ut over dette.</p>
+          <p>Samarbeidsutvalget skal være et rådgivende, kontaktskapende og samordnende organ. Samarbeidsutvalget består av foreldre/foresatte og ansatte i barnehagen, slik at hver gruppe er likt representert. Barnehagens eier kan delta etter eget ønske, men ikke med flere representanter enn hver av de andre gruppene.</p>
+          <p>Kirkerudbakken friluftsbarnehage skal ha et samarbeidsutvalg med <strong>4 medlemmer og 2 varamedlemmer</strong>. Samarbeidsutvalget skal ha følgende sammensetning:</p>
+          <ul>
+            <li>2 representanter for foreldrene valgt av årsmøtet + 1 varamedlem</li>
+            <li>2 representanter for de ansatte, en fra hver avdeling + 1 varamedlem</li>
+          </ul>
+          <p>Medlemmene velges for to år av gangen. Medlem som blir gjenvalgt velges for et år av gangen.</p>
+          <p>Samarbeidsutvalget er et rådgivende organ til styret og daglig leder.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d2-apningstid">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 8 Åpningstid, ferie og planleggingsdager</h2></div></summary>
+        <div class="handbok-body">
+          <p>Barnehagen er åpen alle virkedager fra klokken <strong>07.30 til klokken 17.00</strong>. Ved for sen henting iht. avtalt åpningstid, ilegges foreldre et gebyr iht. gjeldende satser. Lørdager og jule- og nyttårsaften er barnehagen stengt. Barnehagen er stengt onsdag før skjærtorsdag.</p>
+          <p>Barnehagen holder stengt de <strong>tre første ukene</strong> i fellesferien.</p>
+          <p>Daglig leder kan beslutte stenging av barnehagen i kortere perioder som ved planleggingsdager og på dager hvor behovet for å ha barnehagen åpen er lite. Ulempen ved slik stengning (bortsett fra planleggingsdagene) må ikke berøre mer enn tre medlemmer.</p>
+          <p>Barna skal ha minst fire ukers ferie i året. De tre ukene barnehagen er stengt i fellesferien ivaretar barnas behov for tre uker sammenhengende ferie. Helligdager og planleggingsdager regnes ikke som feriedager. Hvis barnehagen holder stengt pga. lite behov, kan dagen(e) regnes som ferie.</p>
+          <p>Alle barn som ikke fortsetter i august har siste dag siste fredagen før fellesferien.</p>
+          <p>Barnehagen har <strong>5 planleggingsdager</strong> pr. år.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d2-innsats">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 9 Foreldreinnsatsordninger</h2></div></summary>
+        <div class="handbok-body">
+          <p>Hver familie som har barn i Kirkerudbakken friluftsbarnehage, deltar i foreldreinnsatsordning som er <strong>2 arbeidsdager</strong> pr. barnehageår. I tillegg forventes det at foreldrene stiller opp på vår- og høstdugnad.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d2-garanti">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 10 Kommunal garanti</h2></div></summary>
+        <div class="handbok-body">
+          <p>Barnehagen har kommunal garanti for husbanklånet og er derfor forpliktet til å føre et eventuelt driftsoverskudd til barnehagedriften og årlig avsette midler til et vedlikeholdsfond.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d2-hms">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 11 HMS / internkontrollsystem</h2></div></summary>
+        <div class="handbok-body">
+          <p>Barnehagen har et internkontrollsystem og utøver internkontroll etter gjeldende lover og forskrifter. Det vises til egen dokumentasjon over barnehagens internkontrollsystem tilgjengelig i perm hos daglig leder.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d2-areal">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 12 Leke- og oppholdsareal</h2></div></summary>
+        <div class="handbok-body">
+          <p>Barnehagens netto leke- og oppholdsareal er <strong>148 m²</strong>, hvorav minimum 4 m² settes av til barn over 3 år og minimum 5,3 m² til barn under 3 år.</p>
+        </div>
+      </details>
+
+      <details class="card" id="d2-utestenging">
+        <summary class="section-heading"><div><span class="details-toggle-icon">▸</span><h2 style="display: inline;">§ 13 Utestenging ved mislighold</h2></div></summary>
+        <div class="handbok-body">
+          <p>Et medlem kan stenges ute fra foretaket når medlemmet har krenket foretaket ved vesentlig mislighold, eller når tungveiende grunner ellers tilsier utestenging. Styret gjør vedtak om utestenging. Virkningen av utestenging er at medlemmet mister barnehageplassen.</p>
+          <p>Den som er stengt ute kan kreve at styret legger frem vedtaket for årsmøtet. Kravet må være fremsatt innen en måned etter at medlemmet mottok skriftlig melding med opplysninger om utestengingen og om fristen for å kreve vedtaket lagt fram for årsmøtet. Barnehageplassen beholdes frem til endelig vedtak er fattet av årsmøtet.</p>
+        </div>
+      </details>
+
+      <p class="muted" style="text-align: center; margin: 20px 0;">
+        Dette er en digital avskrift av vedtektene fra 03.05.2024. Ved uklarheter eller avvik gjelder alltid
+        det formelt vedtatte dokumentet fra årsmøtet.
+      </p>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+  <script src="pwa.js"></script>
+</body>
+</html>

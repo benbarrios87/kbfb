@@ -5240,3 +5240,9 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   background: #fff8e1;
   border-left-color: #e0a526;
 }
+
+.vedtekter-part {
+  margin: 26px 0 10px;
+  font-size: 1.15rem;
+  color: var(--green-dark);
+}

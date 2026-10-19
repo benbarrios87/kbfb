@@ -1881,7 +1881,7 @@ const monthViewContent = document.getElementById("monthViewContent");
 let viewedWeekStart = getMonday(new Date());
 const realCurrentWeekStart = getMonday(new Date());
 
-const shiftValues = ["", "TV", "TM", "MV", "SV", "F", "AVS", "Tjenestefri", "PERM", "PLANDAG", "SYK", "SB", "MØTE", "ANNET"];
+const shiftValues = ["", "TV", "TM", "MV", "SV", "F", "AVS", "Tjenestefri", "Velferdsperm", "PERM", "PLANDAG", "SYK", "SB", "MØTE", "ANNET"];
 
 function getCurrentWeekKey() {
   return toDateKey(viewedWeekStart);
@@ -1894,7 +1894,7 @@ function getShiftSelectClass(value) {
   if (value === "SM") return "sm";
   if (value === "SV") return "sv";
   if (value === "PT") return "pt";
-  if (value === "F" || value === "AVS" || value === "TJ" || value === "Tjenestefri" || value === "PERM" || value === "PLANDAG" || value === "SYK" || value === "SB") return "free";
+  if (value === "F" || value === "AVS" || value === "TJ" || value === "Tjenestefri" || value === "Velferdsperm" || value === "PERM" || value === "PLANDAG" || value === "SYK" || value === "SB") return "free";
   if (value === "KONTOR" || value === "MØTE") return "office";
   if (value === "ANNET") return "custom";
   return "";
@@ -2369,7 +2369,7 @@ async function updateWeekView() {
   renderResponsibilityBanner(toDateKey(viewedWeekStart));
 }
 
-const absenceShiftCodes = ["F", "AVS", "TJ", "Tjenestefri", "PERM", "PLANDAG", "SYK", "SB"];
+const absenceShiftCodes = ["F", "AVS", "TJ", "Tjenestefri", "Velferdsperm", "PERM", "PLANDAG", "SYK", "SB"];
 
 function updateShiftHeadcounts() {
   document.querySelectorAll(".department-table").forEach(table => {
@@ -4923,7 +4923,7 @@ const shiftTypesFromAbsence = {
   "Tjenestefri": "Tjenestefri",
   "Permisjon med lønn": "PERM",
   "Permisjon uten lønn": "PERM",
-  "Velferdspermisjon": "PERM",
+  "Velferdspermisjon": "Velferdsperm",
   "Ønsker å avspasere": "AVS",
   "Egenmelding": "SYK",
   "Sykemelding": "SYK",
@@ -5598,6 +5598,7 @@ function renderPendingApprovalCard() {
       <strong>${escapeHtml(record.name)} · ${escapeHtml(record.type)}</strong>
       <span>${formatDateRange(record.start_date, record.end_date)}${record.hours ? ` · ${record.hours} t` : ""}</span>
       ${record.note ? `<span class="muted">${escapeHtml(record.note)}</span>` : ""}
+      ${record.type === "Velferdspermisjon" ? velferdLimitNote(record) : ""}
       ${record.status === "Avventer" ? `<span class="muted">⏳ Avventer${record.admin_comment ? `: ${escapeHtml(record.admin_comment)}` : ""}</span>` : ""}
       <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
         <button class="primary-btn" data-approve-id="${record.id}">Godkjenn</button>
@@ -6044,7 +6045,7 @@ function formatHoursNo(hours) {
 // Stats for én person i ett kalenderår (avspasering: alle år).
 function computeLeaveStats(name, year, excludeIds = []) {
   const stats = {
-    ferie: 0, tjenestefri: 0, omsorg: 0, egenmelding: 0, sykemelding: 0,
+    ferie: 0, tjenestefri: 0, omsorg: 0, egenmelding: 0, sykemelding: 0, velferd: 0,
     permisjon: 0, overtid: 0
   };
 
@@ -6060,7 +6061,7 @@ function computeLeaveStats(name, year, excludeIds = []) {
       case "Omsorgsdager": stats.omsorg += days; break;
       case "Egenmelding": stats.egenmelding += days; break;
       case "Sykemelding": stats.sykemelding += days; break;
-      case "Velferdspermisjon":
+      case "Velferdspermisjon": stats.velferd += days; break;
       case "Permisjon med lønn":
       case "Permisjon uten lønn": stats.permisjon += days; break;
       case "Overtid": stats.overtid += Number(record.hours || 0); break;
@@ -6197,6 +6198,20 @@ function sickStreakTile(name) {
 // måneder, maks 8 dager per gang. Kvoten vises BARE for admin (Fravær per
 // ansatt) - ansatte ser bare hvor mange dager de har hatt, ikke hvor mange
 // de har "igjen".
+const VELFERDSPERM_MAX_DAYS = 10;
+
+// Vist under en velferdspermisjon-søknad i "Til godkjenning": hvor mange
+// dager personen allerede har brukt i året (denne søknaden regnes ikke med
+// i "før"-tallet), og om søknaden sender dem over grensen.
+function velferdLimitNote(record) {
+  const year = Number((record.start_date || "").slice(0, 4)) || new Date().getFullYear();
+  const days = countWeekdays(record.start_date, record.end_date || record.start_date);
+  const usedBefore = computeLeaveStats(record.name, year, [record.id]).velferd;
+  const after = usedBefore + days;
+  const over = after > VELFERDSPERM_MAX_DAYS;
+
+  return `<span class="${over ? "leave-effect-warn" : "muted"}">${over ? "⚠ " : ""}Velferdspermisjon i ${year}: ${usedBefore} dager fra før → ${after}/${VELFERDSPERM_MAX_DAYS}${over ? " - over grensen på 2 uker, styret må innvilge" : ""}</span>`;
+}
 const EGENMELDING_DAYS_PER_12_MONTHS = 24;
 const EGENMELDING_MAX_DAYS_PER_TIME = 8;
 
@@ -6272,7 +6287,19 @@ function renderLeaveStats(container, name, year, { showSickStreak = false, admin
     ? egenmeldingAdminTile(name)
     : leaveStatTile("Egenmelding", s.egenmelding, " dager", `i ${year}`, "syk"));
   if (s.sykemelding) tiles.push(leaveStatTile("Sykemelding", s.sykemelding, " dager", `i ${year}`, "syk"));
-  if (s.permisjon) tiles.push(leaveStatTile("Permisjon / velferd", s.permisjon, " dager", `i ${year}`, "annet"));
+  // Velferdspermisjon med lønn: inntil 2 uker i kalenderåret (personalhåndboka
+  // kap. 6) - utover det må styret innvilge mer.
+  if (s.velferd || adminDetails) {
+    const over = s.velferd > VELFERDSPERM_MAX_DAYS;
+    tiles.push(leaveStatTile(
+      "Velferdspermisjon",
+      `${s.velferd}/${VELFERDSPERM_MAX_DAYS}`,
+      "",
+      over ? `⚠ ${s.velferd - VELFERDSPERM_MAX_DAYS} dager over grensen - styret må innvilge` : `dager brukt i ${year} (maks 2 uker)`,
+      "annet"
+    ));
+  }
+  if (s.permisjon) tiles.push(leaveStatTile("Permisjon", s.permisjon, " dager", `i ${year}`, "annet"));
   tiles.push(leaveStatTile("50 % overtid", formatHoursNo(s.overtid), " t", `i ${year}`, "ekstra"));
 
   if (showSickStreak) tiles.unshift(sickStreakTile(name));
@@ -6968,6 +6995,11 @@ function mountLeaveRegister(container, { getEmployeeName }) {
         if (type === "Tjenestefri") {
           const quota = getTjenestefriDaysFor(name);
           lines.push(arrow(`Tjenestefri brukt i ${year}`, `${stats.tjenestefri}/${quota}`, `${stats.tjenestefri + days}/${quota}`));
+        } else if (type === "Velferdspermisjon") {
+          lines.push(arrow(`Velferdspermisjon brukt i ${year}`, `${stats.velferd}/${VELFERDSPERM_MAX_DAYS}`, `${stats.velferd + days}/${VELFERDSPERM_MAX_DAYS}`));
+          if (stats.velferd + days > VELFERDSPERM_MAX_DAYS) {
+            lines.push(`<span class="leave-effect-warn">Over grensen på 2 uker (${VELFERDSPERM_MAX_DAYS} dager) per år. Styret må innvilge det som er utover.</span>`);
+          }
         } else {
           lines.push(`${type}: <strong>${dayText(days)}</strong>`);
         }
@@ -13240,4 +13272,27 @@ initializeFilarkiv();
       }
     });
   });
+})();
+
+/* ---------- Innholdsfortegnelse (Personalhåndbok/Vedtekter) ----------
+   Trykk på et punkt i innholdet åpner (og scroller til) den lukkede
+   seksjonen, i stedet for bare å hoppe forbi den. */
+(function initTocOpensSections() {
+  const links = document.querySelectorAll('.handbok-toc a[href^="#"]');
+  if (!links.length) return;
+
+  const openFromId = id => {
+    const target = id && document.getElementById(id);
+    if (target && target.tagName === "DETAILS") {
+      target.open = true;
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  links.forEach(link => {
+    link.addEventListener("click", () => openFromId(link.getAttribute("href").slice(1)));
+  });
+
+  window.addEventListener("hashchange", () => openFromId(decodeURIComponent(location.hash.slice(1))));
+  openFromId(decodeURIComponent(location.hash.slice(1)));
 })();
