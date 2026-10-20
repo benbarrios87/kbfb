@@ -892,6 +892,34 @@ function relativeDayLabel(target, now) {
 
 // "Hvem jobber" - on-duty staff per department for the next relevant day,
 // independent of whatever week the dashboard's own week-nav is browsing.
+// Vaktplanens Vikar-rad har fritekst som "Kari 08:00-16:00". Finn hvem
+// vikaren er (også når det bare står fornavn), så bildet kan vises.
+function resolveVikarFullName(typedName) {
+  const typed = (typedName || "").trim().toLowerCase();
+  if (!typed) return "";
+
+  const known = new Set([
+    ...Object.keys(employeeAvatarCache),
+    ...(typeof employeesCache !== "undefined" ? employeesCache : []).map(e => e.name),
+    ...(typeof subPeopleCache !== "undefined" ? subPeopleCache : []).map(p => p.name)
+  ].filter(Boolean));
+
+  const names = [...known];
+  const exact = names.find(n => n.toLowerCase() === typed);
+  if (exact) return exact;
+
+  const byFirst = names.filter(n => n.toLowerCase().split(" ")[0] === typed);
+  return byFirst.length === 1 ? byFirst[0] : "";
+}
+
+function renderTodayVikarChip(shiftValue) {
+  const typed = parseVikarName(shiftValue);
+  const full = resolveVikarFullName(typed) || typed;
+  const rest = String(shiftValue || "").trim().slice(typed.length).trim();
+
+  return `<span class="today-shift-person">${avatarSpanFor(full, "avatar-medium")}${escapeHtml(full)}${rest ? ` <span class="badge">${escapeHtml(rest)}</span>` : ` <span class="badge">Vikar</span>`}</span>`;
+}
+
 async function loadTodayShiftsForDashboard() {
   const container = document.getElementById("dashboardTodayShifts");
   if (!container) return;
@@ -951,7 +979,15 @@ async function loadTodayShiftsForDashboard() {
     .eq("date", toDateKey(target));
 
   if (!vikarError) {
-    const working = (vikarRows || []).filter(row => row.name && !row.is_sick)
+    const shownInPlan = new Set();
+    (data || []).forEach(shift => {
+      if (shift.employee !== "Vikar") return;
+      const typed = parseVikarName(shift.shift_value);
+      if (typed === "Ikke navngitt") return;
+      shownInPlan.add((resolveVikarFullName(typed) || typed).toLowerCase());
+    });
+
+    const working = (vikarRows || []).filter(row => row.name && !row.is_sick && !shownInPlan.has(row.name.toLowerCase()))
       .sort((a, b) => String(a.start_time || "").localeCompare(String(b.start_time || "")));
 
     if (working.length) {
@@ -975,7 +1011,9 @@ async function loadTodayShiftsForDashboard() {
     <div class="today-shift-department">
       <h3>${departmentEmoji[dept] || "🏢"} ${escapeHtml(dept)}</h3>
       <div class="today-shift-list">
-        ${byDepartment[dept].map(shift => supportRows.includes(shift.employee)
+        ${byDepartment[dept].map(shift => shift.employee === "Vikar" && parseVikarName(shift.shift_value) !== "Ikke navngitt"
+          ? renderTodayVikarChip(shift.shift_value)
+          : supportRows.includes(shift.employee)
           ? `<span class="today-shift-person">🕒 ${escapeHtml(shift.shift_value)}</span>`
           : `<span class="today-shift-person">${avatarSpanFor(shift.employee, "avatar-medium")}${escapeHtml(shift.employee)} <span class="badge ${getShiftSelectClass(shift.shift_value)}">${escapeHtml(shift.shift_value)}</span></span>`
         ).join("")}
