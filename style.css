@@ -5261,3 +5261,47 @@ mark.handbok-mark {
 .kitchen-entry-skipped p {
   text-decoration: line-through;
 }
+
+/* Liten blyant på faste beskjeder i Kjøkkenboka */
+.note-with-pencil {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.note-with-pencil p {
+  margin: 0;
+}
+
+.note-pencil {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 6px;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
+.note-pencil:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.vikar-card .avatar-tiny {
+  width: 28px;
+  height: 28px;
+  font-size: 0.8rem;
+  margin: 0 6px 0 0;
+  vertical-align: middle;
+}
+
+.overtime-person .avatar-tiny {
+  width: 24px;
+  height: 24px;
+  font-size: 0.75rem;
+  vertical-align: middle;
+}

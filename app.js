@@ -3449,16 +3449,15 @@ function renderQuickNotes() {
           const admin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
           if (entry.hidden && !admin) return "";
 
+          const key = `${entry.note.id}|${entry.dateKey}`;
+          const tools = !admin ? "" : entry.hidden || entry.overridden
+            ? `<button type="button" class="note-pencil" title="Tilbakestill denne dagen" data-recurring-today-reset="${key}">↺</button>`
+            : `<button type="button" class="note-pencil" title="Endre bare denne dagen" data-recurring-today-edit="${key}">✏️</button>`;
+
           return `
-          <article class="kitchen-entry kitchen-entry-fixed${entry.hidden ? " kitchen-entry-skipped" : ""}">
+          <article class="kitchen-entry kitchen-entry-fixed note-with-pencil${entry.hidden ? " kitchen-entry-skipped" : ""}">
             <p>📌 ${escapeHtml(entry.text)}${entry.hidden ? " <em>(hoppes over denne dagen)</em>" : entry.overridden ? " <em>(endret kun denne dagen)</em>" : ""}</p>
-            ${admin ? `
-              <div class="kitchen-entry-top">
-                ${entry.hidden ? "" : `<button type="button" class="kitchen-reopen" data-recurring-today-edit="${entry.note.id}|${entry.dateKey}">Endre kun denne dagen</button>`}
-                ${entry.hidden ? "" : `<button type="button" class="kitchen-reopen" data-recurring-today-skip="${entry.note.id}|${entry.dateKey}">Hopp over</button>`}
-                ${entry.overridden ? `<button type="button" class="kitchen-reopen" data-recurring-today-reset="${entry.note.id}|${entry.dateKey}">Tilbakestill</button>` : ""}
-              </div>
-            ` : ""}
+            ${tools}
           </article>
         `;
         }).join("")}
@@ -3492,17 +3491,11 @@ function renderQuickNotes() {
       if (!note) return;
 
       const current = recurringEntriesForDate(new Date(dateKey + "T12:00:00")).find(entry => entry.note.id === noteId);
-      const text = prompt("Ny tekst kun for denne dagen:", current?.text || note.text);
-      if (text === null || !text.trim()) return;
+      const text = prompt("Ny tekst kun for denne dagen (la stå tom for å hoppe over beskjeden i dag):", current?.text || note.text);
+      if (text === null) return;
 
-      if (await setRecurringOverride(noteId, dateKey, { text: text.trim() })) rerenderKitchen();
-    });
-  });
-
-  document.querySelectorAll("[data-recurring-today-skip]").forEach(button => {
-    button.addEventListener("click", async () => {
-      const [noteId, dateKey] = button.dataset.recurringTodaySkip.split("|");
-      if (await setRecurringOverride(noteId, dateKey, { hidden: true })) rerenderKitchen();
+      const fields = text.trim() ? { text: text.trim() } : { hidden: true };
+      if (await setRecurringOverride(noteId, dateKey, fields)) rerenderKitchen();
     });
   });
 
@@ -4500,7 +4493,7 @@ function readableTextColor(hex) {
 
 function renderVikarBadge(name) {
   const color = getSubPersonColor(name);
-  return `<span class="vikar-badge" style="background:${escapeHtml(color)}; color:${readableTextColor(color)}">${escapeHtml(name)}</span>`;
+  return `${avatarSpanFor(name, "avatar-tiny")}<span class="vikar-badge" style="background:${escapeHtml(color)}; color:${readableTextColor(color)}">${escapeHtml(name)}</span>`;
 }
 
 // En vikar (som ikke er admin) skal bare se sine egne vakter i loggen og
@@ -4565,6 +4558,7 @@ function renderSubSummary() {
     <div class="vikar-card-grid">
       ${Object.values(grouped).sort((a, b) => a.name.localeCompare(b.name)).map(item => `
         <div class="vikar-card" style="background:${getSubPersonColor(item.name)};">
+          ${avatarSpanFor(item.name, "avatar-tiny")}
           <strong class="vikar-card-name">${escapeHtml(item.name)}</strong>
           <span class="vikar-card-hours">${formatHoursMinutes(item.hours)}</span>
           <span class="vikar-card-days">${item.days.size} ${item.days.size === 1 ? "dag" : "dager"}</span>
@@ -5234,7 +5228,7 @@ function renderVikarPaySummary() {
     <p class="muted"><strong>${formatHoursNo(total)} t</strong> vikartimer totalt i ${formatMonth(month)}</p>
     ${Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([name, info]) => `
       <div class="overtime-person" ${personColorStyle(name, getSubPersonColor(name))}>
-        <strong>${escapeHtml(name)} · ${formatHoursNo(info.hours)} t timelønn</strong>
+        <strong>${avatarSpanFor(name, "avatar-tiny")}${escapeHtml(name)} · ${formatHoursNo(info.hours)} t timelønn</strong>
         <details class="overtime-details">
           <summary class="muted">Vis vakter (${info.entries.length})</summary>
           <ul class="overtime-lines">${info.entries.map(entry => `
@@ -9531,6 +9525,10 @@ async function loadEmployeeAvatars() {
   if (typeof renderSupplies === "function") renderSupplies();
   if (typeof renderDashboardKitchenNotes === "function") renderDashboardKitchenNotes();
   if (typeof renderDashboardGreeting === "function") renderDashboardGreeting();
+  if (typeof renderSubPeople === "function" && document.getElementById("subPersonList")) renderSubPeople();
+  if (typeof renderSubs === "function" && document.getElementById("subTableBody")) renderSubs();
+  if (typeof renderSubSummary === "function" && document.getElementById("subSummary")) renderSubSummary();
+  if (typeof renderVikarPaySummary === "function" && document.getElementById("vikarPaySummary")) renderVikarPaySummary();
 }
 
 // Builds the HTML for a small round avatar next to someone's name -
