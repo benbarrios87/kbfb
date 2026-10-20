@@ -2236,15 +2236,9 @@ SET current_text = regexp_replace(
   current_text,
   'skal kvalitetsutvikling i det pedagogiske arbeidet, LEK og LÆRING, foregå hovedsakelig innenfor områdene:\s+Språk\s+Lek\s+Tett på\s*',
   'skal kvalitetsutvikling i det pedagogiske arbeidet foregå innenfor kommunens satsinger:'
-    || E'
-
-' || 'Tett på – kvalitet i Bærumsbarnehagen (siden 2020): trygge relasjoner, godt samspill og refleksjon over egen praksis, med observasjonsverktøyet CLASS.'
-    || E'
-
-' || 'Lek og læring: Kommunikasjon og språk, Livsmestring og Digital barnehage.'
-    || E'
-
-'
+    || E'\n\n' || 'Tett på – kvalitet i Bærumsbarnehagen (siden 2020): trygge relasjoner, godt samspill og refleksjon over egen praksis, med observasjonsverktøyet CLASS.'
+    || E'\n\n' || 'Lek og læring: Kommunikasjon og språk, Livsmestring og Digital barnehage.'
+    || E'\n\n'
 )
 WHERE current_text ~ 'områdene:\s+Språk\s+Lek\s+Tett på';
 
