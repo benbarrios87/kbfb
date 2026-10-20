@@ -2235,13 +2235,16 @@ UPDATE public.kbfb_arsplan_sections
 SET current_text = regexp_replace(
   current_text,
   'skal kvalitetsutvikling i det pedagogiske arbeidet, LEK og LÆRING, foregå hovedsakelig innenfor områdene:\s+Språk\s+Lek\s+Tett på\s*',
-  'skal kvalitetsutvikling i det pedagogiske arbeidet foregå innenfor Bærum kommunes kvalitetssatsing «Tett på» og kvalitetsplanen «Lek og læring», hovedsakelig innenfor områdene:'
-    || E'\n\n' || 'Tett på'
-    || E'\n\n' || 'Kommunikasjon og språk'
-    || E'\n\n' || 'Livsmestring'
-    || E'\n\n' || 'Digital barnehage'
-    || E'\n\n' || '«Tett på» – Kvalitet i Bærumsbarnehagen er en langsiktig kvalitetssatsing (startet i 2020) for kommunale og private barnehager. Den har fokus på samspill, trygge relasjoner, observasjon, veiledning og refleksjon over egen praksis, og bruker observasjonsverktøyet CLASS (Classroom Assessment Scoring System) for å måle og utvikle kvaliteten i barnehagehverdagen. Satsingen har også innsats rettet mot barn i risiko, blant annet «snakke med barn» og «barnets plan».'
-    || E'\n\n'
+  'skal kvalitetsutvikling i det pedagogiske arbeidet foregå innenfor kommunens satsinger:'
+    || E'
+
+' || 'Tett på – kvalitet i Bærumsbarnehagen (siden 2020): trygge relasjoner, godt samspill og refleksjon over egen praksis, med observasjonsverktøyet CLASS.'
+    || E'
+
+' || 'Lek og læring: Kommunikasjon og språk, Livsmestring og Digital barnehage.'
+    || E'
+
+'
 )
 WHERE current_text ~ 'områdene:\s+Språk\s+Lek\s+Tett på';
 
