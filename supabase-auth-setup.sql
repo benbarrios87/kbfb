@@ -2222,3 +2222,37 @@ CREATE POLICY "kbfb_recurring_overrides_admin_write" ON public.kbfb_recurring_ov
   FOR ALL TO authenticated
   USING (public.kbfb_is_admin())
   WITH CHECK (public.kbfb_is_admin());
+
+
+-- =====================================================================
+-- STEP 69: Oppdater kommunens satsingsområder i årsplanen
+-- (Tett på + Lek og læring: Kommunikasjon og språk, Livsmestring,
+--  Digital barnehage). Endrer bare gjeldende tekst, ikke den
+-- godkjente originalen, så seksjonene får "Endret siden godkjenning".
+-- Kan kjøres flere ganger uten skade.
+-- =====================================================================
+UPDATE public.kbfb_arsplan_sections
+SET current_text = regexp_replace(
+  current_text,
+  'skal kvalitetsutvikling i det pedagogiske arbeidet, LEK og LÆRING, foregå hovedsakelig innenfor områdene:\s+Språk\s+Lek\s+Tett på\s*',
+  'skal kvalitetsutvikling i det pedagogiske arbeidet foregå innenfor Bærum kommunes kvalitetssatsing «Tett på» og kvalitetsplanen «Lek og læring», hovedsakelig innenfor områdene:'
+    || E'\n\n' || 'Tett på'
+    || E'\n\n' || 'Kommunikasjon og språk'
+    || E'\n\n' || 'Livsmestring'
+    || E'\n\n' || 'Digital barnehage'
+    || E'\n\n' || '«Tett på» – Kvalitet i Bærumsbarnehagen er en langsiktig kvalitetssatsing (startet i 2020) for kommunale og private barnehager. Den har fokus på samspill, trygge relasjoner, observasjon, veiledning og refleksjon over egen praksis, og bruker observasjonsverktøyet CLASS (Classroom Assessment Scoring System) for å måle og utvikle kvaliteten i barnehagehverdagen. Satsingen har også innsats rettet mot barn i risiko, blant annet «snakke med barn» og «barnets plan».'
+    || E'\n\n'
+)
+WHERE current_text ~ 'områdene:\s+Språk\s+Lek\s+Tett på';
+
+UPDATE public.kbfb_arsplan_sections
+SET current_text = regexp_replace(
+  current_text,
+  'områdene:\s+Språk\s+Livsmestring\s+Digital barnehage',
+  'områdene:' || E'\n\n' || 'Kommunikasjon og språk' || E'\n\n' || 'Livsmestring' || E'\n\n' || 'Digital barnehage'
+)
+WHERE current_text ~ 'områdene:\s+Språk\s+Livsmestring\s+Digital barnehage';
+
+-- Kontroll: skal vise de to oppdaterte seksjonene
+SELECT heading FROM public.kbfb_arsplan_sections
+WHERE current_text LIKE '%Kommunikasjon og språk%';
