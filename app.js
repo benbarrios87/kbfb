@@ -1176,6 +1176,43 @@ function openPhotoLightbox(url) {
   document.body.appendChild(overlay);
 }
 
+// Skalerer ned til maks 1800 px på lengste side og lagrer som JPEG.
+// Faller tilbake til originalfilen hvis nettleseren ikke klarer å
+// dekode bildet (da får man den vanlige feilmeldingen fra opplastingen).
+async function prepareImageForUpload(file, maxSide = 1800, quality = 0.85) {
+  try {
+    let bitmap;
+    if (window.createImageBitmap) {
+      bitmap = await createImageBitmap(file, { imageOrientation: "from-image" }).catch(() => createImageBitmap(file));
+    } else {
+      bitmap = await new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = reject;
+        img.src = url;
+      });
+    }
+
+    const width = bitmap.width;
+    const height = bitmap.height;
+    const scale = Math.min(1, maxSide / Math.max(width, height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(width * scale);
+    canvas.height = Math.round(height * scale);
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", quality));
+    if (!blob) return file;
+
+    const baseName = file.name.replace(/\.[^.]+$/, "") || "bilde";
+    return new File([blob], `${baseName}.jpg`, { type: "image/jpeg" });
+  } catch (error) {
+    console.warn("Kunne ikke forminske bildet, laster opp originalen:", error);
+    return file;
+  }
+}
+
 if (photoShareForm) {
   photoShareForm.addEventListener("submit", async event => {
     event.preventDefault();
@@ -1185,12 +1222,17 @@ if (photoShareForm) {
       return;
     }
 
-    const file = photoShareInput.files[0];
-    if (!file) return;
+    const originalFile = photoShareInput.files[0];
+    if (!originalFile) return;
 
     if (photoShareStatus) photoShareStatus.textContent = "Laster opp...";
 
-    const extension = file.name.split(".").pop() || "jpg";
+    // Mobilbilder (iPhone: HEIC, 12+ megapiksler) gjøres om til en vanlig,
+    // mindre JPEG før opplasting - raskere på mobilnett, vises overalt,
+    // og unngår feil med store eller uvanlige filformater.
+    const file = await prepareImageForUpload(originalFile);
+
+    const extension = file.type === "image/jpeg" ? "jpg" : ((file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg");
     const filePath = `${currentEmployee.id}-${Date.now()}.${extension}`;
 
     const { error: uploadError } = await supabaseClient.storage
@@ -1199,7 +1241,9 @@ if (photoShareForm) {
 
     if (uploadError) {
       console.error("Kunne ikke laste opp bilde:", uploadError);
-      if (photoShareStatus) photoShareStatus.textContent = "Kunne ikke laste opp bilde.";
+      if (photoShareStatus) {
+        photoShareStatus.textContent = `Kunne ikke laste opp bilde (${uploadError.message || "ukjent feil"}). Prøv å logge ut og inn igjen, eller et annet bilde.`;
+      }
       return;
     }
 
