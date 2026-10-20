@@ -2192,3 +2192,33 @@ CREATE POLICY "kbfb_recurring_notes_admin_write" ON public.kbfb_recurring_notes
 -- =========================================================
 
 UPDATE public.kbfb_shifts SET shift_value = 'Velferdsperm' WHERE shift_value = 'PERM';
+
+-- =========================================================
+-- STEP 68: kbfb_recurring_overrides (endre/hoppe over en fast beskjed
+--   bare én bestemt dag)
+--   text satt = erstatter teksten den datoen; hidden = vises ikke den
+--   datoen. Selve den faste beskjeden (STEP 66) er uendret. Alle leser,
+--   kun admin skriver.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_recurring_overrides (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  note_id uuid NOT NULL REFERENCES public.kbfb_recurring_notes(id) ON DELETE CASCADE,
+  date date NOT NULL,
+  text text,
+  hidden boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (note_id, date)
+);
+
+ALTER TABLE public.kbfb_recurring_overrides ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_recurring_overrides_select" ON public.kbfb_recurring_overrides;
+CREATE POLICY "kbfb_recurring_overrides_select" ON public.kbfb_recurring_overrides
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "kbfb_recurring_overrides_admin_write" ON public.kbfb_recurring_overrides;
+CREATE POLICY "kbfb_recurring_overrides_admin_write" ON public.kbfb_recurring_overrides
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());

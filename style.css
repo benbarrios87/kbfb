@@ -5253,3 +5253,11 @@ mark.handbok-mark {
   border-radius: 3px;
   padding: 0 1px;
 }
+
+.kitchen-entry-skipped {
+  opacity: 0.55;
+}
+
+.kitchen-entry-skipped p {
+  text-decoration: line-through;
+}

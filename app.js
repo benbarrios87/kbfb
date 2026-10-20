@@ -21,6 +21,7 @@ const TASK_MEETING_PROJECTS = ["Ledermøte", "Styremøte", "Foreldremøte", "Per
 
 // Faste beskjeder (Kjøkkenboka) - øverst så visningen aldri treffer den før den er satt.
 let recurringNotesCache = [];
+let recurringOverridesCache = [];
 let sickShiftsCache = { weekKey: null, rows: [], loadedAt: 0 };
 let sickShiftsLoadingKey = null;
 
@@ -827,7 +828,7 @@ function renderDashboardKitchenNotes() {
 
   const notes = sortNotesByMentionedTime(notesCache.filter(note => note.date === targetKey));
   // Faste beskjeder for ukedagen (0 = mandag ... 4 = fredag; getDay: 1-5).
-  const fixedNotes = recurringNotesForDay(target.getDay() - 1);
+  const fixedNotes = recurringEntriesForDate(target).filter(entry => !entry.hidden).map(entry => ({ text: entry.text }));
 
   // Syke i dag (SYK/SB i vaktplanen - settes også når fravær registreres).
   const sickToday = sickShiftEntriesFor(getMonday(target), target.getDay() - 1);
@@ -3444,11 +3445,23 @@ function renderQuickNotes() {
           </article>
         `).join("")}
 
-        ${recurringNotesForDay(dayIndex).map(note => `
-          <article class="kitchen-entry kitchen-entry-fixed">
-            <p>📌 ${escapeHtml(note.text)}</p>
+        ${recurringEntriesForDate(date).map(entry => {
+          const admin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
+          if (entry.hidden && !admin) return "";
+
+          return `
+          <article class="kitchen-entry kitchen-entry-fixed${entry.hidden ? " kitchen-entry-skipped" : ""}">
+            <p>📌 ${escapeHtml(entry.text)}${entry.hidden ? " <em>(hoppes over denne dagen)</em>" : entry.overridden ? " <em>(endret kun denne dagen)</em>" : ""}</p>
+            ${admin ? `
+              <div class="kitchen-entry-top">
+                ${entry.hidden ? "" : `<button type="button" class="kitchen-reopen" data-recurring-today-edit="${entry.note.id}|${entry.dateKey}">Endre kun denne dagen</button>`}
+                ${entry.hidden ? "" : `<button type="button" class="kitchen-reopen" data-recurring-today-skip="${entry.note.id}|${entry.dateKey}">Hopp over</button>`}
+                ${entry.overridden ? `<button type="button" class="kitchen-reopen" data-recurring-today-reset="${entry.note.id}|${entry.dateKey}">Tilbakestill</button>` : ""}
+              </div>
+            ` : ""}
           </article>
-        `).join("")}
+        `;
+        }).join("")}
 
         ${dayNotes.length ? dayNotes.map(note => `
           <article class="kitchen-entry">
@@ -3459,12 +3472,47 @@ function renderQuickNotes() {
             <p>${escapeHtml(note.text)}</p>
             ${renderReactionBar(note.id)}
           </article>
-        `).join("") : (recurringNotesForDay(dayIndex).length || sickShiftEntriesFor(kitchenViewedWeekStart, dayIndex).length ? "" : `<p class="muted">Ingen beskjeder.</p>`)}
+        `).join("") : (recurringEntriesForDate(date).some(entry => !entry.hidden) || sickShiftEntriesFor(kitchenViewedWeekStart, dayIndex).length ? "" : `<p class="muted">Ingen beskjeder.</p>`)}
 
         ${dayNotes.length ? renderDayReadBar(dateKey) : ""}
       </div>
     `;
   }).join("");
+
+  // Faste beskjeder: endre, hoppe over eller tilbakestille bare denne dagen.
+  const rerenderKitchen = () => {
+    renderQuickNotes();
+    renderDashboardKitchenNotes();
+  };
+
+  document.querySelectorAll("[data-recurring-today-edit]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const [noteId, dateKey] = button.dataset.recurringTodayEdit.split("|");
+      const note = recurringNotesCache.find(item => item.id === noteId);
+      if (!note) return;
+
+      const current = recurringEntriesForDate(new Date(dateKey + "T12:00:00")).find(entry => entry.note.id === noteId);
+      const text = prompt("Ny tekst kun for denne dagen:", current?.text || note.text);
+      if (text === null || !text.trim()) return;
+
+      if (await setRecurringOverride(noteId, dateKey, { text: text.trim() })) rerenderKitchen();
+    });
+  });
+
+  document.querySelectorAll("[data-recurring-today-skip]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const [noteId, dateKey] = button.dataset.recurringTodaySkip.split("|");
+      if (await setRecurringOverride(noteId, dateKey, { hidden: true })) rerenderKitchen();
+    });
+  });
+
+  document.querySelectorAll("[data-recurring-today-reset]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const [noteId, dateKey] = button.dataset.recurringTodayReset.split("|");
+      await clearRecurringOverride(noteId, dateKey);
+      rerenderKitchen();
+    });
+  });
 
   document.querySelectorAll("[data-quick-note-id]").forEach(button => {
     button.addEventListener("click", async () => {
@@ -3654,6 +3702,58 @@ function recurringNotesForDay(dayIndex) {
   return recurringNotesCache.filter(note => note.weekday === -1 || note.weekday === dayIndex);
 }
 
+/* Endre/hoppe over en fast beskjed bare én bestemt dag (override), uten å
+   røre selve den faste beskjeden. text satt = erstatter teksten den dagen;
+   hidden = vises ikke den dagen. */
+
+async function loadRecurringOverrides() {
+  const { data, error } = await supabaseClient.from("kbfb_recurring_overrides").select("*");
+  if (error) {
+    // Tabellen finnes ikke før STEP 68 er kjørt - da vises de faste beskjedene som vanlig.
+    console.error("Kunne ikke hente endringer av faste beskjeder:", error);
+    recurringOverridesCache = [];
+    return;
+  }
+  recurringOverridesCache = data || [];
+}
+
+// Faste beskjeder for en bestemt dato, med dagens endringer tatt hensyn til.
+// Hver oppføring: { note, text, overridden, hidden }
+function recurringEntriesForDate(date) {
+  const dateKey = toDateKey(date);
+  const dayIndex = date.getDay() - 1;
+
+  return recurringNotesForDay(dayIndex).map(note => {
+    const override = recurringOverridesCache.find(item => item.note_id === note.id && item.date === dateKey);
+    return {
+      note,
+      dateKey,
+      overridden: !!override,
+      hidden: !!override?.hidden,
+      text: override && override.text ? override.text : note.text
+    };
+  });
+}
+
+async function setRecurringOverride(noteId, dateKey, fields) {
+  const { error } = await supabaseClient
+    .from("kbfb_recurring_overrides")
+    .upsert([{ note_id: noteId, date: dateKey, text: null, hidden: false, ...fields }], { onConflict: "note_id,date" });
+
+  if (error) {
+    console.error("Kunne ikke lagre endring for i dag:", error);
+    alert("Kunne ikke lagre. Har du kjørt STEP 68 i Supabase?");
+    return false;
+  }
+  await loadRecurringOverrides();
+  return true;
+}
+
+async function clearRecurringOverride(noteId, dateKey) {
+  await supabaseClient.from("kbfb_recurring_overrides").delete().eq("note_id", noteId).eq("date", dateKey);
+  await loadRecurringOverrides();
+}
+
 function renderRecurringNoteAdmin() {
   const list = document.getElementById("recurringNoteList");
   if (!list) return;
@@ -3715,7 +3815,8 @@ async function initializeNotes() {
     loadNotesFromSupabase(),
     loadNoteReactionsFromSupabase(),
     loadDayReadsFromSupabase(),
-    loadRecurringNotes()
+    loadRecurringNotes(),
+    loadRecurringOverrides()
   ]);
   renderRecurringNoteAdmin();
   renderQuickNotes();
