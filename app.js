@@ -943,7 +943,30 @@ async function loadTodayShiftsForDashboard() {
 
   const departments = Object.keys(byDepartment).sort();
 
-  if (!departments.length) {
+  // Vikarene som jobber den dagen (fra vikartimene), med bilde og tid.
+  let vikarHtml = "";
+  const { data: vikarRows, error: vikarError } = await supabaseClient
+    .from("kbfb_subs")
+    .select("name, start_time, end_time, is_sick")
+    .eq("date", toDateKey(target));
+
+  if (!vikarError) {
+    const working = (vikarRows || []).filter(row => row.name && !row.is_sick)
+      .sort((a, b) => String(a.start_time || "").localeCompare(String(b.start_time || "")));
+
+    if (working.length) {
+      vikarHtml = `
+        <div class="today-shift-department">
+          <h3>🕒 Vikarer</h3>
+          <div class="today-shift-list">
+            ${working.map(row => `<span class="today-shift-person">${avatarSpanFor(row.name, "avatar-medium")}${escapeHtml(row.name)}${row.start_time && row.end_time ? ` <span class="badge">${escapeHtml(String(row.start_time).slice(0, 5))}–${escapeHtml(String(row.end_time).slice(0, 5))}</span>` : ""}</span>`).join("")}
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  if (!departments.length && !vikarHtml) {
     container.innerHTML = `<p class="muted">Ingen vakter registrert ${relativeDayLabel(target, now)} ennå.</p>`;
     return;
   }
@@ -958,7 +981,7 @@ async function loadTodayShiftsForDashboard() {
         ).join("")}
       </div>
     </div>
-  `).join("");
+  `).join("") + vikarHtml;
 }
 
 const weatherIconByCode = {
