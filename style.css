@@ -5246,3 +5246,10 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   font-size: 1.15rem;
   color: var(--green-dark);
 }
+
+mark.handbok-mark {
+  background: #ffe58a;
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+}

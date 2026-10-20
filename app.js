@@ -13296,3 +13296,98 @@ initializeFilarkiv();
   window.addEventListener("hashchange", () => openFromId(decodeURIComponent(location.hash.slice(1))));
   openFromId(decodeURIComponent(location.hash.slice(1)));
 })();
+
+/* ---------- Søk i Personalhåndbok og Vedtekter ----------
+   Skriver man i søkefeltet, vises bare seksjonene som inneholder alle
+   ordene, de åpnes, og treffene markeres. Tomt felt gjenoppretter lista
+   slik den var (med de seksjonene som var åpne). */
+(function initHandbookSearch() {
+  const input = document.getElementById("handbokSearch");
+  if (!input) return;
+
+  const sections = [...document.querySelectorAll("main details.card")].filter(item => item.querySelector(".handbok-body"));
+  const toc = document.getElementById("handbokInnhold") || document.getElementById("vedtekterInnhold");
+  const partHeadings = [...document.querySelectorAll(".vedtekter-part")];
+  const noResults = document.getElementById("handbokNoResults");
+  const normalize = text => (text || "").toLowerCase().normalize("NFC");
+
+  sections.forEach(section => { section.dataset.search = normalize(section.textContent); });
+
+  let searching = false;
+  let savedOpen = new Set();
+
+  const clearMarks = () => {
+    document.querySelectorAll("mark.handbok-mark").forEach(mark => {
+      mark.replaceWith(document.createTextNode(mark.textContent));
+    });
+    sections.forEach(section => section.normalize());
+  };
+
+  const highlight = (root, words) => {
+    const escapeRegex = word => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp("(" + words.map(escapeRegex).join("|") + ")", "gi");
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+
+    nodes.forEach(node => {
+      if (!node.nodeValue.trim() || node.parentElement.closest("mark")) return;
+      pattern.lastIndex = 0;
+      if (!pattern.test(node.nodeValue)) return;
+
+      const fragment = document.createDocumentFragment();
+      node.nodeValue.split(pattern).forEach((part, index) => {
+        if (index % 2 === 1) {
+          const mark = document.createElement("mark");
+          mark.className = "handbok-mark";
+          mark.textContent = part;
+          fragment.appendChild(mark);
+        } else if (part) {
+          fragment.appendChild(document.createTextNode(part));
+        }
+      });
+      node.replaceWith(fragment);
+    });
+  };
+
+  const apply = () => {
+    const words = normalize(input.value).split(/\s+/).filter(Boolean);
+    clearMarks();
+
+    if (!words.length) {
+      if (searching) {
+        sections.forEach(section => {
+          section.hidden = false;
+          section.open = savedOpen.has(section);
+        });
+        searching = false;
+      }
+      if (toc) toc.hidden = false;
+      partHeadings.forEach(heading => { heading.hidden = false; });
+      if (noResults) noResults.hidden = true;
+      return;
+    }
+
+    if (!searching) {
+      savedOpen = new Set(sections.filter(section => section.open));
+      searching = true;
+    }
+
+    let shown = 0;
+    sections.forEach(section => {
+      const match = words.every(word => section.dataset.search.includes(word));
+      section.hidden = !match;
+      if (match) {
+        shown += 1;
+        section.open = true;
+        highlight(section, words);
+      }
+    });
+
+    if (toc) toc.hidden = true;
+    partHeadings.forEach(heading => { heading.hidden = true; });
+    if (noResults) noResults.hidden = shown > 0;
+  };
+
+  input.addEventListener("input", apply);
+})();
