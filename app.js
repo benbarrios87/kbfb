@@ -389,6 +389,15 @@ async function deleteEventFromSupabase(id) {
 function getEvents() {
   return eventsCache;
 }
+
+// Datoer som faller på en bestemt dag (også de som går over flere dager,
+// fra dato til og med sluttdato). Brukes over dagen i vaktplanen og i
+// Kjøkkenboka, så det som står på Datoer vises der det trengs.
+function eventsOnDate(dateKey) {
+  return getEvents().filter(event =>
+    event.date && event.date <= dateKey && dateKey <= (event.end_date || event.date)
+  );
+}
 function categoryLabel(category) {
   const labels = {
     general: "Generelt",
@@ -2391,10 +2400,25 @@ document.querySelectorAll(".support-toggle").forEach(toggle => {
 });
 
 function renderWeekEvents() {
+  // Datoene også rett over hver dag i vaktplanen.
+  document.querySelectorAll(".day-head").forEach(head => {
+    head.querySelectorAll(".day-event-chip").forEach(chip => chip.remove());
+
+    const dateKey = toDateKey(addDays(viewedWeekStart, Number(head.dataset.day)));
+    eventsOnDate(dateKey).forEach(event => {
+      const chip = document.createElement("div");
+      chip.className = "day-event-chip";
+      chip.title = event.note ? `${event.title} - ${event.note}` : event.title;
+      chip.textContent = `${categoryEmoji(event.category)} ${event.title}`;
+      head.appendChild(chip);
+    });
+  });
+
   if (!weekEvents) return;
 
+  const weekFridayKey = toDateKey(addDays(viewedWeekStart, 4));
   const events = getEvents()
-    .filter(event => eventIsInWeek(event.date, viewedWeekStart))
+    .filter(event => event.date <= weekFridayKey && (event.end_date || event.date) >= toDateKey(viewedWeekStart))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   weekEvents.innerHTML = events.length
@@ -3500,6 +3524,12 @@ function renderQuickNotes() {
       <div class="kitchen-day">
         <h3>${dayName}<span class="kitchen-day-date">${formatShortDate(date)}</span></h3>
 
+        ${eventsOnDate(dateKey).map(event => `
+          <article class="kitchen-entry kitchen-entry-date">
+            <p>${categoryEmoji(event.category)} <strong>${escapeHtml(event.title)}</strong>${event.note ? ` - ${escapeHtml(event.note)}` : ""}</p>
+          </article>
+        `).join("")}
+
         ${sickShiftEntriesFor(kitchenViewedWeekStart, dayIndex).map(entry => `
           <article class="kitchen-entry kitchen-entry-fixed">
             <p>🤒 ${escapeHtml(entry.employee)} - ${entry.label}</p>
@@ -3532,7 +3562,7 @@ function renderQuickNotes() {
             <p>${escapeHtml(note.text)}</p>
             ${renderReactionBar(note.id)}
           </article>
-        `).join("") : (recurringEntriesForDate(date).some(entry => !entry.hidden) || sickShiftEntriesFor(kitchenViewedWeekStart, dayIndex).length ? "" : `<p class="muted">Ingen beskjeder.</p>`)}
+        `).join("") : (recurringEntriesForDate(date).some(entry => !entry.hidden) || sickShiftEntriesFor(kitchenViewedWeekStart, dayIndex).length || eventsOnDate(dateKey).length ? "" : `<p class="muted">Ingen beskjeder.</p>`)}
 
         ${dayNotes.length ? renderDayReadBar(dateKey) : ""}
       </div>
@@ -4155,6 +4185,7 @@ async function initializeEvents() {
   renderEvents();
   renderDashboardEvents();
   renderWeekEvents();
+  if (typeof renderQuickNotes === "function" && document.getElementById("quickNoteFeed")) renderQuickNotes();
 }
 
 initializeEvents();

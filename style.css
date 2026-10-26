@@ -5305,3 +5305,21 @@ mark.handbok-mark {
   font-size: 0.75rem;
   vertical-align: middle;
 }
+
+/* Datoer (f.eks. personalmøte) rett under dagnavnet i vaktplanen */
+.day-event-chip {
+  margin-top: 4px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: var(--green-soft);
+  color: var(--green-dark);
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.kitchen-entry-date {
+  background: var(--green-soft);
+  border-left-color: var(--green-dark);
+}
