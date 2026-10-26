@@ -7397,13 +7397,23 @@ function mountLeaveRegister(container, { getEmployeeName }) {
       // ganger: er alle dagene dekket fra før, lagres ingenting. Overlapper
       // det delvis, slås det sammen til én føring.
       let mergedFrom = [];
+      let egenToTrim = [];
       if (sickAbsenceTypes.includes(type)) {
         await loadAbsencesFromSupabase();
         const group = type === "Omsorgsdager" ? ["Omsorgsdager"] : ["Egenmelding", "Sykemelding"];
-        const overlapping = absencesCache.filter(r =>
+        let overlapping = absencesCache.filter(r =>
           r.name === name && group.includes(r.type) && r.status !== "Avslått" &&
           r.start_date <= record.end_date && (r.end_date || r.start_date) >= record.start_date
         );
+
+        // Sykemelding oppå en egenmelding (f.eks. egenmelding mandag, så
+        // sykemeldt tirsdag-fredag): de skal være to ulike føringer. Egenmeldingen
+        // beholdes for dagene før sykemeldingen, og klippes bort for dagene
+        // sykemeldingen dekker.
+        if (type === "Sykemelding") {
+          egenToTrim = overlapping.filter(r => r.type === "Egenmelding");
+          overlapping = overlapping.filter(r => r.type !== "Egenmelding");
+        }
 
         const covering = overlapping.find(r =>
           r.start_date <= record.start_date && (r.end_date || r.start_date) >= record.end_date
@@ -7439,6 +7449,30 @@ function mountLeaveRegister(container, { getEmployeeName }) {
       // forsvinner hvis lagringen feiler.
       if (saved && mergedFrom.length) {
         for (const old of mergedFrom) await deleteAbsenceFromSupabase(old.id);
+      }
+
+      if (saved && egenToTrim.length) {
+        for (const egen of egenToTrim) {
+          const egenEnd = egen.end_date || egen.start_date;
+          const startsBefore = egen.start_date < record.start_date;
+          const endsAfter = egenEnd > record.end_date;
+          const beforeEnd = neighbourWorkday(record.start_date, -1);
+          const afterStart = neighbourWorkday(record.end_date, 1);
+
+          if (startsBefore && beforeEnd >= egen.start_date) {
+            await updateAbsenceRecordInSupabase(egen.id, { end_date: beforeEnd });
+            if (endsAfter && afterStart <= egenEnd) {
+              await saveAbsenceToSupabase({
+                name, type: "Egenmelding", start_date: afterStart, end_date: egenEnd,
+                status: egen.status, note: egen.note || ""
+              });
+            }
+          } else if (endsAfter && afterStart <= egenEnd) {
+            await updateAbsenceRecordInSupabase(egen.id, { start_date: afterStart });
+          } else {
+            await deleteAbsenceFromSupabase(egen.id);
+          }
+        }
       }
 
       if (saved && type === "Overtid") {
