@@ -2002,6 +2002,34 @@ function getCurrentWeekKey() {
   return toDateKey(viewedWeekStart);
 }
 
+// Free-text shift cells (ANNET, vikar time, foreldre/ekstra) used to be
+// single-line <input>s, which cut off longer notes. A one-row textarea
+// that grows with its content shows the whole text. Enter is blocked so
+// the saved value stays a single line, same as before.
+function createShiftTextField() {
+  const field = document.createElement("textarea");
+  field.rows = 1;
+  field.className = "custom-shift-input";
+  field.addEventListener("input", () => fitShiftTextField(field));
+  field.addEventListener("focus", () => fitShiftTextField(field));
+  field.addEventListener("keydown", event => {
+    if (event.key === "Enter") event.preventDefault();
+  });
+  return field;
+}
+
+function fitShiftTextField(field) {
+  if (!field.offsetParent) return; // hidden row - resized on focus/show
+  field.style.height = "auto";
+  field.style.height = `${field.scrollHeight + 2}px`;
+}
+
+function fitAllShiftTextFields() {
+  requestAnimationFrame(() => {
+    document.querySelectorAll("textarea.custom-shift-input").forEach(fitShiftTextField);
+  });
+}
+
 function getShiftSelectClass(value) {
   if (value === "TV") return "tv";
   if (value === "TM") return "tm";
@@ -2119,9 +2147,7 @@ function buildShiftDropdowns() {
     if (isParentRow || isExtraRow) {
       cell.innerHTML = "";
 
-      const freeTextInput = document.createElement("input");
-      freeTextInput.type = "text";
-      freeTextInput.className = "custom-shift-input";
+      const freeTextInput = createShiftTextField();
       freeTextInput.placeholder = isExtraRow ? "Navn på ansatt, f.eks. Benjamin" : "Navn på forelder";
       freeTextInput.style.display = "block";
       freeTextInput.value = defaultValue;
@@ -2183,9 +2209,7 @@ function buildShiftDropdowns() {
       nameChip.appendChild(nameChipLabel);
       nameChip.appendChild(nameChipClear);
 
-      const timeInput = document.createElement("input");
-      timeInput.type = "text";
-      timeInput.className = "custom-shift-input";
+      const timeInput = createShiftTextField();
       timeInput.placeholder = "Klokkeslett, f.eks. 08:00–16:00";
       timeInput.value = initialTime;
 
@@ -2249,9 +2273,7 @@ function buildShiftDropdowns() {
       select.appendChild(option);
     });
 
-    const customInput = document.createElement("input");
-    customInput.type = "text";
-    customInput.className = "custom-shift-input";
+    const customInput = createShiftTextField();
     customInput.placeholder = "11–14, Maxi, Sharlene...";
     customInput.style.display = "none";
 
@@ -2271,6 +2293,7 @@ function buildShiftDropdowns() {
       if (select.value === "ANNET") {
         customInput.style.display = "block";
         customInput.focus();
+        fitShiftTextField(customInput);
 
         await saveShiftToSupabase({
           week_start: getCurrentWeekKey(),
@@ -2388,7 +2411,11 @@ function applySupportRowVisibility() {
       ? "− Skjul tomme rader"
       : "+ Vis vikar / foreldreinnsats / ekstra";
   });
+
+  fitAllShiftTextFields();
 }
+
+window.addEventListener("resize", fitAllShiftTextFields);
 
 document.querySelectorAll(".support-toggle").forEach(toggle => {
   toggle.addEventListener("click", () => {
@@ -3246,6 +3273,7 @@ if (weekViewBtn) {
   weekViewBtn.addEventListener("click", () => {
     monthViewSection.style.display = "none";
     document.getElementById("weekViewSection").style.display = "block";
+    fitAllShiftTextFields();
   });
 }
 

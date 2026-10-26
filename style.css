@@ -2454,6 +2454,17 @@ body.edit-mode .editable-shifts td[contenteditable="true"]:hover {
   font-weight: 750;
 }
 
+/* Free-text shift cells are auto-growing textareas so long ANNET notes
+   wrap and show in full instead of being cut off. */
+textarea.custom-shift-input {
+  display: block;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.3;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .shift-select.tv { background: #d7efcf; }
 .shift-select.tm { background: #d8ecff; }
 .shift-select.mv { background: #eadcff; }
