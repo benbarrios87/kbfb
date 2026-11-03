@@ -6771,6 +6771,35 @@ const adminLeaveYear = document.getElementById("adminLeaveYear");
 if (adminLeaveEmployee) adminLeaveEmployee.addEventListener("change", () => renderAdminLeaveOverview());
 if (adminLeaveYear) adminLeaveYear.addEventListener("change", () => renderAdminLeaveOverview());
 
+// "+ Legg inn overtid for en ansatt" i Lønnskjøring: åpner Fravær per ansatt,
+// ber deg velge ansatt, og åpner så "Jobbet ekstra"-skjemaet med en gang.
+let pendingAdminOvertime = false;
+
+function openAdminOvertimeForm() {
+  pendingAdminOvertime = false;
+  document.querySelector('#adminLeaveRegister .leave-tile[data-kind="ekstra"]')?.click();
+}
+
+const adminAddOvertimeBtn = document.getElementById("adminAddOvertimeBtn");
+if (adminAddOvertimeBtn && adminLeaveEmployee) {
+  adminAddOvertimeBtn.addEventListener("click", () => {
+    const card = adminLeaveEmployee.closest("details");
+    if (card) card.open = true;
+    adminLeaveEmployee.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    if (adminLeaveEmployee.value) {
+      openAdminOvertimeForm();
+    } else {
+      pendingAdminOvertime = true;
+      adminLeaveEmployee.focus();
+    }
+  });
+
+  adminLeaveEmployee.addEventListener("change", () => {
+    if (pendingAdminOvertime && adminLeaveEmployee.value) openAdminOvertimeForm();
+  });
+}
+
 function renderAdminLeaveOverview() {
   const statsEl = document.getElementById("adminLeaveStats");
   const entriesEl = document.getElementById("adminLeaveEntries");
