@@ -5550,3 +5550,29 @@ mark.handbok-mark {
   background: #fff8e1;
   border-left: 6px solid #e0a526;
 }
+
+
+.pr-progress {
+  height: 8px;
+  max-width: 340px;
+  margin: 6px 0 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.pr-progress span {
+  display: block;
+  height: 100%;
+  background: var(--green);
+  transition: width 0.25s;
+}
+
+.pr-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-bottom: 8px;
+}

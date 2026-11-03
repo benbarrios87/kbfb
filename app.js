@@ -5361,7 +5361,7 @@ const PAYROLL_KIND_TITLE = {
   overtid: "Overtid (50 %)",
   ekstra: "Ekstra timer (vanlig lønn)",
   vikar: "Vikartimer (timelønn)",
-  syk: "Egenmelding / omsorgsdager"
+  syk: "Egenmelding / sykemelding / omsorgsdager"
 };
 
 function payrollRunEntries() {
@@ -5373,7 +5373,7 @@ function payrollRunEntries() {
     let kind = null;
     if (isFiftyPercentOvertime(record)) kind = "overtid";
     else if (record.type === "Ekstra timer") kind = "ekstra";
-    else if (record.type === "Egenmelding" || record.type === "Omsorgsdager") kind = "syk";
+    else if (record.type === "Egenmelding" || record.type === "Sykemelding" || record.type === "Omsorgsdager") kind = "syk";
     if (!kind) return;
 
     const range = formatDateRange(record.start_date, record.end_date || record.start_date);
@@ -5490,6 +5490,7 @@ async function openPayrollRun() {
     ? toMonthKey(new Date(today.getFullYear(), today.getMonth() - 1, 1))
     : getCurrentMonthKey();
   let month = defaultMonth;
+  let showDone = false;
 
   const overlay = document.createElement("div");
   overlay.className = "meeting-overlay payroll-run-overlay";
@@ -5521,26 +5522,37 @@ async function openPayrollRun() {
     </label>
   `;
 
-  // Én gruppe (f.eks. all overtid): alle ansatte etter hverandre.
-  const kindBlockHtml = (kind, list) => `
-    <h3 class="pr-kind">${PAYROLL_KIND_TITLE[kind]} <span class="muted">${list.filter(entry => entry.done).length} av ${list.length} ført</span></h3>
-    <div class="pr-grid">
-      ${groupByName(list).map(([name, items]) => {
-        const total = kind === "syk"
-          ? ""
-          : ` · ${formatHoursNo(items.reduce((sum, entry) => sum + (Number(entry.ref.hours) || 0), 0))} t`;
-        return `
-          <div class="pr-person" ${personColorStyle(name, kind === "vikar" ? getSubPersonColor(name) : undefined)}>
-            <label class="pr-person-head">
-              <input type="checkbox" data-pr-person="${escapeHtml(name)}|${kind}" ${items.every(entry => entry.done) ? "checked" : ""} />
-              <strong>${escapeHtml(name)}</strong><span class="muted">${total}</span>
-            </label>
-            ${items.map(lineHtml).join("")}
-          </div>
-        `;
-      }).join("")}
-    </div>
-  `;
+  // Én gruppe (f.eks. all overtid): alle ansatte etter hverandre. Det som
+  // allerede er ført skjules som standard, så lista krymper etter hvert.
+  const kindBlockHtml = (kind, list) => {
+    const doneCount = list.filter(entry => entry.done).length;
+    const visible = showDone ? list : list.filter(entry => !entry.done);
+    const heading = `
+      <h3 class="pr-kind">${PAYROLL_KIND_TITLE[kind]}
+        <span class="muted">${doneCount === list.length ? "✓ alt ført" : `${doneCount} av ${list.length} ført`}</span>
+      </h3>
+    `;
+    if (!visible.length) return heading;
+
+    return heading + `
+      <div class="pr-grid">
+        ${groupByName(visible).map(([name, items]) => {
+          const total = kind === "syk"
+            ? ""
+            : ` · ${formatHoursNo(items.reduce((sum, entry) => sum + (Number(entry.ref.hours) || 0), 0))} t`;
+          return `
+            <div class="pr-person" ${personColorStyle(name, kind === "vikar" ? getSubPersonColor(name) : undefined)}>
+              <label class="pr-person-head">
+                <input type="checkbox" data-pr-person="${escapeHtml(name)}|${kind}" ${items.every(entry => entry.done) ? "checked" : ""} />
+                <strong>${escapeHtml(name)}</strong><span class="muted">${total}</span>
+              </label>
+              ${items.map(lineHtml).join("")}
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  };
 
   const sectionHtml = (kinds, list) => kinds
     .map(kind => {
@@ -5566,6 +5578,8 @@ async function openPayrollRun() {
           <p class="eyebrow">Lønn</p>
           <h1>Kjør lønn - ${escapeHtml(formatMonth(month))}</h1>
           <p class="muted">${doneCount} av ${shown.length} innføringer ført · ${openNotes.length} ${openNotes.length === 1 ? "påminnelse" : "påminnelser"} igjen</p>
+          <div class="pr-progress"><span style="width:${shown.length ? Math.round(doneCount / shown.length * 100) : 100}%"></span></div>
+          <label class="pr-toggle"><input type="checkbox" id="payrollRunShowDone" ${showDone ? "checked" : ""} /> Vis også det som er ført</label>
           <label class="compact-filter">
             Måned
             <select id="payrollRunMonth">
@@ -5611,6 +5625,11 @@ async function openPayrollRun() {
 
     overlay.querySelector("#payrollRunMonth").addEventListener("change", event => {
       month = event.target.value;
+      render();
+    });
+
+    overlay.querySelector("#payrollRunShowDone").addEventListener("change", event => {
+      showDone = event.target.checked;
       render();
     });
 
@@ -5740,14 +5759,15 @@ function renderSickLeaveSummary() {
 
   absencesCache.forEach(record => {
     if (!record.start_date || record.status === "Avslått") return;
-    if (record.type !== "Egenmelding" && record.type !== "Omsorgsdager") return;
+    if (record.type !== "Egenmelding" && record.type !== "Sykemelding" && record.type !== "Omsorgsdager") return;
 
     const daysInMonth = getWeekdaysBetween(record.start_date, record.end_date || record.start_date)
       .filter(day => day.slice(0, 7) === month).length;
     if (!daysInMonth) return;
 
-    if (!perPerson[record.name]) perPerson[record.name] = { egenmelding: 0, omsorg: 0, entries: [] };
+    if (!perPerson[record.name]) perPerson[record.name] = { egenmelding: 0, sykemelding: 0, omsorg: 0, entries: [] };
     if (record.type === "Egenmelding") perPerson[record.name].egenmelding += daysInMonth;
+    else if (record.type === "Sykemelding") perPerson[record.name].sykemelding += daysInMonth;
     else perPerson[record.name].omsorg += daysInMonth;
     perPerson[record.name].entries.push({ record, daysInMonth });
   });
@@ -5761,18 +5781,18 @@ function renderSickLeaveSummary() {
         return `
           <div class="overtime-person" ${personColorStyle(name)}>
             <strong>${escapeHtml(name)}</strong>
-            <span class="muted">Egenmelding: <strong>${p.egenmelding}</strong> d (hittil i år ${yearStats.egenmelding}) · Omsorgsdager: <strong>${p.omsorg}</strong> d (hittil i år ${yearStats.omsorg})</span>
+            <span class="muted">Egenmelding: <strong>${p.egenmelding}</strong> d (hittil i år ${yearStats.egenmelding}) · Sykemelding: <strong>${p.sykemelding}</strong> d (hittil i år ${yearStats.sykemelding || 0}) · Omsorgsdager: <strong>${p.omsorg}</strong> d (hittil i år ${yearStats.omsorg})</span>
             <ul class="overtime-lines">${p.entries
               .sort((a, b) => a.record.start_date.localeCompare(b.record.start_date))
               .map(({ record, daysInMonth }) => `
                 <li>
-                  <strong>${record.type === "Omsorgsdager" ? "Omsorgsdager" : "Egenmelding"}</strong> · ${formatDateRange(record.start_date, record.end_date || record.start_date)} · ${daysInMonth} ${daysInMonth === 1 ? "dag" : "dager"} i måneden${record.note ? ` · ${escapeHtml(record.note)}` : ""}
+                  <strong>${escapeHtml(record.type)}</strong> · ${formatDateRange(record.start_date, record.end_date || record.start_date)} · ${daysInMonth} ${daysInMonth === 1 ? "dag" : "dager"} i måneden${record.note ? ` · ${escapeHtml(record.note)}` : ""}
                 </li>
               `).join("")}</ul>
           </div>
         `;
       }).join("")
-    : `<p class="muted">Ingen egenmeldings- eller omsorgsdager i ${formatMonth(month)}.</p>`;
+    : `<p class="muted">Ingen egenmeldings-, sykemeldings- eller omsorgsdager i ${formatMonth(month)}.</p>`;
 }
 
 /* ----- Lønnskjøring: "Husk til lønnskjøring"-notater (kun admin) ----- */
