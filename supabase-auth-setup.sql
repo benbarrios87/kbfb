@@ -2253,3 +2253,60 @@ WHERE current_text ~ 'områdene:\s+Språk\s+Livsmestring\s+Digital barnehage';
 -- Kontroll: skal vise de to oppdaterte seksjonene
 SELECT heading FROM public.kbfb_arsplan_sections
 WHERE current_text LIKE '%Kommunikasjon og språk%';
+
+
+-- =========================================================
+-- STEP 70: "Kjør lønn" - bekreft hver enkelt innføring
+--   Hver overtid / ekstra time / egenmelding / vikartime kan krysses av som
+--   "ført i lønn" (payroll_done_on). Det som kommer inn i ettertid er ikke
+--   avkrysset, og dukker derfor opp som etterslep neste gang du kjører lønn.
+--   Funksjonen under lar styrer krysse av også sine egne føringer (vanlig
+--   UPDATE er sperret på egne rader, STEP 20) - og ingenting annet kan endres.
+--   kbfb_payroll_month_started lar appen varsle styrer når noen registrerer
+--   noe for en måned der lønn allerede er påbegynt.
+-- =========================================================
+
+ALTER TABLE public.kbfb_absences ADD COLUMN IF NOT EXISTS payroll_done_on date;
+ALTER TABLE public.kbfb_sub_hours ADD COLUMN IF NOT EXISTS payroll_done_on date;
+
+CREATE OR REPLACE FUNCTION public.kbfb_mark_payroll_done(p_table text, p_ids uuid[], p_done boolean)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT public.kbfb_is_admin() THEN
+    RAISE EXCEPTION 'Kun admin kan føre lønn';
+  END IF;
+
+  IF p_table = 'absences' THEN
+    UPDATE public.kbfb_absences
+    SET payroll_done_on = CASE WHEN p_done THEN current_date ELSE NULL END
+    WHERE id = ANY(p_ids);
+  ELSIF p_table = 'sub_hours' THEN
+    UPDATE public.kbfb_sub_hours
+    SET payroll_done_on = CASE WHEN p_done THEN current_date ELSE NULL END
+    WHERE id = ANY(p_ids);
+  ELSE
+    RAISE EXCEPTION 'Ukjent tabell';
+  END IF;
+END
+$$;
+
+GRANT EXECUTE ON FUNCTION public.kbfb_mark_payroll_done(text, uuid[], boolean) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.kbfb_payroll_month_started(p_month text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (SELECT 1 FROM public.kbfb_absences
+                 WHERE payroll_done_on IS NOT NULL AND left(start_date::text, 7) = p_month)
+      OR EXISTS (SELECT 1 FROM public.kbfb_sub_hours
+                 WHERE payroll_done_on IS NOT NULL AND left(date::text, 7) = p_month)
+$$;
+
+GRANT EXECUTE ON FUNCTION public.kbfb_payroll_month_started(text) TO authenticated;

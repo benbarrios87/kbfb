@@ -5319,6 +5319,316 @@ function groupOvertimeByName(records) {
   return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
 }
 
+/* ----- KJØR LØNN: helskjerm-sjekkliste ----------------------------
+   Samler alt som skal føres i lønn for en måned: påminnelsene dine,
+   overtid, ekstra timer, vikartimer og egenmeldinger/omsorgsdager. Hver
+   enkelt innføring krysses av (lagres som payroll_done_on). Det som
+   kommer inn i ettertid er ikke avkrysset, og vises som etterslep. */
+
+const PAYROLL_KIND_ORDER = ["overtid", "ekstra", "vikar", "syk"];
+const PAYROLL_KIND_TITLE = {
+  overtid: "Overtid (50 %)",
+  ekstra: "Ekstra timer (vanlig lønn)",
+  vikar: "Vikartimer (timelønn)",
+  syk: "Egenmelding / omsorgsdager"
+};
+
+function payrollRunEntries() {
+  const entries = [];
+
+  absencesCache.forEach(record => {
+    if (!record.start_date || record.status === "Avslått") return;
+
+    let kind = null;
+    if (isFiftyPercentOvertime(record)) kind = "overtid";
+    else if (record.type === "Ekstra timer") kind = "ekstra";
+    else if (record.type === "Egenmelding" || record.type === "Omsorgsdager") kind = "syk";
+    if (!kind) return;
+
+    const range = formatDateRange(record.start_date, record.end_date || record.start_date);
+    let amount;
+    if (kind === "syk") {
+      const days = getWeekdaysBetween(record.start_date, record.end_date || record.start_date).length;
+      amount = `${days} ${days === 1 ? "dag" : "dager"}`;
+    } else {
+      amount = `${formatHoursNo(record.hours)} t`;
+    }
+
+    const typeText = kind === "syk" ? `${record.type} · ` : "";
+    entries.push({
+      table: "absences",
+      ref: record,
+      id: record.id,
+      name: record.name,
+      kind,
+      month: record.start_date.slice(0, 7),
+      date: record.start_date,
+      amount,
+      label: `${typeText}${range}${record.note ? ` · ${record.note}` : ""}`
+    });
+  });
+
+  subsCache.forEach(record => {
+    if (!record.date) return;
+    const time = record.start_time && record.end_time ? ` · ${String(record.start_time).slice(0, 5)}–${String(record.end_time).slice(0, 5)}` : "";
+    entries.push({
+      table: "sub_hours",
+      ref: record,
+      id: record.id,
+      name: record.name,
+      kind: "vikar",
+      month: record.date.slice(0, 7),
+      date: record.date,
+      amount: `${formatHoursNo(record.hours)} t`,
+      label: `${formatNorwegianDate(record.date)}${time}${record.is_sick ? " · syk (betalt)" : ""}${record.note ? ` · ${record.note}` : ""}`
+    });
+  });
+
+  return entries.map(entry => ({ ...entry, done: !!entry.ref.payroll_done_on }));
+}
+
+// Måneder der minst én innføring allerede er ført - der er lønn "påbegynt",
+// og alt som ikke er ført regnes som etterslep.
+function payrollStartedMonths(entries) {
+  return new Set(entries.filter(entry => entry.done).map(entry => entry.month));
+}
+
+async function setPayrollEntriesDone(entries, done) {
+  const byTable = {};
+  entries.forEach(entry => {
+    if (!byTable[entry.table]) byTable[entry.table] = [];
+    byTable[entry.table].push(entry);
+  });
+
+  for (const [table, list] of Object.entries(byTable)) {
+    const { error } = await supabaseClient.rpc("kbfb_mark_payroll_done", {
+      p_table: table,
+      p_ids: list.map(entry => entry.id),
+      p_done: done
+    });
+
+    if (error) {
+      console.error("Kunne ikke lagre lønnsavkryssing:", error);
+      alert("Kunne ikke lagre. Har du kjørt STEP 70 i Supabase?");
+      return false;
+    }
+
+    list.forEach(entry => { entry.ref.payroll_done_on = done ? toDateKey(new Date()) : null; });
+  }
+
+  return true;
+}
+
+function updatePayrollRunHint() {
+  const hint = document.getElementById("payrollRunHint");
+  if (!hint) return;
+
+  const entries = payrollRunEntries();
+  const started = payrollStartedMonths(entries);
+  const late = entries.filter(entry => !entry.done && started.has(entry.month) && entry.month < getCurrentMonthKey());
+
+  hint.innerHTML = late.length
+    ? `<strong>⚠ ${late.length} ${late.length === 1 ? "innføring" : "innføringer"} kom etter forrige lønnskjøring</strong> og venter på å bli ført.`
+    : "Samler påminnelser, overtid, ekstra timer, vikartimer og egenmeldinger, så du kan bekrefte hver enkelt innføring.";
+}
+
+async function openPayrollRun() {
+  await Promise.all([loadAbsencesFromSupabase(), loadSubsFromSupabase(), loadPayrollNotes()]);
+
+  // Lønn kjøres som regel tidlig i måneden for forrige måned.
+  const today = new Date();
+  const defaultMonth = today.getDate() <= 15
+    ? toMonthKey(new Date(today.getFullYear(), today.getMonth() - 1, 1))
+    : getCurrentMonthKey();
+  let month = defaultMonth;
+
+  const overlay = document.createElement("div");
+  overlay.className = "meeting-overlay payroll-run-overlay";
+  document.body.appendChild(overlay);
+  document.body.style.overflow = "hidden";
+
+  const close = () => {
+    overlay.remove();
+    document.body.style.overflow = "";
+    renderOvertimeSummary();
+    updatePayrollRunHint();
+  };
+
+  const entryHtml = entry => `
+    <label class="meeting-item payroll-run-entry${entry.done ? " meeting-item-done" : ""}">
+      <input type="checkbox" data-pr-entry="${entry.table}|${entry.id}" ${entry.done ? "checked" : ""} />
+      <span>
+        <strong>${escapeHtml(entry.amount)}</strong>
+        <span class="muted">${escapeHtml(entry.label)}</span>
+      </span>
+    </label>
+  `;
+
+  const personHtml = (name, list) => {
+    const allDone = list.every(entry => entry.done);
+    const kinds = PAYROLL_KIND_ORDER.filter(kind => list.some(entry => entry.kind === kind));
+
+    return `
+      <div class="overtime-person payroll-run-person" ${personColorStyle(name, list[0].kind === "vikar" ? getSubPersonColor(name) : undefined)}>
+        <label class="payroll-run-person-head">
+          <input type="checkbox" data-pr-person="${escapeHtml(name)}" ${allDone ? "checked" : ""} />
+          <strong>${escapeHtml(name)}</strong>
+          <span class="muted">${list.filter(entry => entry.done).length} av ${list.length} ført</span>
+        </label>
+        ${kinds.map(kind => {
+          const kindEntries = list.filter(entry => entry.kind === kind);
+          const total = kind === "syk"
+            ? ""
+            : ` · ${formatHoursNo(kindEntries.reduce((sum, entry) => sum + (Number(entry.ref.hours) || 0), 0))} t totalt`;
+          return `
+            <h4 class="payroll-run-kind">${PAYROLL_KIND_TITLE[kind]}${total}</h4>
+            <div class="meeting-list">${kindEntries.map(entryHtml).join("")}</div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  };
+
+  const groupByName = list => {
+    const grouped = {};
+    list.forEach(entry => {
+      if (!grouped[entry.name]) grouped[entry.name] = [];
+      grouped[entry.name].push(entry);
+    });
+    Object.values(grouped).forEach(group => group.sort((a, b) => a.date.localeCompare(b.date)));
+    return Object.entries(grouped).sort(([x], [y]) => x.localeCompare(y));
+  };
+
+  const render = () => {
+    const all = payrollRunEntries();
+    const started = payrollStartedMonths(all);
+    const monthEntries = all.filter(entry => entry.month === month);
+    const lateEntries = all.filter(entry => entry.month < month && !entry.done && started.has(entry.month));
+    const openNotes = payrollNotesCache.filter(note => !note.done);
+
+    const shown = [...monthEntries, ...lateEntries];
+    const doneCount = shown.filter(entry => entry.done).length;
+    const months = [...new Set([getCurrentMonthKey(), defaultMonth, month, ...all.map(entry => entry.month)])]
+      .sort((x, y) => y.localeCompare(x));
+
+    overlay.innerHTML = `
+      <div class="meeting-header">
+        <div>
+          <p class="eyebrow">Lønn</p>
+          <h1>Kjør lønn - ${escapeHtml(formatMonth(month))}</h1>
+          <p class="muted">${doneCount} av ${shown.length} innføringer ført · ${openNotes.length} ${openNotes.length === 1 ? "påminnelse" : "påminnelser"} igjen</p>
+          <label class="compact-filter">
+            Måned
+            <select id="payrollRunMonth">
+              ${months.map(m => `<option value="${m}" ${m === month ? "selected" : ""}>${escapeHtml(formatMonth(m))}</option>`).join("")}
+            </select>
+          </label>
+        </div>
+        <div class="payroll-run-actions">
+          <button type="button" class="primary-btn" id="payrollRunFinish">✓ Lønn kjørt (huk av resten)</button>
+          <button type="button" class="secondary-btn" id="payrollRunClose">Lukk</button>
+        </div>
+      </div>
+
+      <h2 class="meeting-subheading">1. Husk til lønnskjøring</h2>
+      <div class="meeting-list">
+        ${openNotes.length ? openNotes.map(note => `
+          <label class="meeting-item payroll-run-entry">
+            <input type="checkbox" data-pr-note="${note.id}" />
+            <span>
+              <strong>${escapeHtml(note.text)}</strong>
+              ${note.employee_name ? `<span class="muted">Gjelder: ${escapeHtml(note.employee_name)}</span>` : ""}
+            </span>
+          </label>
+        `).join("") : `<p class="muted">Ingen påminnelser.</p>`}
+      </div>
+
+      ${lateEntries.length ? `
+        <h2 class="meeting-subheading payroll-run-late">⚠ Etterslep fra tidligere måneder (kom etter lønnskjøringen)</h2>
+        ${groupByName(lateEntries).map(([name, list]) => personHtml(name, list)).join("")}
+      ` : ""}
+
+      <h2 class="meeting-subheading">2. ${escapeHtml(formatMonth(month))} - til utbetaling</h2>
+      ${monthEntries.length
+        ? groupByName(monthEntries).map(([name, list]) => personHtml(name, list)).join("")
+        : `<p class="muted">Ingen overtid, ekstra timer, vikartimer eller egenmeldinger i ${escapeHtml(formatMonth(month))}.</p>`}
+    `;
+
+    overlay.querySelector("#payrollRunClose").addEventListener("click", close);
+
+    overlay.querySelector("#payrollRunMonth").addEventListener("change", event => {
+      month = event.target.value;
+      render();
+    });
+
+    overlay.querySelector("#payrollRunFinish").addEventListener("click", async () => {
+      const remaining = shown.filter(entry => !entry.done);
+      if (!remaining.length && !openNotes.length) {
+        alert("Alt er allerede ført.");
+        return;
+      }
+
+      const noteText = openNotes.length ? `\n\nObs: ${openNotes.length} påminnelse(r) er ikke krysset av. De blir stående.` : "";
+      if (!confirm(`Føre de ${remaining.length} gjenstående innføringene for ${formatMonth(month)} i lønn?${noteText}`)) return;
+
+      if (remaining.length && !(await setPayrollEntriesDone(remaining, true))) return;
+      render();
+    });
+
+    overlay.querySelectorAll("[data-pr-entry]").forEach(box => {
+      box.addEventListener("change", async () => {
+        const [table, id] = box.dataset.prEntry.split("|");
+        const entry = shown.find(item => item.table === table && String(item.id) === id);
+        if (!entry) return;
+
+        if (!(await setPayrollEntriesDone([entry], box.checked))) {
+          box.checked = !box.checked;
+          return;
+        }
+        render();
+      });
+    });
+
+    overlay.querySelectorAll("[data-pr-person]").forEach(box => {
+      box.addEventListener("change", async () => {
+        const list = shown.filter(entry => entry.name === box.dataset.prPerson);
+        if (!list.length) return;
+
+        if (!(await setPayrollEntriesDone(list, box.checked))) {
+          box.checked = !box.checked;
+          return;
+        }
+        render();
+      });
+    });
+
+    overlay.querySelectorAll("[data-pr-note]").forEach(box => {
+      box.addEventListener("change", async () => {
+        const { error } = await supabaseClient
+          .from("kbfb_payroll_notes")
+          .update({ done: true, done_at: new Date().toISOString() })
+          .eq("id", box.dataset.prNote);
+
+        if (error) {
+          console.error("Kunne ikke oppdatere lønnsnotat:", error);
+          alert("Kunne ikke lagre. Har du kjørt STEP 62 i Supabase?");
+          box.checked = false;
+          return;
+        }
+
+        await loadPayrollNotes();
+        render();
+        renderPayrollNotes();
+      });
+    });
+  };
+
+  render();
+}
+
+const payrollRunBtn = document.getElementById("payrollRunBtn");
+if (payrollRunBtn) payrollRunBtn.addEventListener("click", openPayrollRun);
+
 // Lønn for vikarer: timer jobbet per vikar i valgt måned (syke vikarer
 // med avtalt vakt har timene sine med, jf. "Syk (men får fortsatt betalt)").
 function renderVikarPaySummary() {
@@ -5647,6 +5957,8 @@ function renderOvertimeSummary() {
       </div>
     `).join("")}
   ` : `<p class="muted">Ingen overtid registrert i ${formatMonth(month)}.</p>`;
+
+  updatePayrollRunHint();
 }
 
 let vikarSickDaysCache = [];
@@ -6973,14 +7285,29 @@ async function notifyAdminsOfLateRegistration(record, kindLabel) {
   const todayKey = toDateKey(new Date());
   if (record.start_date > todayKey) return;
 
-  const lastRun = await getLastPayrollRun();
+  // Overtid / ekstra timer: sen hvis lønn for den måneden allerede er påbegynt
+  // (noe er krysset av i "Kjør lønn", STEP 70).
   let late;
-  if (lastRun) {
-    late = record.start_date <= lastRun;
-  } else {
-    const now = new Date();
-    const monthStart = toDateKey(new Date(now.getFullYear(), now.getMonth(), 1));
-    late = record.type === "Overtid" && record.start_date < monthStart;
+  let lastRun = null;
+  let monthLogic = false;
+  if (record.type === "Overtid" || record.type === "Ekstra timer") {
+    const { data: started, error: startedError } = await supabaseClient
+      .rpc("kbfb_payroll_month_started", { p_month: record.start_date.slice(0, 7) });
+    if (!startedError) {
+      monthLogic = true;
+      late = !!started;
+    }
+  }
+
+  if (!monthLogic) {
+    lastRun = await getLastPayrollRun();
+    if (lastRun) {
+      late = record.start_date <= lastRun;
+    } else {
+      const now = new Date();
+      const monthStart = toDateKey(new Date(now.getFullYear(), now.getMonth(), 1));
+      late = record.type === "Overtid" && record.start_date < monthStart;
+    }
   }
   if (!late) return;
 
@@ -6989,12 +7316,14 @@ async function notifyAdminsOfLateRegistration(record, kindLabel) {
 
   const when = formatDateRange(record.start_date, record.end_date);
   const hours = record.type === "Overtid" ? ` (${formatHoursNo(record.hours)} t)` : "";
-  const runText = lastRun ? ` Siste lønn ble kjørt ${formatNorwegianDate(lastRun)}.` : "";
+  const runText = monthLogic
+    ? ` Lønn for ${formatMonth(record.start_date.slice(0, 7))} er allerede påbegynt.`
+    : lastRun ? ` Siste lønn ble kjørt ${formatNorwegianDate(lastRun)}.` : "";
 
   sendPushNotification(
     admins,
     "Registrert etter lønnskjøring",
-    `${record.name} førte ${kindLabel.toLowerCase()} ${when}${hours}.${runText}${record.type === "Overtid" ? " Står i Ikke ført i lønn." : ""}`,
+    `${record.name} førte ${kindLabel.toLowerCase()} ${when}${hours}.${runText}${record.type === "Overtid" || record.type === "Ekstra timer" ? " Se Kjør lønn på Admin." : ""}`,
     "admin.html"
   );
 }

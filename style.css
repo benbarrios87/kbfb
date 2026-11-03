@@ -5334,3 +5334,59 @@ mark.handbok-mark {
   background: var(--green-soft);
   border-left-color: var(--green-dark);
 }
+
+
+/* Kjør lønn */
+.payroll-run-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  border-left: 8px solid var(--green);
+}
+
+.payroll-run-btn {
+  font-size: 1.15rem;
+  padding: 14px 26px;
+}
+
+.payroll-run-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.payroll-run-person {
+  margin: 14px 0;
+}
+
+.payroll-run-person-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.payroll-run-person-head input[type="checkbox"] {
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+}
+
+.payroll-run-kind {
+  margin: 14px 0 6px;
+  font-size: 1rem;
+  color: var(--green-dark);
+}
+
+.payroll-run-entry {
+  font-size: 1.1rem;
+  padding: 10px 16px;
+  border-left-width: 6px;
+}
+
+.payroll-run-late {
+  color: #8a4b00;
+}
