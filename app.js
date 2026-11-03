@@ -139,6 +139,11 @@ let notesCache = [];
 let subsCache = [];
 let subPeopleCache = [];
 
+// Lønnskjøring: "Ført i lønn" per ansatt/måned (STEP 70, kun admin).
+let payrollChecksCache = [];
+let payrollChecksLoaded = false;
+let payrollChecksAvailable = true;
+
 // Shared name -> avatar_url lookup so every place that shows an employee's
 // name (schedule grid, kitchen notes, sidebar, ...) can show their photo
 // too, without each spot running its own query. Kept up here with the
@@ -5319,6 +5324,168 @@ function groupOvertimeByName(records) {
   return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
 }
 
+/* ----- Lønnskjøring: "Ført i lønn" per ansatt og måned -----
+   Styrer krysser av en ansatt for en måned; timene som ble ført lagres.
+   Kommer det flere timer i ettertid (f.eks. overtid fra slutten av forrige
+   måned), stemmer ikke tallet lenger og det vises tydelig hvor mange timer
+   som kom i tillegg - så det kan tas med på neste lønnskjøring. */
+
+const PAYROLL_KIND_LABEL = { overtid: "overtid", ekstra: "ekstra timer", vikar: "vikartimer" };
+
+async function loadPayrollChecks() {
+  if (!document.getElementById("overtimeSummary")) return;
+
+  const { data, error } = await supabaseClient.from("kbfb_payroll_checks").select("*");
+  if (error) {
+    console.error("Kunne ikke hente lønnsavkryssinger (STEP 70?):", error);
+    payrollChecksAvailable = false;
+    payrollChecksCache = [];
+  } else {
+    payrollChecksAvailable = true;
+    payrollChecksCache = data || [];
+  }
+  payrollChecksLoaded = true;
+}
+
+function roundPayrollHours(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function payrollCheckFor(name, month, kind) {
+  return payrollChecksCache.find(check =>
+    check.employee_name === name && check.month === month && check.kind === kind
+  );
+}
+
+// Dagens timer per slag/ansatt/måned, regnet ut på nytt fra alle føringer.
+function currentPayrollHoursMap() {
+  const map = {};
+  const add = (kind, name, month, hours) => {
+    const key = `${kind}|${name}|${month}`;
+    map[key] = (map[key] || 0) + (Number(hours) || 0);
+  };
+
+  absencesCache.forEach(record => {
+    if (!record.start_date) return;
+    const month = record.start_date.slice(0, 7);
+    if (isFiftyPercentOvertime(record)) add("overtid", record.name, month, record.hours);
+    else if (record.type === "Ekstra timer") add("ekstra", record.name, month, record.hours);
+  });
+
+  subsCache.forEach(record => {
+    if (record.date) add("vikar", record.name, record.date.slice(0, 7), record.hours);
+  });
+
+  return map;
+}
+
+function signedHours(diff) {
+  return `${diff > 0 ? "+" : "-"}${formatHoursNo(Math.abs(diff))} t`;
+}
+
+function payrollCheckControl(name, month, kind, hoursNow) {
+  if (!payrollChecksAvailable || !payrollChecksLoaded) return "";
+
+  const attrs = `data-pay-name="${escapeHtml(name)}" data-pay-month="${month}" data-pay-kind="${kind}" data-pay-hours="${roundPayrollHours(hoursNow)}"`;
+  const check = payrollCheckFor(name, month, kind);
+
+  if (!check) {
+    return `<button type="button" class="payroll-ok-btn" data-pay-ok ${attrs} title="Marker som ført i lønn">✓ Ført i lønn</button>`;
+  }
+
+  const was = roundPayrollHours(check.hours);
+  const now = roundPayrollHours(hoursNow);
+
+  if (was === now) {
+    return `<span class="payroll-done">✓ Ført ${formatHoursNo(was)} t</span><button type="button" class="payroll-undo-btn" data-pay-undo ${attrs}>Angre</button>`;
+  }
+
+  return `<span class="payroll-changed">⚠ Ført ${formatHoursNo(was)} t, nå ${formatHoursNo(now)} t (${signedHours(now - was)} kom i tillegg)</span><button type="button" class="payroll-ok-btn" data-pay-ok ${attrs}>OK, ført på nytt</button>`;
+}
+
+function renderPayrollChangeBanner() {
+  const el = document.getElementById("payrollChangeBanner");
+  if (!el) return;
+
+  if (!payrollChecksAvailable || !payrollChecksLoaded || !payrollChecksCache.length) {
+    el.innerHTML = "";
+    return;
+  }
+
+  const map = currentPayrollHoursMap();
+  const vikarLoaded = subsCache.length > 0;
+  const startedKinds = new Set(payrollChecksCache.map(check => `${check.month}|${check.kind}`));
+  const currentMonth = getCurrentMonthKey();
+  const items = [];
+
+  payrollChecksCache.forEach(check => {
+    if (check.kind === "vikar" && !vikarLoaded) return;
+    const now = roundPayrollHours(map[`${check.kind}|${check.employee_name}|${check.month}`] || 0);
+    const was = roundPayrollHours(check.hours);
+    if (now !== was) {
+      items.push({
+        month: check.month,
+        text: `${check.employee_name}: ${PAYROLL_KIND_LABEL[check.kind] || check.kind} ${formatMonth(check.month)} - ført ${formatHoursNo(was)} t, nå ${formatHoursNo(now)} t (${signedHours(now - was)} i tillegg)`
+      });
+    }
+  });
+
+  // Folk med timer i en måned der lønn er påbegynt, men som ikke er ført.
+  Object.entries(map).forEach(([key, hours]) => {
+    const [kind, name, month] = key.split("|");
+    if (hours <= 0 || month >= currentMonth) return;
+    if (kind === "vikar" && !vikarLoaded) return;
+    if (!startedKinds.has(`${month}|${kind}`) || payrollCheckFor(name, month, kind)) return;
+    items.push({
+      month,
+      text: `${name}: ${PAYROLL_KIND_LABEL[kind]} ${formatMonth(month)} - ${formatHoursNo(roundPayrollHours(hours))} t, ikke ført ennå`
+    });
+  });
+
+  el.innerHTML = items.length ? `
+    <div class="payroll-alert">
+      <strong>⚠ Lønn som ikke stemmer lenger</strong>
+      <ul>${items.map(item => `
+        <li>${escapeHtml(item.text)} <button type="button" class="payroll-goto-btn" data-pay-goto="${item.month}">Vis måned</button></li>
+      `).join("")}</ul>
+    </div>
+  ` : "";
+}
+
+document.addEventListener("click", async event => {
+  const goto = event.target.closest("[data-pay-goto]");
+  if (goto && overtimeMonthFilter) {
+    overtimeMonthFilter.value = goto.dataset.payGoto;
+    renderOvertimeSummary();
+    overtimeMonthFilter.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+
+  const button = event.target.closest("[data-pay-ok], [data-pay-undo]");
+  if (!button) return;
+
+  const { payName: name, payMonth: month, payKind: kind, payHours: hours } = button.dataset;
+  button.disabled = true;
+
+  const result = button.hasAttribute("data-pay-undo")
+    ? await supabaseClient.from("kbfb_payroll_checks").delete()
+        .eq("employee_name", name).eq("month", month).eq("kind", kind)
+    : await supabaseClient.from("kbfb_payroll_checks").upsert(
+        [{ employee_name: name, month, kind, hours: Number(hours), done_at: new Date().toISOString() }],
+        { onConflict: "employee_name,month,kind" }
+      );
+
+  if (result.error) {
+    console.error("Kunne ikke lagre lønnsavkryssing:", result.error);
+    alert("Kunne ikke lagre. Har du kjørt STEP 70 i Supabase?");
+    button.disabled = false;
+    return;
+  }
+
+  await loadPayrollChecks();
+  renderOvertimeSummary();
+});
+
 // Lønn for vikarer: timer jobbet per vikar i valgt måned (syke vikarer
 // med avtalt vakt har timene sine med, jf. "Syk (men får fortsatt betalt)").
 function renderVikarPaySummary() {
@@ -5348,7 +5515,10 @@ function renderVikarPaySummary() {
     <p class="muted"><strong>${formatHoursNo(total)} t</strong> vikartimer totalt i ${formatMonth(month)}</p>
     ${Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([name, info]) => `
       <div class="overtime-person" ${personColorStyle(name, getSubPersonColor(name))}>
-        <strong>${avatarSpanFor(name, "avatar-tiny")}${escapeHtml(name)} · ${formatHoursNo(info.hours)} t timelønn</strong>
+        <div class="payroll-person-head">
+          <strong>${avatarSpanFor(name, "avatar-tiny")}${escapeHtml(name)} · ${formatHoursNo(info.hours)} t timelønn</strong>
+          <span class="payroll-control">${payrollCheckControl(name, month, "vikar", info.hours)}</span>
+        </div>
         <details class="overtime-details">
           <summary class="muted">Vis vakter (${info.entries.length})</summary>
           <ul class="overtime-lines">${info.entries.map(entry => `
@@ -5576,6 +5746,12 @@ async function initializePayrollNotes() {
 
 initializePayrollNotes();
 
+// Hent lønnsavkryssinger (admin) og tegn oversikten på nytt, så knappene
+// og varselet kommer med.
+loadPayrollChecks().then(() => {
+  if (document.getElementById("overtimeSummary") && typeof renderOvertimeSummary === "function") renderOvertimeSummary();
+});
+
 // Ekstra timer til vanlig lønn (f.eks. personalmøte uten å ha jobbet på
 // dagtid): ikke overtid og ikke avspasering, bare timer som skal ha
 // vanlig timelønn.
@@ -5592,7 +5768,10 @@ function renderExtraHoursSummary() {
   container.innerHTML = records.length
     ? groups.map(([name, info]) => `
         <div class="overtime-person" ${personColorStyle(name)}>
-          <strong>${escapeHtml(name)} · ${formatHoursNo(info.hours)} t vanlig lønn</strong>
+          <div class="payroll-person-head">
+            <strong>${escapeHtml(name)} · ${formatHoursNo(info.hours)} t vanlig lønn</strong>
+            <span class="payroll-control">${payrollCheckControl(name, month, "ekstra", info.hours)}</span>
+          </div>
           <details class="overtime-details">
             <summary class="muted">Vis datoer (${info.entries.length})</summary>
             <ul class="overtime-lines">${info.entries.map(entry => `
@@ -5620,6 +5799,7 @@ function renderOvertimeSummary() {
     (subsCache.length ? Promise.resolve() : loadSubsFromSupabase()).then(() => {
       populateOvertimeMonthFilter();
       renderVikarPaySummary();
+      renderPayrollChangeBanner();
     });
   }
 
@@ -5635,7 +5815,10 @@ function renderOvertimeSummary() {
 
     ${groups.map(([name, info]) => `
       <div class="overtime-person" ${personColorStyle(name)}>
-        <strong>${escapeHtml(name)} · ${formatHoursNo(info.hours)} t med 50 % overtid</strong>
+        <div class="payroll-person-head">
+          <strong>${escapeHtml(name)} · ${formatHoursNo(info.hours)} t med 50 % overtid</strong>
+          <span class="payroll-control">${payrollCheckControl(name, month, "overtid", info.hours)}</span>
+        </div>
         <details class="overtime-details">
           <summary class="muted">Vis datoer (${info.entries.length})</summary>
           <ul class="overtime-lines">${info.entries.map(entry => `
@@ -5647,6 +5830,8 @@ function renderOvertimeSummary() {
       </div>
     `).join("")}
   ` : `<p class="muted">Ingen overtid registrert i ${formatMonth(month)}.</p>`;
+
+  renderPayrollChangeBanner();
 }
 
 let vikarSickDaysCache = [];
@@ -6973,14 +7158,29 @@ async function notifyAdminsOfLateRegistration(record, kindLabel) {
   const todayKey = toDateKey(new Date());
   if (record.start_date > todayKey) return;
 
-  const lastRun = await getLastPayrollRun();
+  // Overtid / ekstra timer: sen hvis lønn for den måneden allerede er påbegynt
+  // (noen er krysset av som "ført i lønn", STEP 70).
   let late;
-  if (lastRun) {
-    late = record.start_date <= lastRun;
-  } else {
-    const now = new Date();
-    const monthStart = toDateKey(new Date(now.getFullYear(), now.getMonth(), 1));
-    late = record.type === "Overtid" && record.start_date < monthStart;
+  let lastRun = null;
+  let monthLogic = false;
+  if (record.type === "Overtid" || record.type === "Ekstra timer") {
+    const { data: started, error: startedError } = await supabaseClient
+      .rpc("kbfb_payroll_month_started", { p_month: record.start_date.slice(0, 7) });
+    if (!startedError) {
+      monthLogic = true;
+      late = !!started;
+    }
+  }
+
+  if (!monthLogic) {
+    lastRun = await getLastPayrollRun();
+    if (lastRun) {
+      late = record.start_date <= lastRun;
+    } else {
+      const now = new Date();
+      const monthStart = toDateKey(new Date(now.getFullYear(), now.getMonth(), 1));
+      late = record.type === "Overtid" && record.start_date < monthStart;
+    }
   }
   if (!late) return;
 
@@ -6989,12 +7189,14 @@ async function notifyAdminsOfLateRegistration(record, kindLabel) {
 
   const when = formatDateRange(record.start_date, record.end_date);
   const hours = record.type === "Overtid" ? ` (${formatHoursNo(record.hours)} t)` : "";
-  const runText = lastRun ? ` Siste lønn ble kjørt ${formatNorwegianDate(lastRun)}.` : "";
+  const runText = monthLogic
+    ? ` Lønn for ${formatMonth(record.start_date.slice(0, 7))} er allerede påbegynt.`
+    : lastRun ? ` Siste lønn ble kjørt ${formatNorwegianDate(lastRun)}.` : "";
 
   sendPushNotification(
     admins,
     "Registrert etter lønnskjøring",
-    `${record.name} førte ${kindLabel.toLowerCase()} ${when}${hours}.${runText}${record.type === "Overtid" ? " Står i Ikke ført i lønn." : ""}`,
+    `${record.name} førte ${kindLabel.toLowerCase()} ${when}${hours}.${runText}${record.type === "Overtid" || record.type === "Ekstra timer" ? " Se Lønnskjøring på Admin." : ""}`,
     "admin.html"
   );
 }

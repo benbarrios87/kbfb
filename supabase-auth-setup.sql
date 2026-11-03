@@ -2253,3 +2253,44 @@ WHERE current_text ~ 'områdene:\s+Språk\s+Livsmestring\s+Digital barnehage';
 -- Kontroll: skal vise de to oppdaterte seksjonene
 SELECT heading FROM public.kbfb_arsplan_sections
 WHERE current_text LIKE '%Kommunikasjon og språk%';
+
+
+-- =========================================================
+-- STEP 70: Lønnskjøring - "Ført i lønn" per ansatt og måned
+--   Når styrer krysser av en ansatt (overtid / ekstra timer / vikartimer)
+--   for en måned, lagres timene som ble ført. Kommer det flere timer i
+--   ettertid (f.eks. overtid fra slutten av forrige måned), ser appen at
+--   tallet ikke lenger stemmer og varsler. Kun admin ser tabellen; en liten
+--   funksjon lar appen varsle styrer når noen registrerer for en måned der
+--   lønn allerede er påbegynt.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_payroll_checks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  employee_name text NOT NULL,
+  month text NOT NULL,
+  kind text NOT NULL,
+  hours numeric NOT NULL DEFAULT 0,
+  done_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (employee_name, month, kind)
+);
+
+ALTER TABLE public.kbfb_payroll_checks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_payroll_checks_admin_all" ON public.kbfb_payroll_checks;
+CREATE POLICY "kbfb_payroll_checks_admin_all" ON public.kbfb_payroll_checks
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());
+
+CREATE OR REPLACE FUNCTION public.kbfb_payroll_month_started(p_month text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (SELECT 1 FROM public.kbfb_payroll_checks WHERE month = p_month)
+$$;
+
+GRANT EXECUTE ON FUNCTION public.kbfb_payroll_month_started(text) TO authenticated;
