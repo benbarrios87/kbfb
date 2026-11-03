@@ -5387,10 +5387,29 @@ function payrollRunEntries() {
   return entries.map(entry => ({ ...entry, done: !!entry.ref.payroll_done_on }));
 }
 
-// Måneder der minst én innføring allerede er ført - der er lønn "påbegynt",
-// og alt som ikke er ført regnes som etterslep.
-function payrollStartedMonths(entries) {
-  return new Set(entries.filter(entry => entry.done).map(entry => entry.month));
+// Etterslep = innføringer som ble registrert ETTER at lønn for måneden ble
+// ført (opprettet senere enn siste avkryssing i måneden), og som ikke er
+// ført selv. Gamle ting som bare aldri ble krysset av regnes ikke med -
+// ellers ville alt fra tidligere måneder dukket opp. Mangler opprettelsesdato,
+// regnes bare forrige måned.
+function payrollLateEntries(entries) {
+  const lastDone = {};
+  entries.forEach(entry => {
+    if (!entry.done) return;
+    const doneOn = String(entry.ref.payroll_done_on).slice(0, 10);
+    if (!lastDone[entry.month] || doneOn > lastDone[entry.month]) lastDone[entry.month] = doneOn;
+  });
+
+  const now = new Date();
+  const currentMonth = getCurrentMonthKey();
+  const previousMonth = toMonthKey(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+
+  return entries.filter(entry => {
+    if (entry.done || !lastDone[entry.month]) return false;
+    const created = entry.ref.created_at ? String(entry.ref.created_at).slice(0, 10) : null;
+    if (created) return created > lastDone[entry.month];
+    return entry.month >= previousMonth && entry.month < currentMonth;
+  });
 }
 
 async function setPayrollEntriesDone(entries, done) {
@@ -5424,8 +5443,7 @@ function updatePayrollRunHint() {
   if (!hint) return;
 
   const entries = payrollRunEntries();
-  const started = payrollStartedMonths(entries);
-  const late = entries.filter(entry => !entry.done && started.has(entry.month) && entry.month < getCurrentMonthKey());
+  const late = payrollLateEntries(entries);
 
   hint.innerHTML = late.length
     ? `<strong>⚠ ${late.length} ${late.length === 1 ? "innføring" : "innføringer"} kom etter forrige lønnskjøring</strong> og venter på å bli ført.`
@@ -5501,9 +5519,8 @@ async function openPayrollRun() {
 
   const render = () => {
     const all = payrollRunEntries();
-    const started = payrollStartedMonths(all);
     const monthEntries = all.filter(entry => entry.month === month);
-    const lateEntries = all.filter(entry => entry.month < month && !entry.done && started.has(entry.month));
+    const lateEntries = payrollLateEntries(all).filter(entry => entry.month < month);
     const openNotes = payrollNotesCache.filter(note => !note.done);
 
     const shown = [...monthEntries, ...lateEntries];
