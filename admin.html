@@ -209,35 +209,39 @@
           <div id="payrollNotesDone" class="payroll-notes"></div>
         </details>
 
-        <label class="compact-filter">
-          Måned
-          <select id="overtimeMonthFilter"></select>
-        </label>
+        <div class="month-bar" id="overtimeMonthBar">
+          <button type="button" class="month-arrow" id="overtimeMonthPrev" aria-label="Forrige måned">←</button>
+          <label class="month-bar-label">
+            <span>Viser tall for</span>
+            <select id="overtimeMonthFilter" class="month-select"></select>
+          </label>
+          <button type="button" class="month-arrow" id="overtimeMonthNext" aria-label="Neste måned">→</button>
+        </div>
 
-        <h3 style="margin-top: 20px;">Overtid (50 %) per ansatt</h3>
+        <h3 style="margin-top: 20px;">Overtid (50 %) per ansatt <span class="month-tag" data-month-tag></span></h3>
         <p class="muted">Alle får avspasering time for time, og i tillegg 50 % overtid for timene.</p>
         <button type="button" class="secondary-btn" id="adminAddOvertimeBtn">+ Legg inn overtid for en ansatt</button>
         <div id="overtimeSummary">
           <p class="muted">Laster...</p>
         </div>
 
-        <h3 style="margin-top: 26px;">Ekstra timer (vanlig lønn) per ansatt</h3>
+        <h3 style="margin-top: 26px;">Ekstra timer (vanlig lønn) per ansatt <span class="month-tag" data-month-tag></span></h3>
         <p class="muted">Timer registrert som "bare ekstra timer": vanlig timelønn, ingen avspasering og ingen 50 % overtid.</p>
         <div id="extraHoursSummary">
           <p class="muted">Laster...</p>
         </div>
 
-        <h3 style="margin-top: 26px;">Timelønn per vikar</h3>
+        <h3 style="margin-top: 26px;">Timelønn per vikar <span class="month-tag" data-month-tag></span></h3>
         <div id="vikarPaySummary">
           <p class="muted">Laster...</p>
         </div>
 
-        <h3 style="margin-top: 26px;">Egenmelding og omsorgsdager per ansatt</h3>
+        <h3 style="margin-top: 26px;">Egenmelding og omsorgsdager per ansatt <span class="month-tag" data-month-tag></span></h3>
         <div id="sickLeaveSummary">
           <p class="muted">Laster...</p>
         </div>
 
-        <h3 style="margin-top: 26px;">Sykedager (vikarer)</h3>
+        <h3 style="margin-top: 26px;">Sykedager (vikarer) <span class="month-tag" data-month-tag></span></h3>
         <div id="vikarSickDaysSummary" class="summary-list">
           <p class="muted">Ingen registrerte sykedager for vikarer.</p>
         </div>

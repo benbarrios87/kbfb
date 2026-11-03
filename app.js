@@ -4927,6 +4927,37 @@ initializeSubs();
 /* ---------- FERIE / FRAVÆR - SUPABASE ---------- */
 
 const overtimeSummary = document.getElementById("overtimeSummary");
+// Måned i Lønnsoversikt: piler for forrige/neste, og månedsnavnet gjentas
+// ved siden av hver overskrift så det aldri er tvil om hvilken måned tallene gjelder.
+function updateMonthBar() {
+  const select = document.getElementById("overtimeMonthFilter");
+  if (!select) return;
+
+  const index = select.selectedIndex;
+  const prev = document.getElementById("overtimeMonthPrev");
+  const next = document.getElementById("overtimeMonthNext");
+  // Månedene ligger nyest først: "forrige måned" er neste valg nedover.
+  if (prev) prev.disabled = index < 0 || index >= select.options.length - 1;
+  if (next) next.disabled = index <= 0;
+
+  const label = select.options[index]?.textContent.trim() || "";
+  document.querySelectorAll("[data-month-tag]").forEach(tag => {
+    tag.textContent = label ? `· ${label}` : "";
+  });
+}
+
+function stepOvertimeMonth(direction) {
+  const select = document.getElementById("overtimeMonthFilter");
+  if (!select) return;
+  const target = select.selectedIndex + direction;
+  if (target < 0 || target >= select.options.length) return;
+  select.selectedIndex = target;
+  select.dispatchEvent(new Event("change"));
+}
+
+document.getElementById("overtimeMonthPrev")?.addEventListener("click", () => stepOvertimeMonth(1));
+document.getElementById("overtimeMonthNext")?.addEventListener("click", () => stepOvertimeMonth(-1));
+
 const overtimeMonthFilter = document.getElementById("overtimeMonthFilter");
 if (overtimeMonthFilter) {
   overtimeMonthFilter.addEventListener("change", renderOvertimeSummary);
@@ -5976,6 +6007,7 @@ function renderOvertimeSummary() {
   ` : `<p class="muted">Ingen overtid registrert i ${formatMonth(month)}.</p>`;
 
   updatePayrollRunHint();
+  updateMonthBar();
 }
 
 let vikarSickDaysCache = [];
