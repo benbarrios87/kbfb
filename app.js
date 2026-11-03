@@ -5503,41 +5503,6 @@ async function openPayrollRun() {
     updatePayrollRunHint();
   };
 
-  const entryHtml = entry => `
-    <label class="meeting-item payroll-run-entry${entry.done ? " meeting-item-done" : ""}">
-      <input type="checkbox" data-pr-entry="${entry.table}|${entry.id}" ${entry.done ? "checked" : ""} />
-      <span>
-        <strong>${escapeHtml(entry.amount)}</strong>
-        <span class="muted">${escapeHtml(entry.label)}</span>
-      </span>
-    </label>
-  `;
-
-  const personHtml = (name, list) => {
-    const allDone = list.every(entry => entry.done);
-    const kinds = PAYROLL_KIND_ORDER.filter(kind => list.some(entry => entry.kind === kind));
-
-    return `
-      <div class="overtime-person payroll-run-person" ${personColorStyle(name, list[0].kind === "vikar" ? getSubPersonColor(name) : undefined)}>
-        <label class="payroll-run-person-head">
-          <input type="checkbox" data-pr-person="${escapeHtml(name)}" ${allDone ? "checked" : ""} />
-          <strong>${escapeHtml(name)}</strong>
-          <span class="muted">${list.filter(entry => entry.done).length} av ${list.length} ført</span>
-        </label>
-        ${kinds.map(kind => {
-          const kindEntries = list.filter(entry => entry.kind === kind);
-          const total = kind === "syk"
-            ? ""
-            : ` · ${formatHoursNo(kindEntries.reduce((sum, entry) => sum + (Number(entry.ref.hours) || 0), 0))} t totalt`;
-          return `
-            <h4 class="payroll-run-kind">${PAYROLL_KIND_TITLE[kind]}${total}</h4>
-            <div class="meeting-list">${kindEntries.map(entryHtml).join("")}</div>
-          `;
-        }).join("")}
-      </div>
-    `;
-  };
-
   const groupByName = list => {
     const grouped = {};
     list.forEach(entry => {
@@ -5547,6 +5512,42 @@ async function openPayrollRun() {
     Object.values(grouped).forEach(group => group.sort((a, b) => a.date.localeCompare(b.date)));
     return Object.entries(grouped).sort(([x], [y]) => x.localeCompare(y));
   };
+
+  const lineHtml = entry => `
+    <label class="pr-line${entry.done ? " pr-line-done" : ""}">
+      <input type="checkbox" data-pr-entry="${entry.table}|${entry.id}" ${entry.done ? "checked" : ""} />
+      <strong>${escapeHtml(entry.amount)}</strong>
+      <span class="muted">${escapeHtml(entry.label)}</span>
+    </label>
+  `;
+
+  // Én gruppe (f.eks. all overtid): alle ansatte etter hverandre.
+  const kindBlockHtml = (kind, list) => `
+    <h3 class="pr-kind">${PAYROLL_KIND_TITLE[kind]} <span class="muted">${list.filter(entry => entry.done).length} av ${list.length} ført</span></h3>
+    <div class="pr-grid">
+      ${groupByName(list).map(([name, items]) => {
+        const total = kind === "syk"
+          ? ""
+          : ` · ${formatHoursNo(items.reduce((sum, entry) => sum + (Number(entry.ref.hours) || 0), 0))} t`;
+        return `
+          <div class="pr-person" ${personColorStyle(name, kind === "vikar" ? getSubPersonColor(name) : undefined)}>
+            <label class="pr-person-head">
+              <input type="checkbox" data-pr-person="${escapeHtml(name)}|${kind}" ${items.every(entry => entry.done) ? "checked" : ""} />
+              <strong>${escapeHtml(name)}</strong><span class="muted">${total}</span>
+            </label>
+            ${items.map(lineHtml).join("")}
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+
+  const sectionHtml = (kinds, list) => kinds
+    .map(kind => {
+      const ofKind = list.filter(entry => entry.kind === kind);
+      return ofKind.length ? kindBlockHtml(kind, ofKind) : "";
+    })
+    .join("");
 
   const render = () => {
     const all = payrollRunEntries();
@@ -5579,27 +5580,31 @@ async function openPayrollRun() {
       </div>
 
       <h2 class="meeting-subheading">1. Husk til lønnskjøring</h2>
-      <div class="meeting-list">
+      <div class="pr-notes">
         ${openNotes.length ? openNotes.map(note => `
-          <label class="meeting-item payroll-run-entry">
+          <label class="pr-line">
             <input type="checkbox" data-pr-note="${note.id}" />
-            <span>
-              <strong>${escapeHtml(note.text)}</strong>
-              ${note.employee_name ? `<span class="muted">Gjelder: ${escapeHtml(note.employee_name)}</span>` : ""}
-            </span>
+            <strong>${escapeHtml(note.text)}</strong>
+            ${note.employee_name ? `<span class="muted">Gjelder: ${escapeHtml(note.employee_name)}</span>` : ""}
           </label>
         `).join("") : `<p class="muted">Ingen påminnelser.</p>`}
       </div>
 
       ${lateEntries.length ? `
         <h2 class="meeting-subheading payroll-run-late">⚠ Etterslep fra tidligere måneder (kom etter lønnskjøringen)</h2>
-        ${groupByName(lateEntries).map(([name, list]) => personHtml(name, list)).join("")}
+        ${sectionHtml(["overtid", "ekstra", "vikar", "syk"], lateEntries)}
       ` : ""}
 
-      <h2 class="meeting-subheading">2. ${escapeHtml(formatMonth(month))} - til utbetaling</h2>
-      ${monthEntries.length
-        ? groupByName(monthEntries).map(([name, list]) => personHtml(name, list)).join("")
-        : `<p class="muted">Ingen overtid, ekstra timer, vikartimer eller egenmeldinger i ${escapeHtml(formatMonth(month))}.</p>`}
+      <h2 class="meeting-subheading">2. Lønn - ${escapeHtml(formatMonth(month))}</h2>
+      ${monthEntries.some(entry => entry.kind !== "syk")
+        ? sectionHtml(["overtid", "ekstra", "vikar"], monthEntries)
+        : `<p class="muted">Ingen overtid, ekstra timer eller vikartimer i ${escapeHtml(formatMonth(month))}.</p>`}
+
+      <h2 class="meeting-subheading">3. Fravær - ${escapeHtml(formatMonth(month))}</h2>
+      ${monthEntries.some(entry => entry.kind === "syk")
+        ? sectionHtml(["syk"], monthEntries)
+        : `<p class="muted">Ingen egenmeldinger eller omsorgsdager i ${escapeHtml(formatMonth(month))}.</p>`}
+      <p class="muted side-note">📝 Husk å legge fravær inn offisielt i Weblønn også.</p>
     `;
 
     overlay.querySelector("#payrollRunClose").addEventListener("click", close);
@@ -5639,7 +5644,10 @@ async function openPayrollRun() {
 
     overlay.querySelectorAll("[data-pr-person]").forEach(box => {
       box.addEventListener("change", async () => {
-        const list = shown.filter(entry => entry.name === box.dataset.prPerson);
+        const sep = box.dataset.prPerson.lastIndexOf("|");
+        const personName = box.dataset.prPerson.slice(0, sep);
+        const personKind = box.dataset.prPerson.slice(sep + 1);
+        const list = shown.filter(entry => entry.name === personName && entry.kind === personKind);
         if (!list.length) return;
 
         if (!(await setPayrollEntriesDone(list, box.checked))) {

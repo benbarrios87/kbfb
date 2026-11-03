@@ -5463,3 +5463,90 @@ mark.handbok-mark {
   font-size: 0.85rem;
   font-style: italic;
 }
+
+
+/* Kjør lønn - kompakt */
+.payroll-run-overlay {
+  padding: 22px clamp(14px, 4vw, 60px);
+}
+
+.payroll-run-overlay .meeting-header {
+  margin-bottom: 12px;
+}
+
+.payroll-run-overlay .meeting-header h1 {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+}
+
+.payroll-run-overlay .meeting-subheading {
+  margin: 18px 0 4px;
+  font-size: 1.1rem;
+}
+
+.pr-kind {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 14px 0 6px;
+  font-size: 0.95rem;
+  color: var(--green-dark);
+}
+
+.pr-kind .muted {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.pr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 8px;
+}
+
+.pr-person {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #fffdf7;
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--green);
+}
+
+.pr-person-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+  cursor: pointer;
+}
+
+.pr-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0 2px 2px;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.pr-line input[type="checkbox"],
+.pr-person-head input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  cursor: pointer;
+  align-self: center;
+}
+
+.pr-line-done strong {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+.pr-notes {
+  display: grid;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: #fff8e1;
+  border-left: 6px solid #e0a526;
+}
