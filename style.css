@@ -5457,3 +5457,9 @@ mark.handbok-mark {
   color: var(--green-dark);
   text-transform: capitalize;
 }
+
+.side-note {
+  margin: -4px 0 8px;
+  font-size: 0.85rem;
+  font-style: italic;
+}
