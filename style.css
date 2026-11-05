@@ -5594,3 +5594,8 @@ mark.handbok-mark {
 .tariff-row-warn {
   background: #fff3c4;
 }
+
+
+.tariff-new-input {
+  width: 120px;
+}

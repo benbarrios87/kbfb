@@ -8363,6 +8363,7 @@ async function openTariffUpdate() {
         base,
         pick: oldMatch >= 0 ? oldMatch : newMatch,
         status: oldMatch >= 0 ? "old" : newMatch >= 0 ? "new" : "none",
+        newValue: oldMatch >= 0 ? TARIFF_ROWS[oldMatch].now : null,
         apply: oldMatch >= 0
       };
     })
@@ -8371,7 +8372,8 @@ async function openTariffUpdate() {
   const withoutSalary = people.filter(({ salary }) => !(Number(salary.base_salary) > 0)).map(({ employee }) => employee.name);
 
   const render = () => {
-    const picked = rows.filter(row => row.apply && row.pick >= 0);
+    const canApply = row => row.newValue > 0 && row.newValue !== row.base;
+    const picked = rows.filter(row => row.apply && canApply(row));
 
     overlay.innerHTML = `
       <div class="meeting-header">
@@ -8392,11 +8394,15 @@ async function openTariffUpdate() {
         </thead>
         <tbody>
           ${rows.map((row, index) => {
-            const target = row.pick >= 0 ? TARIFF_ROWS[row.pick] : null;
-            const newSalary = target ? (row.status === "new" ? target.now : target.now) : null;
+            const nearest = row.status === "none"
+              ? TARIFF_ROWS.reduce((best, t) => {
+                  const diff = Math.min(Math.abs(t.old - row.base), Math.abs(t.now - row.base));
+                  return !best || diff < best.diff ? { t, diff } : best;
+                }, null)
+              : null;
             return `
               <tr class="${row.status === "new" ? "tariff-row-done" : row.status === "none" ? "tariff-row-warn" : ""}">
-                <td><input type="checkbox" data-tariff-apply="${index}" ${row.apply ? "checked" : ""} ${row.pick < 0 || row.status === "new" ? "disabled" : ""} /></td>
+                <td><input type="checkbox" data-tariff-apply="${index}" ${row.apply && canApply(row) ? "checked" : ""} ${canApply(row) ? "" : "disabled"} /></td>
                 <td><strong>${escapeHtml(row.employee.name)}</strong></td>
                 <td>${formatKr(row.base)}</td>
                 <td>
@@ -8405,9 +8411,10 @@ async function openTariffUpdate() {
                     ${TARIFF_ROWS.map((t, i) => `<option value="${i}" ${i === row.pick ? "selected" : ""}>${escapeHtml(tariffLabel(t))}</option>`).join("")}
                   </select>
                   ${row.status === "new" ? `<span class="muted">Allerede ny tariff</span>` : ""}
+                  ${nearest ? `<span class="muted">Nærmest: ${escapeHtml(tariffLabel(nearest.t))}</span>` : ""}
                 </td>
-                <td>${newSalary ? formatKr(newSalary) : ""}</td>
-                <td>${newSalary && row.status !== "new" ? `+ ${formatKr(newSalary - row.base)}` : ""}</td>
+                <td><input type="number" min="0" step="100" class="tariff-new-input" data-tariff-new="${index}" value="${row.newValue || ""}" placeholder="Skriv ny lønn" /></td>
+                <td>${canApply(row) ? `+ ${formatKr(row.newValue - row.base)}` : ""}</td>
               </tr>
             `;
           }).join("")}
@@ -8432,7 +8439,18 @@ async function openTariffUpdate() {
         const row = rows[Number(select.dataset.tariffPick)];
         row.pick = Number(select.value);
         row.status = row.pick >= 0 && TARIFF_ROWS[row.pick].now === row.base ? "new" : row.pick >= 0 ? "old" : "none";
-        row.apply = row.pick >= 0 && row.status !== "new";
+        if (row.pick >= 0) row.newValue = TARIFF_ROWS[row.pick].now;
+        row.apply = row.newValue > 0 && row.newValue !== row.base;
+        render();
+      });
+    });
+
+    // Eller skriv inn ny lønn selv (f.eks. når lønnen ikke matcher et trinn).
+    overlay.querySelectorAll("[data-tariff-new]").forEach(input => {
+      input.addEventListener("change", () => {
+        const row = rows[Number(input.dataset.tariffNew)];
+        row.newValue = Number(input.value) || null;
+        row.apply = row.newValue > 0 && row.newValue !== row.base;
         render();
       });
     });
@@ -8447,7 +8465,7 @@ async function openTariffUpdate() {
       for (const row of picked) {
         const { error } = await supabaseClient.from("kbfb_salaries").upsert({
           employee_id: row.employee.id,
-          base_salary: TARIFF_ROWS[row.pick].now,
+          base_salary: row.newValue,
           effective_from: TARIFF_EFFECTIVE_FROM,
           updated_at: new Date().toISOString()
         }, { onConflict: "employee_id" });
