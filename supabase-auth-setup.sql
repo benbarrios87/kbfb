@@ -2310,3 +2310,19 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.kbfb_payroll_month_started(text) TO authenticated;
+
+
+-- =========================================================
+-- STEP 71: Pedagoger / avdelingsledere kan slette filer i Filarkiv
+--   (admin kunne det fra før). De kan fortsatt ikke laste opp eller endre navn.
+-- =========================================================
+
+DROP POLICY IF EXISTS "kbfb_documents_lead_delete" ON public.kbfb_documents;
+CREATE POLICY "kbfb_documents_lead_delete" ON public.kbfb_documents
+  FOR DELETE TO authenticated
+  USING (public.kbfb_is_department_lead());
+
+DROP POLICY IF EXISTS "filarkiv_lead_delete" ON storage.objects;
+CREATE POLICY "filarkiv_lead_delete" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'filarkiv' AND public.kbfb_is_department_lead());

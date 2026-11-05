@@ -13578,6 +13578,8 @@ function renderDocuments() {
   if (!list) return;
 
   const isAdmin = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
+  // Pedagoger / avdelingsledere kan også slette filer (STEP 71).
+  const canDeleteDocs = isAdmin || (typeof currentEmployee !== "undefined" && isDepartmentLeadRole(currentEmployee?.role));
 
   if (!documentsCache.length) {
     list.innerHTML = `<p class="muted">Ingen dokumenter lastet opp ennå.</p>`;
@@ -13660,7 +13662,7 @@ function renderDocuments() {
         <button type="button" class="document-feedback-toggle" data-document-download="${doc.id}" title="Last ned">⬇</button>
         <button type="button" class="document-feedback-toggle" data-document-feedback-toggle="${doc.id}" title="Innspill og kommentarer">💬${open.length ? ` ${open.length}` : ""}</button>
         ${isAdmin ? `<button type="button" class="document-feedback-toggle" data-document-rename="${doc.id}" title="Endre navn eller kategori">✏️</button>` : ""}
-        ${isAdmin ? `<button type="button" class="kitchen-delete" data-document-delete="${doc.id}" title="Slett dokumentet">✕</button>` : ""}
+        ${canDeleteDocs ? `<button type="button" class="kitchen-delete" data-document-delete="${doc.id}" title="Slett dokumentet">✕</button>` : ""}
       </div>
       ${panelOpen ? documentFeedbackPanelHtml(doc, feedback, isAdmin) : ""}
     `;
