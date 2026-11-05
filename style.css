@@ -5576,3 +5576,21 @@ mark.handbok-mark {
   cursor: pointer;
   margin-bottom: 8px;
 }
+
+
+/* Ny tariff */
+.tariff-overlay {
+  padding: 22px clamp(14px, 4vw, 60px);
+}
+
+.tariff-table select {
+  max-width: 280px;
+}
+
+.tariff-row-done {
+  opacity: 0.6;
+}
+
+.tariff-row-warn {
+  background: #fff3c4;
+}

@@ -8291,6 +8291,192 @@ async function saveSalaryField(employeeId, field, value) {
   return true;
 }
 
+/* ----- Ny tariff (PBL-regulativ fra 01.05.2026) -----
+   Grunnlønn pr. år i 100 % stilling. Appen kjenner ikke trinnet til hver
+   ansatt, men lønnen matcher et trinn i gammel tariff (1.5.2025), og da er
+   ny lønn gitt. Du ser en forhåndsvisning og velger hvem som skal oppdateres. */
+
+const TARIFF_EFFECTIVE_FROM = "2026-05-01";
+const TARIFF_ROWS = [
+  {"group": "Assistent", "step": 1, "years": "0", "old": 403800, "now": 420500},
+  {"group": "Assistent", "step": 2, "years": "4", "old": 410600, "now": 427800},
+  {"group": "Assistent", "step": 3, "years": "8", "old": 422700, "now": 440900},
+  {"group": "Assistent", "step": 4, "years": "10", "old": 463900, "now": 483000},
+  {"group": "Assistent", "step": 5, "years": "16", "old": 499300, "now": 519300},
+  {"group": "Fagarbeider", "step": 1, "years": "0", "old": 459900, "now": 478400},
+  {"group": "Fagarbeider", "step": 2, "years": "4", "old": 470000, "now": 489000},
+  {"group": "Fagarbeider", "step": 3, "years": "8", "old": 481600, "now": 501600},
+  {"group": "Fagarbeider", "step": 4, "years": "10", "old": 522700, "now": 543700},
+  {"group": "Fagarbeider", "step": 5, "years": "16", "old": 537900, "now": 559900},
+  {"group": "Barnehagelærer", "step": 1, "years": "0", "old": 536400, "now": 558400},
+  {"group": "Barnehagelærer", "step": 2, "years": "4", "old": 540600, "now": 562800},
+  {"group": "Barnehagelærer", "step": 3, "years": "8", "old": 554600, "now": 577400},
+  {"group": "Barnehagelærer", "step": 4, "years": "10", "old": 609600, "now": 634600},
+  {"group": "Barnehagelærer", "step": 5, "years": "16", "old": 626100, "now": 651800},
+  {"group": "Ped.leder", "step": 1, "years": "0", "old": 569900, "now": 593400},
+  {"group": "Ped.leder", "step": 2, "years": "4", "old": 574100, "now": 597800},
+  {"group": "Ped.leder", "step": 3, "years": "8", "old": 588100, "now": 612400},
+  {"group": "Ped.leder", "step": 4, "years": "10", "old": 643600, "now": 670100},
+  {"group": "Ped.leder", "step": 5, "years": "16", "old": 660100, "now": 687300},
+  {"group": "Spes.ped", "step": 1, "years": "0", "old": 570200, "now": 594200},
+  {"group": "Spes.ped", "step": 2, "years": "4", "old": 578300, "now": 602600},
+  {"group": "Spes.ped", "step": 3, "years": "8", "old": 588400, "now": 613300},
+  {"group": "Spes.ped", "step": 4, "years": "10", "old": 644100, "now": 671300},
+  {"group": "Spes.ped", "step": 5, "years": "16", "old": 661800, "now": 689700},
+  {"group": "Styrer", "step": 1, "years": "0–9,9", "old": 714200, "now": 745100},
+  {"group": "Styrer", "step": 2, "years": "10-13,9", "old": 738200, "now": 770000},
+  {"group": "Styrer", "step": 3, "years": "14-16,9", "old": 750900, "now": 783300},
+  {"group": "Styrer", "step": 4, "years": "17-20,9", "old": 763300, "now": 796200},
+  {"group": "Styrer", "step": 5, "years": "21-26,9", "old": 774400, "now": 807700},
+  {"group": "Styrer", "step": 6, "years": "27-", "old": 818500, "now": 853600}
+];
+
+function tariffLabel(row) {
+  return `${row.group} trinn ${row.step} (${row.years} år)`;
+}
+
+async function openTariffUpdate() {
+  await loadSalariesForAdmin();
+
+  const overlay = document.createElement("div");
+  overlay.className = "meeting-overlay tariff-overlay";
+  document.body.appendChild(overlay);
+  document.body.style.overflow = "hidden";
+
+  const close = () => {
+    overlay.remove();
+    document.body.style.overflow = "";
+  };
+
+  const people = adminEmployeesCache
+    .filter(employee => employee.active !== false)
+    .map(employee => ({ employee, salary: salaryFor(employee.id) }));
+
+  const rows = people
+    .filter(({ salary }) => Number(salary.base_salary) > 0)
+    .map(({ employee, salary }) => {
+      const base = Number(salary.base_salary);
+      const oldMatch = TARIFF_ROWS.findIndex(row => row.old === base);
+      const newMatch = TARIFF_ROWS.findIndex(row => row.now === base);
+      return {
+        employee,
+        base,
+        pick: oldMatch >= 0 ? oldMatch : newMatch,
+        status: oldMatch >= 0 ? "old" : newMatch >= 0 ? "new" : "none",
+        apply: oldMatch >= 0
+      };
+    })
+    .sort((a, b) => a.employee.name.localeCompare(b.employee.name));
+
+  const withoutSalary = people.filter(({ salary }) => !(Number(salary.base_salary) > 0)).map(({ employee }) => employee.name);
+
+  const render = () => {
+    const picked = rows.filter(row => row.apply && row.pick >= 0);
+
+    overlay.innerHTML = `
+      <div class="meeting-header">
+        <div>
+          <p class="eyebrow">Lønn</p>
+          <h1>Ny tariff fra 01.05.2026</h1>
+          <p class="muted">PBL-regulativet. Grunnlønn pr. år i 100 % stilling. Gammel lønn byttes til ny lønn, og «gjelder fra» settes til 01.05.2026. Tillegg, stillingsprosent og studietillegg (kr 14 000 / 28 000) endres ikke.</p>
+        </div>
+        <div class="payroll-run-actions">
+          <button type="button" class="primary-btn" id="tariffApply" ${picked.length ? "" : "disabled"}>Oppdater ${picked.length} ${picked.length === 1 ? "ansatt" : "ansatte"}</button>
+          <button type="button" class="secondary-btn" id="tariffClose">Lukk</button>
+        </div>
+      </div>
+
+      <table class="shift-table tariff-table">
+        <thead>
+          <tr><th></th><th>Ansatt</th><th>Nå</th><th>Trinn i tariffen</th><th>Ny lønn</th><th>Økning</th></tr>
+        </thead>
+        <tbody>
+          ${rows.map((row, index) => {
+            const target = row.pick >= 0 ? TARIFF_ROWS[row.pick] : null;
+            const newSalary = target ? (row.status === "new" ? target.now : target.now) : null;
+            return `
+              <tr class="${row.status === "new" ? "tariff-row-done" : row.status === "none" ? "tariff-row-warn" : ""}">
+                <td><input type="checkbox" data-tariff-apply="${index}" ${row.apply ? "checked" : ""} ${row.pick < 0 || row.status === "new" ? "disabled" : ""} /></td>
+                <td><strong>${escapeHtml(row.employee.name)}</strong></td>
+                <td>${formatKr(row.base)}</td>
+                <td>
+                  <select data-tariff-pick="${index}">
+                    <option value="-1">${row.status === "none" ? "Ingen treff - velg trinn" : "-"}</option>
+                    ${TARIFF_ROWS.map((t, i) => `<option value="${i}" ${i === row.pick ? "selected" : ""}>${escapeHtml(tariffLabel(t))}</option>`).join("")}
+                  </select>
+                  ${row.status === "new" ? `<span class="muted">Allerede ny tariff</span>` : ""}
+                </td>
+                <td>${newSalary ? formatKr(newSalary) : ""}</td>
+                <td>${newSalary && row.status !== "new" ? `+ ${formatKr(newSalary - row.base)}` : ""}</td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+      ${rows.some(row => row.status === "none") ? `<p class="muted">Gul rad: lønnen stemmer ikke med noe trinn i gammel tariff (egendefinert eller allerede endret). Velg trinn selv, eller la den stå.</p>` : ""}
+      ${withoutSalary.length ? `<p class="muted">Uten registrert grunnlønn (hoppes over): ${withoutSalary.map(escapeHtml).join(", ")}</p>` : ""}
+      <p id="tariffStatus" class="muted"></p>
+    `;
+
+    overlay.querySelector("#tariffClose").addEventListener("click", close);
+
+    overlay.querySelectorAll("[data-tariff-apply]").forEach(box => {
+      box.addEventListener("change", () => {
+        rows[Number(box.dataset.tariffApply)].apply = box.checked;
+        render();
+      });
+    });
+
+    overlay.querySelectorAll("[data-tariff-pick]").forEach(select => {
+      select.addEventListener("change", () => {
+        const row = rows[Number(select.dataset.tariffPick)];
+        row.pick = Number(select.value);
+        row.status = row.pick >= 0 && TARIFF_ROWS[row.pick].now === row.base ? "new" : row.pick >= 0 ? "old" : "none";
+        row.apply = row.pick >= 0 && row.status !== "new";
+        render();
+      });
+    });
+
+    overlay.querySelector("#tariffApply").addEventListener("click", async () => {
+      if (!picked.length) return;
+      if (!confirm(`Oppdatere grunnlønn for ${picked.length} ansatte til ny tariff fra 01.05.2026? Dette kan ikke angres automatisk.`)) return;
+
+      const statusEl = overlay.querySelector("#tariffStatus");
+      let failed = 0;
+
+      for (const row of picked) {
+        const { error } = await supabaseClient.from("kbfb_salaries").upsert({
+          employee_id: row.employee.id,
+          base_salary: TARIFF_ROWS[row.pick].now,
+          effective_from: TARIFF_EFFECTIVE_FROM,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "employee_id" });
+
+        if (error) {
+          console.error("Kunne ikke oppdatere lønn:", row.employee.name, error);
+          failed += 1;
+        }
+      }
+
+      await loadSalariesForAdmin();
+      if (typeof renderAdminEmployeeTable === "function") renderAdminEmployeeTable();
+
+      if (failed) {
+        statusEl.textContent = `${failed} kunne ikke oppdateres. Se konsollen.`;
+        return;
+      }
+
+      alert(`Ferdig: ${picked.length} ansatte er oppdatert til ny tariff.`);
+      close();
+    });
+  };
+
+  render();
+}
+
+const tariffUpdateBtn = document.getElementById("tariffUpdateBtn");
+if (tariffUpdateBtn) tariffUpdateBtn.addEventListener("click", openTariffUpdate);
+
 async function updateEmployeeField(id, fields) {
   const { error } = await supabaseClient
     .from("kbfb_employees")
