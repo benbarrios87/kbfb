@@ -2351,3 +2351,29 @@ CREATE POLICY "kbfb_closure_days_admin_write" ON public.kbfb_closure_days
   FOR ALL TO authenticated
   USING (public.kbfb_is_admin())
   WITH CHECK (public.kbfb_is_admin());
+
+
+-- =========================================================
+-- STEP 73: Bakvakt (jul, påske, rundt fellesferien)
+--   Alle kan se hvem som er bakvakt. Admin og avdelingsledere setter det.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_standby (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  employee text NOT NULL,
+  date date NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (employee, date)
+);
+
+ALTER TABLE public.kbfb_standby ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_standby_read" ON public.kbfb_standby;
+CREATE POLICY "kbfb_standby_read" ON public.kbfb_standby
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "kbfb_standby_write" ON public.kbfb_standby;
+CREATE POLICY "kbfb_standby_write" ON public.kbfb_standby
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin() OR public.kbfb_is_department_lead())
+  WITH CHECK (public.kbfb_is_admin() OR public.kbfb_is_department_lead());

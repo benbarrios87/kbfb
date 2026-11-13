@@ -164,6 +164,144 @@ async function loadClosureOverrides() {
   resetHolidayCache();
 }
 
+/* ---------- BAKVAKT ----------
+   Brukes i jul, påske og rundt fellesferien: en ansatt kan ha avspasering
+   eller ferie, men være bakvakt (på sms-beredskap) den dagen. Lagres per
+   ansatt og dato, vises som "Bakvakt" i vaktplanen, i oversikten for én
+   ansatt og i "Hvem jobber". */
+
+let standbyCache = {}; // "Navn|YYYY-MM-DD" -> rad
+
+function canEditStandby() {
+  return typeof currentEmployee !== "undefined" &&
+    !!(currentEmployee?.is_admin || isDepartmentLeadRole(currentEmployee?.role));
+}
+
+async function loadStandbyForWeek() {
+  const from = toDateKey(viewedWeekStart);
+  const to = toDateKey(addDays(viewedWeekStart, 4));
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_standby")
+    .select("id, employee, date")
+    .gte("date", from)
+    .lte("date", to);
+
+  if (error) {
+    standbyCache = {};
+    return;
+  }
+
+  standbyCache = {};
+  (data || []).forEach(row => { standbyCache[`${row.employee}|${row.date}`] = row; });
+}
+
+async function toggleStandby(name, dateKey) {
+  const key = `${name}|${dateKey}`;
+  const existing = standbyCache[key];
+
+  if (existing) {
+    const { error } = await supabaseClient.from("kbfb_standby").delete().eq("id", existing.id);
+    if (error) {
+      console.error("Kunne ikke fjerne bakvakt:", error);
+      alert("Kunne ikke fjerne bakvakten.");
+      return;
+    }
+    delete standbyCache[key];
+  } else {
+    const { data, error } = await supabaseClient
+      .from("kbfb_standby")
+      .insert([{ employee: name, date: dateKey }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Kunne ikke lagre bakvakt:", error);
+      alert("Kunne ikke lagre bakvakten. Har du kjørt siste SQL-steg (STEP 73) i Supabase?");
+      return;
+    }
+    standbyCache[key] = data;
+
+    sendPushNotification(
+      [name],
+      "Du er bakvakt",
+      `Du er satt opp som bakvakt ${formatNorwegianDate(dateKey)}.`,
+      "vakter.html"
+    );
+  }
+
+  applyStandbyToWeek();
+}
+
+// Tegner "Bakvakt"-merket i vaktplanen og (for admin/avdelingsleder) en liten
+// knapp for å sette eller fjerne bakvakt. Trygg å kjøre flere ganger.
+function applyStandbyToWeek() {
+  const canEdit = canEditStandby();
+  const supportRows = ["Vikar", "Foreldreinnsats", "Ekstra"];
+
+  document.querySelectorAll(".department-table tbody tr").forEach(row => {
+    const name = row.dataset.employee;
+
+    row.querySelectorAll(".shift-cell").forEach((cell, dayIndex) => {
+      cell.querySelectorAll(".standby-chip, .standby-toggle").forEach(el => el.remove());
+      cell.classList.remove("standby-cell");
+
+      if (!name || supportRows.includes(name)) return;
+      if (!employeesCache.some(employee => employee.name === name)) return;
+
+      const dateKey = toDateKey(addDays(viewedWeekStart, dayIndex));
+      const isStandby = !!standbyCache[`${name}|${dateKey}`];
+
+      if (isStandby) cell.classList.add("standby-cell");
+
+      if (canEdit) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = isStandby ? "standby-chip" : "standby-toggle";
+        button.textContent = isStandby ? "Bakvakt ✕" : "+ Bakvakt";
+        button.title = isStandby ? "Fjern bakvakt" : "Sett som bakvakt denne dagen";
+        button.addEventListener("click", async () => {
+          button.disabled = true;
+          await toggleStandby(name, dateKey);
+        });
+        cell.appendChild(button);
+      } else if (isStandby) {
+        const chip = document.createElement("span");
+        chip.className = "standby-chip";
+        chip.textContent = "Bakvakt";
+        cell.appendChild(chip);
+      }
+    });
+  });
+
+  renderStandbyBanner();
+}
+
+function renderStandbyBanner() {
+  let banner = document.getElementById("standbyBanner");
+  const anchor = document.getElementById("responsibilityBanner");
+  if (!banner && anchor) {
+    banner = document.createElement("div");
+    banner.id = "standbyBanner";
+    banner.className = "standby-banner";
+    anchor.insertAdjacentElement("afterend", banner);
+  }
+  if (!banner) return;
+
+  const rows = Object.values(standbyCache).sort((x, y) => x.date.localeCompare(y.date) || x.employee.localeCompare(y.employee));
+  if (!rows.length) {
+    banner.style.display = "none";
+    return;
+  }
+
+  const dayNames = ["søn", "man", "tir", "ons", "tor", "fre", "lør"];
+  banner.style.display = "";
+  banner.innerHTML = `🔔 <strong>Bakvakt denne uka:</strong> ` + rows.map(row => {
+    const date = new Date(row.date + "T12:00:00");
+    return `${escapeHtml(row.employee)} <span class="muted">(${dayNames[date.getDay()]} ${escapeHtml(formatShortDate(date))})</span>`;
+  }).join(" · ");
+}
+
 // Navnet på den røde dagen (eller null) for en dato som "YYYY-MM-DD".
 function holidayName(dateKey) {
   if (!dateKey) return null;
@@ -1155,7 +1293,25 @@ async function loadTodayShiftsForDashboard() {
     }
   }
 
-  if (!departments.length && !vikarHtml) {
+  // Bakvakt den dagen.
+  let standbyHtml = "";
+  const { data: standbyRows } = await supabaseClient
+    .from("kbfb_standby")
+    .select("employee")
+    .eq("date", toDateKey(target));
+
+  if (standbyRows?.length) {
+    standbyHtml = `
+      <div class="today-shift-department standby-dept">
+        <h3>🔔 Bakvakt</h3>
+        <div class="today-shift-list">
+          ${standbyRows.map(row => `<span class="today-shift-person">${avatarSpanFor(row.employee, "avatar-medium")}${escapeHtml(row.employee)}</span>`).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  if (!departments.length && !vikarHtml && !standbyHtml) {
     container.innerHTML = `<p class="muted">Ingen vakter registrert ${relativeDayLabel(target, now)} ennå.</p>`;
     return;
   }
@@ -1172,7 +1328,7 @@ async function loadTodayShiftsForDashboard() {
         ).join("")}
       </div>
     </div>
-  `).join("") + vikarHtml;
+  `).join("") + vikarHtml + standbyHtml;
 }
 
 const weatherIconByCode = {
@@ -2602,6 +2758,7 @@ function applyHolidaysToWeek() {
 
 function renderWeekEvents() {
   applyHolidaysToWeek();
+  applyStandbyToWeek();
 
   // Datoene også rett over hver dag i vaktplanen.
   document.querySelectorAll(".day-head").forEach(head => {
@@ -2692,6 +2849,8 @@ async function updateWeekView() {
     const date = addDays(viewedWeekStart, dayIndex);
     head.innerHTML = `${dayNames[dayIndex]}<br><span>${formatShortDate(date)}</span>`;
   });
+
+  await loadStandbyForWeek();
 
   buildShiftDropdowns();
   applySupportRowVisibility();
@@ -3413,6 +3572,17 @@ async function renderEmployeeOverview() {
     if (value && !byDay[key]) byDay[key] = value;
   });
 
+  const standbyDates = new Set();
+  {
+    const { data: standbyRows } = await supabaseClient
+      .from("kbfb_standby")
+      .select("date")
+      .eq("employee", name)
+      .gte("date", toDateKey(first))
+      .lte("date", toDateKey(addDays(lastWeekStart, 4)));
+    (standbyRows || []).forEach(row => standbyDates.add(row.date));
+  }
+
   const dayNames = ["Man", "Tir", "Ons", "Tor", "Fre"];
   const todayKey = toDateKey(new Date());
   const rows = [];
@@ -3427,12 +3597,14 @@ async function renderEmployeeOverview() {
       const dateKey = toDateKey(date);
       const value = byDay[`${weekKey}|${d}`] || "";
       const holiday = holidayName(dateKey);
-      const classes = ["eo-cell", holiday ? "holiday-cell" : "", dateKey === todayKey ? "eo-today" : ""].filter(Boolean).join(" ");
+      const isStandby = standbyDates.has(dateKey);
+      const classes = ["eo-cell", holiday ? "holiday-cell" : "", isStandby ? "standby-cell" : "", dateKey === todayKey ? "eo-today" : ""].filter(Boolean).join(" ");
 
       cells += `
         <td class="${classes}" ${holiday ? `title="${escapeHtml(holiday)} - fri"` : ""}>
           <span class="eo-date">${escapeHtml(formatShortDate(date))}</span>
           ${value ? `<span class="badge ${getShiftSelectClass(value)}">${escapeHtml(value)}</span>` : `<span class="muted">-</span>`}
+          ${isStandby ? `<span class="standby-chip">Bakvakt</span>` : ""}
         </td>
       `;
     }
