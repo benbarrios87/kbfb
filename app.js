@@ -7150,10 +7150,23 @@ function renderDepartmentAbsenceOverview() {
             <summary class="muted">Vis føringer (historikk)</summary>
             <div class="leave-entries"></div>
           </details>
+          <details class="dept-history" data-dept-year="${escapeHtml(name)}">
+            <summary class="muted">Vis årsoversikt ${currentYear}</summary>
+            <div class="leave-year-view"></div>
+          </details>
         </div>
       `;
     }).join("")
     : `<p class="muted">Ingen ansatte å vise ennå.</p>`;
+
+  // Årsoversikt (kalender over ferie og fravær) - bare lesing.
+  listEl.querySelectorAll("[data-dept-year]").forEach(details => {
+    details.addEventListener("toggle", () => {
+      if (details.open) {
+        renderLeaveYearView(details.querySelector(".leave-year-view"), details.dataset.deptYear, currentYear, { check: false });
+      }
+    });
+  });
 
   // Full historikk (alle år) per ansatt - bare lesing, siden pedagogen
   // ikke kan endre andres føringer. Tegnes når delen åpnes.
@@ -8233,7 +8246,7 @@ function renderLeaveYearGrid(name, year) {
 }
 
 // Tegner årsoversikten i en boks. canFix = admin kan registrere F-dager fra vaktplanen som ferie.
-function renderLeaveYearView(container, name, year, { canFix = false } = {}) {
+function renderLeaveYearView(container, name, year, { canFix = false, check = true } = {}) {
   if (!container) return;
   if (!name) {
     container.innerHTML = "";
@@ -8245,8 +8258,10 @@ function renderLeaveYearView(container, name, year, { canFix = false } = {}) {
   container.innerHTML = `
     <h3 class="leave-subheading">Årsoversikt ${year}</h3>
     ${renderLeaveYearGrid(name, year)}
-    <div class="ly-check muted">Sjekker vaktplanen ...</div>
+    ${check ? `<div class="ly-check muted">Sjekker vaktplanen ...</div>` : ""}
   `;
+
+  if (!check) return;
 
   loadVaktplanFerieDays(name, year).then(fDays => {
     if (request !== leaveYearFRequest) return;
