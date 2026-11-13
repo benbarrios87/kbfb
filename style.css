@@ -5763,3 +5763,26 @@ mark.handbok-mark {
 .ly-fix-btn {
   margin-left: 8px;
 }
+
+
+/* Stengte dager */
+.closure-table th,
+.closure-table td {
+  text-align: center;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.closure-table td:first-child,
+.closure-table th:first-child {
+  text-align: left;
+}
+
+.closure-table select {
+  font-size: 0.82rem;
+  padding: 3px 4px;
+}
+
+.closure-easter {
+  color: #8a4b00;
+}

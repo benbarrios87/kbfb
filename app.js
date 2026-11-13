@@ -83,6 +83,10 @@ function norwegianHolidaysFor(year) {
     [fixed(12, 24)]: "Julaften (stengt)",
     [fixed(12, 25)]: "1. juledag",
     [fixed(12, 26)]: "2. juledag",
+    [fixed(12, 27)]: "Romjul (stengt)",
+    [fixed(12, 28)]: "Romjul (stengt)",
+    [fixed(12, 29)]: "Romjul (stengt)",
+    [fixed(12, 30)]: "Romjul (stengt)",
     [fixed(12, 31)]: "Nyttårsaften (stengt)"
   };
 
@@ -94,6 +98,15 @@ function norwegianHolidaysFor(year) {
 function holidayName(dateKey) {
   if (!dateKey) return null;
   return norwegianHolidaysFor(Number(dateKey.slice(0, 4)))[dateKey] || null;
+}
+
+// Stengte dager som ikke er røde (onsdag i påsken, julaften, romjul, nyttårsaften):
+// bare hverdager. Ansatte bruker ferie, avspasering eller permisjon uten lønn.
+function closureDaysFor(year) {
+  return Object.entries(norwegianHolidaysFor(year))
+    .filter(([key, name]) => name.includes("(stengt)") && ![0, 6].includes(new Date(key + "T12:00:00").getDay()))
+    .map(([key, name]) => ({ date: key, name: name.replace(" (stengt)", ""), easter: name.startsWith("Onsdag") }))
+    .sort((x, y) => x.date.localeCompare(y.date));
 }
 
 /* ---------- HJELPEFUNKSJONER ---------- */
@@ -6442,6 +6455,7 @@ function renderMyUpcomingDays() {
 // både på Ferie/fravær-siden (personlig) og på Admin (godkjenning, lønn,
 // ansattoversikt).
 function renderAbsences() {
+  renderClosureDays();
   renderMyUpcomingDays();
   renderOvertimeSummary();
   renderHolidayRequestGroups();
@@ -7219,6 +7233,153 @@ function populateLeaveYearSelect(select, name) {
   const sorted = [...years].sort((a, b) => b - a);
   select.innerHTML = sorted.map(year => `<option value="${year}">${year}</option>`).join("");
   select.value = sorted.includes(Number(previous)) ? previous : String(currentYear);
+}
+
+/* ----- Stengte dager: velg per ansatt hva som brukes (Admin) -----
+   Ferie, avspasering eller permisjon uten lønn for hver stengte dag.
+   Hver valgte dag blir en vanlig, godkjent føring (med note "Stengt dag"),
+   så den teller riktig i feriedager, avspasering og vaktplanen. */
+
+const CLOSURE_CHOICES = [
+  { value: "", label: "-" },
+  { value: "Ferie", label: "Ferie" },
+  { value: "Ønsker å avspasere", label: "Avspasering" },
+  { value: "Permisjon uten lønn", label: "Perm. uten lønn" }
+];
+const CLOSURE_NOTE = "Stengt dag";
+
+// Finner føringen som dekker en dag, hvis den er av en av de tre typene.
+function closureRecordFor(name, date) {
+  const types = CLOSURE_CHOICES.map(choice => choice.value).filter(Boolean).concat(["Avspasering brukt"]);
+  return absencesCache.find(record =>
+    record.name === name && types.includes(record.type) && record.status !== "Avslått" &&
+    record.start_date && record.start_date <= date && (record.end_date || record.start_date) >= date
+  );
+}
+
+function closureHoursFor(employee) {
+  const pct = typeof salaryFor === "function" ? Number(salaryFor(employee.id)?.position_pct) : NaN;
+  return Math.round(FULL_DAY_HOURS * ((pct > 0 ? pct : 100) / 100) * 100) / 100;
+}
+
+async function setClosureChoice(employee, date, value) {
+  const existing = closureRecordFor(employee.name, date);
+  const own = existing && existing.note === CLOSURE_NOTE && existing.start_date === date && (existing.end_date || existing.start_date) === date;
+
+  if (own && existing.type === value) return true;
+  if (existing && !own) return false;
+
+  if (own) await deleteAbsenceFromSupabase(existing.id);
+  if (!value) return true;
+
+  const record = {
+    name: employee.name,
+    type: value,
+    start_date: date,
+    end_date: date,
+    status: "Godkjent",
+    note: CLOSURE_NOTE
+  };
+  if (value === "Ønsker å avspasere") record.hours = closureHoursFor(employee);
+
+  return !!(await saveAbsenceToSupabase(record));
+}
+
+function renderClosureDays() {
+  const container = document.getElementById("closureMatrix");
+  const yearSelect = document.getElementById("closureYear");
+  if (!container || !yearSelect) return;
+
+  const thisYear = new Date().getFullYear();
+  if (!yearSelect.options.length) {
+    yearSelect.innerHTML = [thisYear, thisYear + 1].map(y => `<option value="${y}">${y}</option>`).join("");
+    yearSelect.addEventListener("change", renderClosureDays);
+  }
+
+  const year = Number(yearSelect.value) || thisYear;
+  const days = closureDaysFor(year);
+  const people = employeesCache
+    .filter(employee => employee.active !== false && employee.role !== "Vikar" && employee.role !== "Gjest")
+    .sort((x, y) => x.name.localeCompare(y.name));
+
+  if (!days.length || !people.length) {
+    container.innerHTML = `<p class="muted">Ingen stengte dager å vise.</p>`;
+    return;
+  }
+
+  const options = (selected, disabled) => CLOSURE_CHOICES
+    .map(choice => `<option value="${escapeHtml(choice.value)}" ${choice.value === selected ? "selected" : ""}>${escapeHtml(choice.label)}</option>`)
+    .join("");
+
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table class="shift-table closure-table">
+        <thead>
+          <tr>
+            <th>Ansatt</th>
+            <th>Alle dager</th>
+            ${days.map(day => `<th class="${day.easter ? "closure-easter" : ""}">${escapeHtml(formatShortDate(new Date(day.date + "T12:00:00")))}<br><span class="muted">${escapeHtml(day.name)}</span></th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${people.map(employee => `
+            <tr>
+              <td><strong>${escapeHtml(employee.name)}</strong></td>
+              <td><select class="closure-all" data-closure-all="${employee.id}">${options("")}</select></td>
+              ${days.map(day => {
+                const record = closureRecordFor(employee.name, day.date);
+                const own = record && record.note === CLOSURE_NOTE && record.start_date === day.date && (record.end_date || record.start_date) === day.date;
+                const selected = record ? (record.type === "Avspasering brukt" ? "Ønsker å avspasere" : record.type) : "";
+                return `<td><select class="closure-cell" data-closure-emp="${employee.id}" data-closure-date="${day.date}" ${record && !own ? `disabled title="Registrert i en lengre føring - endres under Føringer"` : ""}>${options(selected)}</select></td>`;
+              }).join("")}
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+    <p class="muted" id="closureStatus"></p>
+  `;
+
+  const statusEl = container.querySelector("#closureStatus");
+  const finish = async message => {
+    await loadAbsencesFromSupabase();
+    renderAbsences();
+    const el = document.getElementById("closureStatus");
+    if (el) el.textContent = message;
+  };
+
+  container.querySelectorAll(".closure-cell").forEach(select => {
+    select.addEventListener("change", async () => {
+      const employee = employeesCache.find(e => String(e.id) === select.dataset.closureEmp);
+      if (!employee) return;
+      select.disabled = true;
+      const ok = await setClosureChoice(employee, select.dataset.closureDate, select.value);
+      await finish(ok ? `Lagret for ${employee.name}.` : `Kunne ikke endre ${employee.name} denne dagen.`);
+    });
+  });
+
+  container.querySelectorAll(".closure-all").forEach(select => {
+    select.addEventListener("change", async () => {
+      if (!select.value && !confirm("Fjerne alle valgene dine for denne ansatte (de som er satt her)?")) {
+        select.value = "";
+        return;
+      }
+      const employee = employeesCache.find(e => String(e.id) === select.dataset.closureAll);
+      if (!employee) return;
+      const value = select.value;
+      select.disabled = true;
+      statusEl.textContent = "Lagrer ...";
+
+      let skipped = 0;
+      for (const day of days) {
+        const ok = await setClosureChoice(employee, day.date, value);
+        if (!ok) skipped += 1;
+      }
+      await finish(skipped
+        ? `Lagret for ${employee.name}. ${skipped} dager hoppet over (allerede registrert i en lengre føring).`
+        : `Lagret for ${employee.name}.`);
+    });
+  });
 }
 
 /* ----- Årsoversikt per ansatt: kalender over hele året -----
