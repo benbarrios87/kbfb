@@ -7466,7 +7466,7 @@ async function setClosureChoice(employee, date, value) {
   if (own && existing.type === value) return true;
   if (existing && !own) return false;
 
-  if (own) await deleteAbsenceFromSupabase(existing.id);
+  if (own) await removeClosureRecord(existing);
   if (!value) return true;
 
   const record = {
@@ -7479,7 +7479,127 @@ async function setClosureChoice(employee, date, value) {
   };
   if (value === "Ønsker å avspasere") record.hours = closureHoursFor(employee);
 
-  return !!(await saveAbsenceToSupabase(record));
+  const saved = await saveAbsenceToSupabase(record);
+  if (saved) await applyApprovedAbsenceToShifts({ ...record, id: saved.id });
+  return !!saved;
+}
+
+// Sletter en stengt-dag-føring og tømmer den tilhørende ruta i vaktplanen
+// (bare hvis den fortsatt har verdien føringen satte der).
+async function removeClosureRecord(record) {
+  await deleteAbsenceFromSupabase(record.id);
+
+  const expected = shiftTypesFromAbsence[record.type === "Avspasering brukt" ? "Ønsker å avspasere" : record.type];
+  if (!expected) return;
+
+  const date = new Date(record.start_date + "T12:00:00");
+  const { error } = await supabaseClient
+    .from("kbfb_shifts")
+    .update({ shift_value: "" })
+    .eq("employee", record.name)
+    .eq("week_start", toDateKey(getMonday(date)))
+    .eq("day_index", date.getDay() - 1)
+    .eq("shift_value", expected);
+
+  if (error) console.error("Kunne ikke tømme vaktplan-ruta:", error);
+}
+
+// ----- Godkjent ferie og fri -> vaktplanen (automatisk) -----
+// Fyller bare TOMME ruter fra i dag og fremover. Det som allerede står i
+// vaktplanen (en vakt, sykt osv.) endres aldri.
+
+const SCHEDULE_LEAVE_TYPES = [
+  "Ferie", "Tjenestefri", "Permisjon med lønn", "Permisjon uten lønn",
+  "Velferdspermisjon", "Ønsker å avspasere"
+];
+
+async function syncApprovedLeaveToSchedule() {
+  const todayKey = toDateKey(new Date());
+  const wanted = {}; // navn -> { "weekStart|dayIndex": verdi }
+
+  absencesCache
+    .filter(record =>
+      record.status === "Godkjent" && SCHEDULE_LEAVE_TYPES.includes(record.type) &&
+      record.start_date && (record.end_date || record.start_date) >= todayKey)
+    .forEach(record => {
+      const value = shiftTypesFromAbsence[record.type];
+      const from = record.start_date > todayKey ? record.start_date : todayKey;
+
+      getWeekdaysBetween(from, record.end_date || record.start_date).forEach(dateKey => {
+        // Vanlige røde dager hoppes over. Stengte dager (julaften osv.) tas med.
+        const holiday = holidayName(dateKey);
+        if (holiday && !holiday.includes("(stengt)")) return;
+
+        const date = new Date(dateKey + "T12:00:00");
+        const cell = `${toDateKey(getMonday(date))}|${date.getDay() - 1}`;
+        (wanted[record.name] = wanted[record.name] || {})[cell] = value;
+      });
+    });
+
+  let filled = 0;
+  let conflicts = 0;
+
+  for (const [name, cells] of Object.entries(wanted)) {
+    const weeks = [...new Set(Object.keys(cells).map(cell => cell.split("|")[0]))].sort();
+
+    const { data, error } = await supabaseClient
+      .from("kbfb_shifts")
+      .select("week_start, day_index, shift_value")
+      .eq("employee", name)
+      .gte("week_start", weeks[0])
+      .lte("week_start", weeks[weeks.length - 1])
+      .limit(2000);
+
+    if (error) {
+      console.error("Kunne ikke lese vaktplanen for", name, error);
+      continue;
+    }
+
+    const current = {};
+    (data || []).forEach(row => {
+      const key = `${row.week_start}|${row.day_index}`;
+      const value = (row.shift_value || "").trim();
+      if (value || !current[key]) current[key] = value;
+    });
+
+    const missing = Object.entries(cells).filter(([cell, value]) => {
+      const now = current[cell] || "";
+      if (!now) return true;
+      if (now !== value) conflicts += 1;
+      return false;
+    });
+
+    if (!missing.length) continue;
+
+    const department = await findScheduleDepartment(name);
+    if (!department) continue;
+
+    for (const [cell, value] of missing) {
+      const [weekStart, dayIndex] = cell.split("|");
+      await upsertShiftForApproval(weekStart, department, name, Number(dayIndex), value);
+      filled += 1;
+    }
+  }
+
+  return { filled, conflicts };
+}
+
+function bindLeaveScheduleSync() {
+  const button = document.getElementById("syncLeaveToScheduleBtn");
+  const status = document.getElementById("syncLeaveStatus");
+  if (!button || button.dataset.bound) return;
+  button.dataset.bound = "1";
+
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    status.textContent = "Fyller inn ...";
+    const { filled, conflicts } = await syncApprovedLeaveToSchedule();
+    button.disabled = false;
+    status.textContent = filled
+      ? `Fylte inn ${filled} ${filled === 1 ? "dag" : "dager"} i vaktplanen.`
+      : "Alt godkjent ferie og fri ligger allerede i vaktplanen.";
+    if (conflicts) status.textContent += ` ${conflicts} dager har noe annet i vaktplanen og ble latt stå.`;
+  });
 }
 
 async function saveClosureChoice(date, closed, name) {
@@ -7550,7 +7670,7 @@ function renderClosureToggles(year) {
         if (own.length) {
           const remove = confirm(`${own.length} ansatte har allerede registrert ferie/avspasering/permisjon denne dagen. Fjerne disse registreringene også?\n\nOK = fjern dem. Avbryt = la dem stå.`);
           if (remove) {
-            for (const record of own) await deleteAbsenceFromSupabase(record.id);
+            for (const record of own) await removeClosureRecord(record);
             await loadAbsencesFromSupabase();
             renderAbsences();
           }
@@ -8820,6 +8940,18 @@ async function initializeAbsences() {
   await loadVikarSickDaysFromSupabase();
 
   renderAbsences();
+
+  if (onAdminPage && typeof currentEmployee !== "undefined" && currentEmployee?.is_admin) {
+    bindLeaveScheduleSync();
+    try {
+      if (!sessionStorage.getItem("kbfb_leave_synced")) {
+        sessionStorage.setItem("kbfb_leave_synced", "1");
+        await syncApprovedLeaveToSchedule();
+      }
+    } catch (error) {
+      console.warn("Automatisk fylling av vaktplan feilet:", error);
+    }
+  }
 }
 
 async function autoApproveOwnPendingAbsences() {
