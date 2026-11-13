@@ -70,6 +70,7 @@ function norwegianHolidaysFor(year) {
 
   const map = {
     [fixed(1, 1)]: "Nyttårsdag",
+    [offset(-4)]: "Onsdag i påsken (stengt)",
     [offset(-3)]: "Skjærtorsdag",
     [offset(-2)]: "Langfredag",
     [offset(0)]: "1. påskedag",
@@ -7220,6 +7221,205 @@ function populateLeaveYearSelect(select, name) {
   select.value = sorted.includes(Number(previous)) ? previous : String(currentYear);
 }
 
+/* ----- Årsoversikt per ansatt: kalender over hele året -----
+   Én rad per måned, én rute per dag, farget etter hva som er registrert
+   (ferie, sykdom, omsorgsdager, avspasering, permisjon ...). Under vises
+   dager som står som F i vaktplanen uten å være registrert som ferie. */
+
+const LEAVE_YEAR_KINDS = {
+  Ferie: { label: "Ferie", color: "#3f9b5a" },
+  Egenmelding: { label: "Egenmelding", color: "#d9534f" },
+  Sykemelding: { label: "Sykemelding", color: "#a3262a" },
+  Omsorgsdager: { label: "Omsorgsdager", color: "#e8903a" },
+  "Ønsker å avspasere": { label: "Avspasering", color: "#4a90d9" },
+  Tjenestefri: { label: "Tjenestefri", color: "#8e6bbf" },
+  Velferdspermisjon: { label: "Velferdspermisjon", color: "#b08a5a" },
+  "Permisjon med lønn": { label: "Permisjon", color: "#9a9a9a" },
+  "Permisjon uten lønn": { label: "Permisjon", color: "#9a9a9a" }
+};
+
+const MONTH_SHORT_NO = ["jan", "feb", "mar", "apr", "mai", "jun", "jul", "aug", "sep", "okt", "nov", "des"];
+let leaveYearFRequest = 0;
+
+// Dager i vaktplanen som står som F, hentet for ett år og én ansatt.
+async function loadVaktplanFerieDays(name, year) {
+  const { data, error } = await supabaseClient
+    .from("kbfb_shifts")
+    .select("week_start, day_index, shift_value")
+    .eq("employee", name)
+    .eq("shift_value", "F")
+    .gte("week_start", `${year - 1}-12-20`)
+    .lte("week_start", `${year}-12-31`);
+
+  if (error) {
+    console.warn("Kunne ikke hente F-dager fra vaktplanen:", error);
+    return [];
+  }
+
+  return (data || [])
+    .map(row => toDateKey(addDays(new Date(row.week_start + "T12:00:00"), row.day_index)))
+    .filter(day => day.startsWith(String(year)))
+    .sort();
+}
+
+function leaveYearCellMap(name, year) {
+  const map = {};
+  const rank = { Ferie: 1, Egenmelding: 3, Sykemelding: 4, Omsorgsdager: 3 };
+
+  absencesCache.forEach(record => {
+    if (record.name !== name || record.status === "Avslått" || !record.start_date) return;
+    const kind = LEAVE_YEAR_KINDS[record.type];
+    if (!kind) return;
+
+    getWeekdaysBetween(record.start_date, record.end_date || record.start_date).forEach(day => {
+      if (!day.startsWith(String(year))) return;
+      const pending = record.status === "Ønsket" || record.status === "Avventer";
+      const current = map[day];
+      // Syk går foran ferie hvis begge ligger på samme dag.
+      if (current && (rank[current.type] || 2) >= (rank[record.type] || 2)) return;
+      map[day] = { type: record.type, kind, pending, note: record.note || "" };
+    });
+  });
+
+  return map;
+}
+
+function renderLeaveYearGrid(name, year) {
+  const cells = leaveYearCellMap(name, year);
+  const usedTypes = new Set(Object.values(cells).map(cell => cell.kind.label));
+  const legend = [...new Map(Object.values(LEAVE_YEAR_KINDS).map(kind => [kind.label, kind])).values()]
+    .filter(kind => usedTypes.has(kind.label));
+
+  const rows = [];
+  for (let month = 0; month < 12; month++) {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const monthCounts = {};
+    let dayCells = "";
+
+    for (let day = 1; day <= 31; day++) {
+      if (day > daysInMonth) {
+        dayCells += `<span class="ly-day ly-day-empty"></span>`;
+        continue;
+      }
+
+      const date = new Date(year, month, day, 12);
+      const key = toDateKey(date);
+      const weekend = date.getDay() === 0 || date.getDay() === 6;
+      const holiday = holidayName(key);
+      const cell = cells[key];
+
+      if (cell) monthCounts[cell.kind.label] = (monthCounts[cell.kind.label] || 0) + 1;
+
+      const title = [
+        `${day}. ${MONTH_SHORT_NO[month]}`,
+        cell ? `${cell.kind.label}${cell.pending ? " (venter på svar)" : ""}${cell.note ? ` - ${cell.note}` : ""}` : "",
+        holiday || ""
+      ].filter(Boolean).join(" · ");
+
+      const classes = ["ly-day", weekend ? "ly-day-weekend" : "", holiday ? "ly-day-holiday" : "", cell?.pending ? "ly-day-pending" : ""]
+        .filter(Boolean).join(" ");
+
+      dayCells += `<span class="${classes}" title="${escapeHtml(title)}"${cell ? ` style="background:${cell.kind.color}"` : ""}>${day}</span>`;
+    }
+
+    const summary = Object.entries(monthCounts).map(([label, count]) => `${count} ${label.toLowerCase()}`).join(", ");
+    rows.push(`
+      <div class="ly-row">
+        <span class="ly-month">${MONTH_SHORT_NO[month]}</span>
+        <div class="ly-days">${dayCells}</div>
+        <span class="ly-summary">${escapeHtml(summary)}</span>
+      </div>
+    `);
+  }
+
+  return `
+    <div class="ly-legend">
+      ${legend.map(kind => `<span><i style="background:${kind.color}"></i>${escapeHtml(kind.label)}</span>`).join("")}
+      <span><i class="ly-swatch-holiday"></i>Rød dag</span>
+      <span><i class="ly-swatch-pending"></i>Venter på svar</span>
+    </div>
+    <div class="ly-grid">${rows.join("")}</div>
+  `;
+}
+
+// Tegner årsoversikten i en boks. canFix = admin kan registrere F-dager fra vaktplanen som ferie.
+function renderLeaveYearView(container, name, year, { canFix = false } = {}) {
+  if (!container) return;
+  if (!name) {
+    container.innerHTML = "";
+    return;
+  }
+
+  const request = ++leaveYearFRequest;
+
+  container.innerHTML = `
+    <h3 class="leave-subheading">Årsoversikt ${year}</h3>
+    ${renderLeaveYearGrid(name, year)}
+    <div class="ly-check muted">Sjekker vaktplanen ...</div>
+  `;
+
+  loadVaktplanFerieDays(name, year).then(fDays => {
+    if (request !== leaveYearFRequest) return;
+    const checkEl = container.querySelector(".ly-check");
+    if (!checkEl) return;
+
+    const covered = new Set();
+    absencesCache.forEach(record => {
+      if (record.name !== name || record.type !== "Ferie" || record.status === "Avslått" || !record.start_date) return;
+      getWeekdaysBetween(record.start_date, record.end_date || record.start_date).forEach(day => covered.add(day));
+    });
+
+    const missing = fDays.filter(day => !covered.has(day));
+    const registeredDays = [...covered].filter(day => day.startsWith(String(year))).length;
+
+    if (!missing.length) {
+      checkEl.className = "ly-check muted";
+      checkEl.textContent = fDays.length
+        ? `Vaktplanen og ferieføringene stemmer: ${registeredDays} feriedager registrert.`
+        : `${registeredDays} feriedager registrert. Ingen F-dager i vaktplanen som mangler.`;
+      return;
+    }
+
+    checkEl.className = "ly-check ly-check-warn";
+    checkEl.innerHTML = `
+      <strong>⚠ ${missing.length} ${missing.length === 1 ? "dag står" : "dager står"} som F i vaktplanen, men er ikke registrert som ferie</strong>
+      og telles derfor ikke i feriedager igjen:
+      ${missing.map(day => escapeHtml(formatNorwegianDate(day))).join(", ")}.
+      ${canFix ? `<button type="button" class="secondary-btn ly-fix-btn">Registrer som ferie</button>` : `<span class="muted">Si fra til styrer.</span>`}
+    `;
+
+    checkEl.querySelector(".ly-fix-btn")?.addEventListener("click", async event => {
+      if (!confirm(`Registrere ${missing.length} ${missing.length === 1 ? "dag" : "dager"} som ferie for ${name}?`)) return;
+      event.target.disabled = true;
+
+      // Sammenhengende hverdager blir én føring.
+      const ranges = [];
+      missing.forEach(day => {
+        const last = ranges[ranges.length - 1];
+        if (last && neighbourWorkday(last.end, 1) === day) last.end = day;
+        else ranges.push({ start: day, end: day });
+      });
+
+      let failed = 0;
+      for (const range of ranges) {
+        const saved = await saveAbsenceToSupabase({
+          name,
+          type: "Ferie",
+          start_date: range.start,
+          end_date: range.end,
+          status: "Godkjent",
+          note: "Hentet fra vaktplanen (F)"
+        });
+        if (!saved) failed += 1;
+      }
+
+      await loadAbsencesFromSupabase();
+      renderAbsences();
+      if (failed) alert(`${failed} føring(er) kunne ikke lagres.`);
+    });
+  });
+}
+
 function recordsForYear(name, year) {
   return absencesCache.filter(record =>
     record.name === name &&
@@ -7243,6 +7443,7 @@ function renderMyLeavePage() {
   const year = Number(leaveYearSelect?.value) || new Date().getFullYear();
 
   renderLeaveStats(statsEl, name, year, { showSickStreak: true });
+  renderLeaveYearView(document.getElementById("myLeaveYearView"), name, year);
   renderLeaveEntries(entriesEl, recordsForYear(name, year));
   activeLeaveRegister?.refreshHelp();
 }
@@ -7300,6 +7501,7 @@ function renderAdminLeaveOverview() {
   if (registerCard) registerCard.style.display = name ? "" : "none";
 
   renderLeaveStats(statsEl, name, year, { adminDetails: true });
+  renderLeaveYearView(document.getElementById("adminLeaveYearView"), name, year, { canFix: true });
   if (entriesEl) {
     if (name) renderLeaveEntries(entriesEl, recordsForYear(name, year));
     else entriesEl.innerHTML = "";

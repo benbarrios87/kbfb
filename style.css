@@ -5641,3 +5641,125 @@ mark.handbok-mark {
   background: #fde2e2;
   color: #b3261e;
 }
+
+
+/* Årsoversikt per ansatt */
+.leave-year-view {
+  margin-top: 14px;
+}
+
+.ly-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 6px 0 10px;
+  font-size: 0.82rem;
+}
+
+.ly-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ly-legend i {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+
+.ly-swatch-holiday {
+  background: #fde2e2;
+  border: 1px solid #b3261e;
+}
+
+.ly-swatch-pending {
+  background: #ccc;
+  opacity: 0.55;
+}
+
+.ly-grid {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.ly-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+  min-width: 640px;
+}
+
+.ly-month {
+  width: 28px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--green-dark);
+}
+
+.ly-days {
+  display: flex;
+  gap: 2px;
+}
+
+.ly-day {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 4px;
+  background: #efece2;
+  font-size: 0.62rem;
+  color: #6b6b6b;
+}
+
+.ly-day[style] {
+  color: #fff;
+  font-weight: 800;
+}
+
+.ly-day-empty {
+  background: transparent;
+}
+
+.ly-day-weekend {
+  background: #e2dfd4;
+  color: #a39f92;
+}
+
+.ly-day-holiday {
+  background: #fde2e2;
+  color: #b3261e;
+  outline: 1px solid #b3261e;
+}
+
+.ly-day-pending {
+  opacity: 0.55;
+}
+
+.ly-summary {
+  font-size: 0.75rem;
+  color: #555;
+  white-space: nowrap;
+}
+
+.ly-check {
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
+.ly-check-warn {
+  padding: 8px 12px;
+  background: #fff3c4;
+  border-left: 4px solid #e0a526;
+  border-radius: 10px;
+  color: #5c3b00;
+}
+
+.ly-fix-btn {
+  margin-left: 8px;
+}
