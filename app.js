@@ -172,6 +172,21 @@ async function loadClosureOverrides() {
 
 let standbyCache = {}; // "Navn|YYYY-MM-DD" -> rad
 
+// Bakvakt trengs bare uke 26, 27, 31 og 32, i romjula (27.-31.12) og i påskeuka.
+// Endre ukene her hvis det endrer seg.
+const STANDBY_WEEKS = [26, 27, 31, 32];
+
+function isStandbyPeriod(dateKey) {
+  const date = new Date(dateKey + "T12:00:00");
+  if (STANDBY_WEEKS.includes(getWeekNumber(date))) return true;
+
+  if (date.getMonth() === 11 && date.getDate() >= 27) return true;
+
+  const easter = easterSundayFor(date.getFullYear());
+  const diffDays = Math.round((date - easter) / (24 * 60 * 60 * 1000));
+  return diffDays >= -6 && diffDays <= -2;
+}
+
 function canEditStandby() {
   return typeof currentEmployee !== "undefined" &&
     !!(currentEmployee?.is_admin || isDepartmentLeadRole(currentEmployee?.role));
@@ -262,7 +277,7 @@ function applyStandbyToWeek() {
       const dateKey = toDateKey(addDays(viewedWeekStart, dayIndex));
       const isStandby = !!standbyCache[`${name}|${dateKey}`];
 
-      if (!isStandby && (!canEdit || takenDates.has(dateKey))) return;
+      if (!isStandby && (!canEdit || takenDates.has(dateKey) || !isStandbyPeriod(dateKey))) return;
 
       if (!canEdit) {
         const chip = document.createElement("span");
