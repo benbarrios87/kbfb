@@ -331,7 +331,11 @@ function applyChildCountsToHeads() {
     const chip = document.createElement("div");
     chip.className = "day-child-chip";
     chip.textContent = `Barn: ${count.small || 0} små · ${count.large || 0} store`;
-    head.appendChild(chip);
+
+    // Alltid rett under datoen, over eventuelle hendelser.
+    const dateSpan = head.querySelector(":scope > span");
+    if (dateSpan) dateSpan.insertAdjacentElement("afterend", chip);
+    else head.appendChild(chip);
   });
 }
 
