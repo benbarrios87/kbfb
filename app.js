@@ -319,7 +319,25 @@ async function loadChildCountsForWeek() {
   (data || []).forEach(row => { childCountCache[row.date] = { small: row.small, large: row.large }; });
 }
 
+// Barnetallene med liten skrift rett under datoen i hver dagoverskrift.
+function applyChildCountsToHeads() {
+  document.querySelectorAll(".day-head").forEach(head => {
+    head.querySelectorAll(".day-child-chip").forEach(chip => chip.remove());
+
+    const key = toDateKey(addDays(viewedWeekStart, Number(head.dataset.day)));
+    const count = childCountCache[key];
+    if (!count || !isStandbyPeriod(key) || holidayName(key)) return;
+
+    const chip = document.createElement("div");
+    chip.className = "day-child-chip";
+    chip.textContent = `Barn: ${count.small || 0} små · ${count.large || 0} store`;
+    head.appendChild(chip);
+  });
+}
+
 function renderChildCounts() {
+  applyChildCountsToHeads();
+
   let bar = document.getElementById("childCountBar");
   const anchor = document.getElementById("responsibilityBanner");
 
@@ -394,6 +412,7 @@ function renderChildCounts() {
       }
 
       childCountCache[date] = { small, large };
+      applyChildCountsToHeads();
       const total = bar.querySelector(`[data-cc-total="${date}"]`);
       if (total) total.textContent = `= ${small + large}`;
     });
@@ -2874,6 +2893,7 @@ function applyHolidaysToWeek() {
 function renderWeekEvents() {
   applyHolidaysToWeek();
   applyStandbyToWeek();
+  applyChildCountsToHeads();
 
   // Datoene også rett over hver dag i vaktplanen.
   document.querySelectorAll(".day-head").forEach(head => {
