@@ -5786,3 +5786,37 @@ mark.handbok-mark {
 .closure-easter {
   color: #8a4b00;
 }
+
+
+/* Oversikt for én ansatt (Vakter) */
+.employee-overview-table th,
+.employee-overview-table td {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.employee-overview-table tbody th {
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--green-dark);
+}
+
+.eo-cell {
+  min-width: 78px;
+}
+
+.eo-date {
+  display: block;
+  font-size: 0.7rem;
+  color: #777;
+  margin-bottom: 2px;
+}
+
+.eo-today {
+  outline: 2px solid var(--green);
+  outline-offset: -2px;
+}
+
+.eo-current-week th {
+  background: var(--green-soft);
+}

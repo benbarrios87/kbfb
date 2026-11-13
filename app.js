@@ -3277,6 +3277,107 @@ async function loadHomeNavBadge() {
   });
 }
 
+/* ----- Oversikt for én ansatt: flere uker i ett (Vakter) ----- */
+
+let employeeOverviewRequest = 0;
+
+async function renderEmployeeOverview() {
+  const card = document.getElementById("employeeOverview");
+  const body = document.getElementById("employeeOverviewBody");
+  if (!card || !body) return;
+
+  const name = employeeFilter?.value || "all";
+  if (name === "all") {
+    card.style.display = "none";
+    return;
+  }
+
+  card.style.display = "";
+  document.getElementById("employeeOverviewTitle").textContent = name;
+
+  const range = document.getElementById("employeeOverviewRange")?.value || "6";
+  const first = new Date(viewedWeekStart);
+  let weekCount = Number(range);
+
+  if (range === "month") {
+    // Måneden regnes etter torsdagen i uka som vises (som ukenummer).
+    const anchorDay = addDays(viewedWeekStart, 3);
+    const monthStart = new Date(anchorDay.getFullYear(), anchorDay.getMonth(), 1, 12);
+    const monthEnd = new Date(anchorDay.getFullYear(), anchorDay.getMonth() + 1, 0, 12);
+    first.setTime(getMonday(monthStart).getTime());
+    weekCount = Math.round((getMonday(monthEnd) - first) / (7 * 24 * 60 * 60 * 1000)) + 1;
+  }
+
+  const lastWeekStart = addWeeks(first, weekCount - 1);
+  const request = ++employeeOverviewRequest;
+  body.innerHTML = `<p class="muted">Laster ...</p>`;
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_shifts")
+    .select("week_start, day_index, shift_value")
+    .eq("employee", name)
+    .gte("week_start", toDateKey(first))
+    .lte("week_start", toDateKey(lastWeekStart));
+
+  if (request !== employeeOverviewRequest) return;
+
+  if (error) {
+    console.error("Kunne ikke hente vakter for oversikten:", error);
+    body.innerHTML = `<p class="muted">Kunne ikke hente vaktene.</p>`;
+    return;
+  }
+
+  const byDay = {};
+  (data || []).forEach(row => {
+    const key = `${row.week_start}|${row.day_index}`;
+    const value = (row.shift_value || "").trim();
+    if (value && !byDay[key]) byDay[key] = value;
+  });
+
+  const dayNames = ["Man", "Tir", "Ons", "Tor", "Fre"];
+  const todayKey = toDateKey(new Date());
+  const rows = [];
+
+  for (let w = 0; w < weekCount; w++) {
+    const weekStart = addWeeks(first, w);
+    const weekKey = toDateKey(weekStart);
+    let cells = "";
+
+    for (let d = 0; d < 5; d++) {
+      const date = addDays(weekStart, d);
+      const dateKey = toDateKey(date);
+      const value = byDay[`${weekKey}|${d}`] || "";
+      const holiday = holidayName(dateKey);
+      const classes = ["eo-cell", holiday ? "holiday-cell" : "", dateKey === todayKey ? "eo-today" : ""].filter(Boolean).join(" ");
+
+      cells += `
+        <td class="${classes}" ${holiday ? `title="${escapeHtml(holiday)} - fri"` : ""}>
+          <span class="eo-date">${escapeHtml(formatShortDate(date))}</span>
+          ${value ? `<span class="badge ${getShiftSelectClass(value)}">${escapeHtml(value)}</span>` : `<span class="muted">-</span>`}
+        </td>
+      `;
+    }
+
+    rows.push(`
+      <tr${weekKey === toDateKey(viewedWeekStart) ? ` class="eo-current-week"` : ""}>
+        <th>Uke ${getWeekNumber(weekStart)}</th>
+        ${cells}
+      </tr>
+    `);
+  }
+
+  body.innerHTML = `
+    <div class="table-wrap">
+      <table class="shift-table employee-overview-table">
+        <thead><tr><th></th>${dayNames.map(day => `<th>${day}</th>`).join("")}</tr></thead>
+        <tbody>${rows.join("")}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+document.getElementById("employeeOverviewRange")?.addEventListener("change", renderEmployeeOverview);
+
 function filterShifts() {
   const employee = employeeFilter?.value || "all";
   const department = departmentFilter?.value || "all";
@@ -3292,6 +3393,8 @@ function filterShifts() {
     const visibleRows = section.querySelectorAll("tbody tr:not([style*='display: none'])");
     section.style.display = visibleRows.length ? "" : "none";
   });
+
+  renderEmployeeOverview();
 }
 
 function goToPrevWeek() {
@@ -7616,7 +7719,7 @@ const adminLeaveYear = document.getElementById("adminLeaveYear");
 if (adminLeaveEmployee) adminLeaveEmployee.addEventListener("change", () => renderAdminLeaveOverview());
 if (adminLeaveYear) adminLeaveYear.addEventListener("change", () => renderAdminLeaveOverview());
 
-// "+ Legg inn overtid for en ansatt" i Lønnskjøring: åpner Fravær per ansatt,
+// "+ Legg inn overtid for en ansatt" i Lønnskjøring: åpner Ferie og fravær per ansatt,
 // ber deg velge ansatt, og åpner så "Jobbet ekstra"-skjemaet med en gang.
 let pendingAdminOvertime = false;
 
@@ -7712,7 +7815,7 @@ function renderSickFollowup() {
   const { from, to } = followupDateRange();
 
   if (!name) {
-    summaryEl.innerHTML = `<p class="muted">Velg en ansatt øverst i "Fravær per ansatt".</p>`;
+    summaryEl.innerHTML = `<p class="muted">Velg en ansatt øverst i "Ferie og fravær per ansatt".</p>`;
     entriesEl.innerHTML = "";
     return;
   }
