@@ -79,6 +79,7 @@ function norwegianHolidaysFor(year) {
     [offset(39)]: "Kristi himmelfartsdag",
     [offset(49)]: "1. pinsedag",
     [offset(50)]: "2. pinsedag",
+    [fixed(12, 24)]: "Julaften (stengt)",
     [fixed(12, 25)]: "1. juledag",
     [fixed(12, 26)]: "2. juledag"
   };
