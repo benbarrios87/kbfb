@@ -209,6 +209,14 @@ async function toggleStandby(name, dateKey) {
     }
     delete standbyCache[key];
   } else {
+    // Bare én bakvakt per dag: en eventuell annen fjernes først.
+    for (const [otherKey, other] of Object.entries(standbyCache)) {
+      if (other.date === dateKey) {
+        await supabaseClient.from("kbfb_standby").delete().eq("id", other.id);
+        delete standbyCache[otherKey];
+      }
+    }
+
     const { data, error } = await supabaseClient
       .from("kbfb_standby")
       .insert([{ employee: name, date: dateKey }])
@@ -239,12 +247,14 @@ function applyStandbyToWeek() {
   const canEdit = canEditStandby();
   const supportRows = ["Vikar", "Foreldreinnsats", "Ekstra"];
 
+  // Én bakvakt per dag: når noen er valgt, skjules knappen hos de andre.
+  const takenDates = new Set(Object.values(standbyCache).map(row => row.date));
+
   document.querySelectorAll(".department-table tbody tr").forEach(row => {
     const name = row.dataset.employee;
 
     row.querySelectorAll(".shift-cell").forEach((cell, dayIndex) => {
       cell.querySelectorAll(".standby-chip, .standby-toggle").forEach(el => el.remove());
-      cell.classList.remove("standby-cell");
 
       if (!name || supportRows.includes(name)) return;
       if (!employeesCache.some(employee => employee.name === name)) return;
@@ -252,25 +262,26 @@ function applyStandbyToWeek() {
       const dateKey = toDateKey(addDays(viewedWeekStart, dayIndex));
       const isStandby = !!standbyCache[`${name}|${dateKey}`];
 
-      if (isStandby) {
-        cell.classList.add("standby-cell");
-        cell.title = "Bakvakt";
+      if (!isStandby && (!canEdit || takenDates.has(dateKey))) return;
+
+      if (!canEdit) {
+        const chip = document.createElement("span");
+        chip.className = "standby-chip";
+        chip.textContent = "Bakvakt";
+        cell.appendChild(chip);
+        return;
       }
 
-      // Liten "B"-knapp i hjørnet (bare admin/avdelingsleder). Selve bakvakten
-      // vises som en sterk farge på hele ruta.
-      if (canEdit) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = isStandby ? "standby-chip" : "standby-toggle";
-        button.textContent = "B";
-        button.title = isStandby ? "Bakvakt - trykk for å fjerne" : "Sett som bakvakt denne dagen";
-        button.addEventListener("click", async () => {
-          button.disabled = true;
-          await toggleStandby(name, dateKey);
-        });
-        cell.appendChild(button);
-      }
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = isStandby ? "standby-chip" : "standby-toggle";
+      button.textContent = "Bakvakt";
+      button.title = isStandby ? "Bakvakt denne dagen - trykk for å fjerne" : "Sett som bakvakt denne dagen";
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        await toggleStandby(name, dateKey);
+      });
+      cell.appendChild(button);
     });
   });
 }
@@ -3571,12 +3582,13 @@ async function renderEmployeeOverview() {
       const value = byDay[`${weekKey}|${d}`] || "";
       const holiday = holidayName(dateKey);
       const isStandby = standbyDates.has(dateKey);
-      const classes = ["eo-cell", holiday ? "holiday-cell" : "", isStandby ? "standby-cell" : "", dateKey === todayKey ? "eo-today" : ""].filter(Boolean).join(" ");
+      const classes = ["eo-cell", holiday ? "holiday-cell" : "", dateKey === todayKey ? "eo-today" : ""].filter(Boolean).join(" ");
 
       cells += `
         <td class="${classes}" ${holiday ? `title="${escapeHtml(holiday)} - fri"` : ""}>
           <span class="eo-date">${escapeHtml(formatShortDate(date))}</span>
           ${value ? `<span class="badge ${getShiftSelectClass(value)}">${escapeHtml(value)}</span>` : `<span class="muted">-</span>`}
+          ${isStandby ? `<span class="standby-chip">Bakvakt</span>` : ""}
         </td>
       `;
     }

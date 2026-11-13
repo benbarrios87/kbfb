@@ -5869,56 +5869,40 @@ mark.handbok-mark {
 }
 
 
-/* Bakvakt: hele ruta får sterk farge, bare en liten "B" i hjørnet for å sette den */
-.shift-cell,
-.eo-cell {
-  position: relative;
-}
-
+/* Bakvakt: ordet "Bakvakt" i ruta. Utheves sterkt hos den som er valgt. */
 .standby-chip,
 .standby-toggle {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-size: 0.65rem;
-  font-weight: 900;
-  line-height: 1;
+  display: inline-block;
+  margin: 3px 0 0;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  line-height: 1.4;
   font-family: inherit;
-  cursor: pointer;
+  white-space: nowrap;
 }
 
 .standby-chip {
-  background: #7a3b00;
+  background: #e65100;
   color: #fff;
-  border: none;
+  border: 1px solid #e65100;
+  font-weight: 900;
+}
+
+button.standby-chip {
+  cursor: pointer;
 }
 
 .standby-toggle {
   background: transparent;
   color: #8a8a8a;
-  border: 1px dashed #bbb;
-  opacity: 0;
+  border: 1px dashed #c4c4c4;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.shift-cell:hover .standby-toggle,
+.standby-toggle:hover,
 .standby-toggle:focus {
-  opacity: 1;
-}
-
-.standby-cell {
-  background: #ffb020 !important;
-  box-shadow: inset 0 0 0 2px #e07b00;
-}
-
-.standby-cell .badge,
-.standby-cell select {
-  font-weight: 800;
+  color: #e65100;
+  border-color: #e65100;
 }
