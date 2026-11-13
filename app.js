@@ -252,54 +252,27 @@ function applyStandbyToWeek() {
       const dateKey = toDateKey(addDays(viewedWeekStart, dayIndex));
       const isStandby = !!standbyCache[`${name}|${dateKey}`];
 
-      if (isStandby) cell.classList.add("standby-cell");
+      if (isStandby) {
+        cell.classList.add("standby-cell");
+        cell.title = "Bakvakt";
+      }
 
+      // Liten "B"-knapp i hjørnet (bare admin/avdelingsleder). Selve bakvakten
+      // vises som en sterk farge på hele ruta.
       if (canEdit) {
         const button = document.createElement("button");
         button.type = "button";
         button.className = isStandby ? "standby-chip" : "standby-toggle";
-        button.textContent = isStandby ? "Bakvakt ✕" : "+ Bakvakt";
-        button.title = isStandby ? "Fjern bakvakt" : "Sett som bakvakt denne dagen";
+        button.textContent = "B";
+        button.title = isStandby ? "Bakvakt - trykk for å fjerne" : "Sett som bakvakt denne dagen";
         button.addEventListener("click", async () => {
           button.disabled = true;
           await toggleStandby(name, dateKey);
         });
         cell.appendChild(button);
-      } else if (isStandby) {
-        const chip = document.createElement("span");
-        chip.className = "standby-chip";
-        chip.textContent = "Bakvakt";
-        cell.appendChild(chip);
       }
     });
   });
-
-  renderStandbyBanner();
-}
-
-function renderStandbyBanner() {
-  let banner = document.getElementById("standbyBanner");
-  const anchor = document.getElementById("responsibilityBanner");
-  if (!banner && anchor) {
-    banner = document.createElement("div");
-    banner.id = "standbyBanner";
-    banner.className = "standby-banner";
-    anchor.insertAdjacentElement("afterend", banner);
-  }
-  if (!banner) return;
-
-  const rows = Object.values(standbyCache).sort((x, y) => x.date.localeCompare(y.date) || x.employee.localeCompare(y.employee));
-  if (!rows.length) {
-    banner.style.display = "none";
-    return;
-  }
-
-  const dayNames = ["søn", "man", "tir", "ons", "tor", "fre", "lør"];
-  banner.style.display = "";
-  banner.innerHTML = `🔔 <strong>Bakvakt denne uka:</strong> ` + rows.map(row => {
-    const date = new Date(row.date + "T12:00:00");
-    return `${escapeHtml(row.employee)} <span class="muted">(${dayNames[date.getDay()]} ${escapeHtml(formatShortDate(date))})</span>`;
-  }).join(" · ");
 }
 
 // Navnet på den røde dagen (eller null) for en dato som "YYYY-MM-DD".
@@ -3604,7 +3577,6 @@ async function renderEmployeeOverview() {
         <td class="${classes}" ${holiday ? `title="${escapeHtml(holiday)} - fri"` : ""}>
           <span class="eo-date">${escapeHtml(formatShortDate(date))}</span>
           ${value ? `<span class="badge ${getShiftSelectClass(value)}">${escapeHtml(value)}</span>` : `<span class="muted">-</span>`}
-          ${isStandby ? `<span class="standby-chip">Bakvakt</span>` : ""}
         </td>
       `;
     }
