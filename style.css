@@ -5830,3 +5830,40 @@ mark.handbok-mark {
 .eo-week-link:hover {
   background: var(--green-soft);
 }
+
+
+/* Velg stengte dager */
+.closure-toggle-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.closure-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--line, #d8d2c4);
+  border-radius: 999px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.closure-toggle.is-closed {
+  background: #fde2e2;
+  border-color: #e3a5a1;
+}
+
+.closure-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 16px;
+}
+
+.closure-add input[type="text"] {
+  min-width: 220px;
+}

@@ -56,8 +56,12 @@ function easterSundayFor(year) {
 }
 
 const holidayCacheByYear = {};
+const holidayMergedCache = {};
 
-function norwegianHolidaysFor(year) {
+// Valgene du har gjort under Admin > Stengte dager: { "2026-12-27": { closed: true, name: "Romjul" } }
+let closureOverrides = {};
+
+function baseHolidaysFor(year) {
   if (holidayCacheByYear[year]) return holidayCacheByYear[year];
 
   const easter = easterSundayFor(year);
@@ -70,7 +74,6 @@ function norwegianHolidaysFor(year) {
 
   const map = {
     [fixed(1, 1)]: "Nyttårsdag",
-    [offset(-4)]: "Onsdag i påsken (stengt)",
     [offset(-3)]: "Skjærtorsdag",
     [offset(-2)]: "Langfredag",
     [offset(0)]: "1. påskedag",
@@ -80,18 +83,85 @@ function norwegianHolidaysFor(year) {
     [offset(39)]: "Kristi himmelfartsdag",
     [offset(49)]: "1. pinsedag",
     [offset(50)]: "2. pinsedag",
-    [fixed(12, 24)]: "Julaften (stengt)",
     [fixed(12, 25)]: "1. juledag",
-    [fixed(12, 26)]: "2. juledag",
-    [fixed(12, 27)]: "Romjul (stengt)",
-    [fixed(12, 28)]: "Romjul (stengt)",
-    [fixed(12, 29)]: "Romjul (stengt)",
-    [fixed(12, 30)]: "Romjul (stengt)",
-    [fixed(12, 31)]: "Nyttårsaften (stengt)"
+    [fixed(12, 26)]: "2. juledag"
   };
 
   holidayCacheByYear[year] = map;
   return map;
+}
+
+// Dager som KAN være stengte (ikke røde). Standard: julaften, nyttårsaften og
+// onsdag i påsken er stengt, romjul er åpent. Du kan endre det i Admin.
+function closureCandidatesFor(year) {
+  const easter = easterSundayFor(year);
+  const wednesday = new Date(easter);
+  wednesday.setDate(wednesday.getDate() - 4);
+  const fixed = (month, day) => toDateKey(new Date(year, month - 1, day, 12));
+
+  const list = [
+    { date: toDateKey(wednesday), name: "Onsdag i påsken", easter: true, closed: true },
+    { date: fixed(12, 24), name: "Julaften", closed: true },
+    { date: fixed(12, 27), name: "Romjul", closed: false },
+    { date: fixed(12, 28), name: "Romjul", closed: false },
+    { date: fixed(12, 29), name: "Romjul", closed: false },
+    { date: fixed(12, 30), name: "Romjul", closed: false },
+    { date: fixed(12, 31), name: "Nyttårsaften", closed: true }
+  ];
+
+  return list;
+}
+
+// Alle dager du kan velge for stengt/åpent i et år: faste forslag + egne tillegg.
+function closureEntriesFor(year) {
+  const entries = closureCandidatesFor(year).map(entry => {
+    const override = closureOverrides[entry.date];
+    return override ? { ...entry, closed: !!override.closed } : entry;
+  });
+
+  const known = new Set(entries.map(entry => entry.date));
+  Object.entries(closureOverrides).forEach(([date, override]) => {
+    if (date.startsWith(`${year}-`) && !known.has(date) && override.closed) {
+      entries.push({ date, name: override.name || "Stengt", closed: true, custom: true });
+    }
+  });
+
+  return entries.sort((x, y) => x.date.localeCompare(y.date));
+}
+
+function norwegianHolidaysFor(year) {
+  if (holidayMergedCache[year]) return holidayMergedCache[year];
+
+  const map = { ...baseHolidaysFor(year) };
+  closureEntriesFor(year).forEach(entry => {
+    if (entry.closed) map[entry.date] = `${entry.name} (stengt)`;
+  });
+
+  holidayMergedCache[year] = map;
+  return map;
+}
+
+function resetHolidayCache() {
+  Object.keys(holidayMergedCache).forEach(year => delete holidayMergedCache[year]);
+}
+
+async function loadClosureOverrides() {
+  if (typeof supabaseClient === "undefined") return;
+
+  const { data, error } = await supabaseClient
+    .from("kbfb_closure_days")
+    .select("date, closed, name");
+
+  if (error) {
+    console.warn("Kunne ikke hente stengte dager (bruker standard):", error.message);
+    return;
+  }
+
+  closureOverrides = {};
+  (data || []).forEach(row => {
+    closureOverrides[row.date] = { closed: row.closed, name: row.name || "" };
+  });
+  resetHolidayCache();
 }
 
 // Navnet på den røde dagen (eller null) for en dato som "YYYY-MM-DD".
@@ -100,13 +170,11 @@ function holidayName(dateKey) {
   return norwegianHolidaysFor(Number(dateKey.slice(0, 4)))[dateKey] || null;
 }
 
-// Stengte dager som ikke er røde (onsdag i påsken, julaften, romjul, nyttårsaften):
-// bare hverdager. Ansatte bruker ferie, avspasering eller permisjon uten lønn.
+// Stengte hverdager som ikke er røde. Ansatte bruker ferie, avspasering eller
+// permisjon uten lønn.
 function closureDaysFor(year) {
-  return Object.entries(norwegianHolidaysFor(year))
-    .filter(([key, name]) => name.includes("(stengt)") && ![0, 6].includes(new Date(key + "T12:00:00").getDay()))
-    .map(([key, name]) => ({ date: key, name: name.replace(" (stengt)", ""), easter: name.startsWith("Onsdag") }))
-    .sort((x, y) => x.date.localeCompare(y.date));
+  return closureEntriesFor(year)
+    .filter(entry => entry.closed && ![0, 6].includes(new Date(entry.date + "T12:00:00").getDay()));
 }
 
 /* ---------- HJELPEFUNKSJONER ---------- */
@@ -4443,6 +4511,7 @@ async function initializeEvents() {
   // the merged upcoming-dates feed, on every page that runs this.
   await Promise.all([
     loadEventsFromSupabase(),
+    loadClosureOverrides(),
     employeesCache.length ? Promise.resolve() : loadEmployeesFromSupabase()
   ]);
 
@@ -7413,6 +7482,105 @@ async function setClosureChoice(employee, date, value) {
   return !!(await saveAbsenceToSupabase(record));
 }
 
+async function saveClosureChoice(date, closed, name) {
+  const { error } = await supabaseClient
+    .from("kbfb_closure_days")
+    .upsert({ date, closed, name: name || null }, { onConflict: "date" });
+
+  if (error) {
+    console.error("Kunne ikke lagre stengt dag:", error);
+    alert("Kunne ikke lagre. Har du kjørt siste SQL-steg (STEP 72) i Supabase?");
+    return false;
+  }
+  return true;
+}
+
+async function removeClosureChoice(date) {
+  const { error } = await supabaseClient.from("kbfb_closure_days").delete().eq("date", date);
+  if (error) {
+    console.error("Kunne ikke fjerne stengt dag:", error);
+    alert("Kunne ikke fjerne.");
+    return false;
+  }
+  return true;
+}
+
+// Etter en endring: hent på nytt og tegn opp igjen.
+async function refreshAfterClosureChange() {
+  await loadClosureOverrides();
+  resetHolidayCache();
+  renderClosureDays();
+  if (typeof renderWeekEvents === "function") renderWeekEvents();
+}
+
+function renderClosureToggles(year) {
+  const box = document.getElementById("closureToggles");
+  if (!box) return;
+
+  const entries = closureEntriesFor(year).filter(entry => ![0, 6].includes(new Date(entry.date + "T12:00:00").getDay()) || entry.custom);
+
+  box.innerHTML = `
+    <h3>Hvilke dager er stengt i ${year}?</h3>
+    <p class="muted">Huk av dagene det er stengt. Dagene uten hake er vanlige arbeidsdager, og er du ikke sikker kan du endre det senere. Ansatte som allerede har registrert ferie/avspasering på en dag du åpner, kan fjernes automatisk.</p>
+    <div class="closure-toggle-list">
+      ${entries.map(entry => `
+        <label class="closure-toggle ${entry.closed ? "is-closed" : ""}">
+          <input type="checkbox" data-closure-toggle="${entry.date}" data-closure-name="${escapeHtml(entry.name)}" ${entry.closed ? "checked" : ""}>
+          <span><strong>${escapeHtml(formatShortDate(new Date(entry.date + "T12:00:00")))}</strong> ${escapeHtml(entry.name)}</span>
+          ${entry.custom ? `<button type="button" class="link-btn" data-closure-remove="${entry.date}" title="Fjern denne dagen">Fjern</button>` : ""}
+        </label>
+      `).join("")}
+    </div>
+    <div class="closure-add">
+      <input type="date" id="closureAddDate" min="${year}-01-01" max="${year}-12-31">
+      <input type="text" id="closureAddName" placeholder="Navn, f.eks. Planleggingsdag" maxlength="60">
+      <button type="button" class="secondary-btn" id="closureAddBtn">Legg til stengt dag</button>
+    </div>
+  `;
+
+  box.querySelectorAll("[data-closure-toggle]").forEach(input => {
+    input.addEventListener("change", async () => {
+      const date = input.dataset.closureToggle;
+      const closed = input.checked;
+
+      if (!closed) {
+        const own = absencesCache.filter(record =>
+          record.note === CLOSURE_NOTE && record.start_date === date && (record.end_date || record.start_date) === date
+        );
+        if (own.length) {
+          const remove = confirm(`${own.length} ansatte har allerede registrert ferie/avspasering/permisjon denne dagen. Fjerne disse registreringene også?\n\nOK = fjern dem. Avbryt = la dem stå.`);
+          if (remove) {
+            for (const record of own) await deleteAbsenceFromSupabase(record.id);
+            await loadAbsencesFromSupabase();
+            renderAbsences();
+          }
+        }
+      }
+
+      input.disabled = true;
+      await saveClosureChoice(date, closed, input.dataset.closureName);
+      await refreshAfterClosureChange();
+    });
+  });
+
+  box.querySelectorAll("[data-closure-remove]").forEach(button => {
+    button.addEventListener("click", async event => {
+      event.preventDefault();
+      if (await removeClosureChoice(button.dataset.closureRemove)) await refreshAfterClosureChange();
+    });
+  });
+
+  box.querySelector("#closureAddBtn")?.addEventListener("click", async () => {
+    const date = box.querySelector("#closureAddDate").value;
+    const name = box.querySelector("#closureAddName").value.trim() || "Stengt";
+    if (!date) {
+      alert("Velg en dato først.");
+      return;
+    }
+    if (await saveClosureChoice(date, true, name)) await refreshAfterClosureChange();
+  });
+}
+
 function renderClosureDays() {
   const container = document.getElementById("closureMatrix");
   const yearSelect = document.getElementById("closureYear");
@@ -7425,13 +7593,14 @@ function renderClosureDays() {
   }
 
   const year = Number(yearSelect.value) || thisYear;
+  renderClosureToggles(year);
   const days = closureDaysFor(year);
   const people = employeesCache
     .filter(employee => employee.active !== false && employee.role !== "Vikar" && employee.role !== "Gjest")
     .sort((x, y) => x.name.localeCompare(y.name));
 
   if (!days.length || !people.length) {
-    container.innerHTML = `<p class="muted">Ingen stengte dager å vise.</p>`;
+    container.innerHTML = `<p class="muted">Ingen stengte dager i ${year} akkurat nå. Huk av en dag over hvis det er stengt.</p>`;
     return;
   }
 

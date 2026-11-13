@@ -2326,3 +2326,28 @@ DROP POLICY IF EXISTS "filarkiv_lead_delete" ON storage.objects;
 CREATE POLICY "filarkiv_lead_delete" ON storage.objects
   FOR DELETE TO authenticated
   USING (bucket_id = 'filarkiv' AND public.kbfb_is_department_lead());
+
+
+-- =========================================================
+-- STEP 72: Stengte dager du velger selv (Admin > Stengte dager)
+--   Alle kan lese (vaktplanen viser dem som røde), bare admin kan endre.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_closure_days (
+  date date PRIMARY KEY,
+  closed boolean NOT NULL DEFAULT true,
+  name text,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_closure_days ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_closure_days_read" ON public.kbfb_closure_days;
+CREATE POLICY "kbfb_closure_days_read" ON public.kbfb_closure_days
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "kbfb_closure_days_admin_write" ON public.kbfb_closure_days;
+CREATE POLICY "kbfb_closure_days_admin_write" ON public.kbfb_closure_days
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());
