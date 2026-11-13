@@ -2381,7 +2381,7 @@ CREATE POLICY "kbfb_standby_write" ON public.kbfb_standby
 
 -- =========================================================
 -- STEP 74: Påmeldte barn per dag (små / store) i jul, påske og sommer
---   Alle kan se tallene. Admin og avdelingsledere fyller inn.
+--   Alle kan se tallene. Bare admin fyller inn.
 -- =========================================================
 
 CREATE TABLE IF NOT EXISTS public.kbfb_child_counts (
@@ -2400,5 +2400,5 @@ CREATE POLICY "kbfb_child_counts_read" ON public.kbfb_child_counts
 DROP POLICY IF EXISTS "kbfb_child_counts_write" ON public.kbfb_child_counts;
 CREATE POLICY "kbfb_child_counts_write" ON public.kbfb_child_counts
   FOR ALL TO authenticated
-  USING (public.kbfb_is_admin() OR public.kbfb_is_department_lead())
-  WITH CHECK (public.kbfb_is_admin() OR public.kbfb_is_department_lead());
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());

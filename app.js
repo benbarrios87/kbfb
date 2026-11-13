@@ -303,7 +303,7 @@ function applyStandbyToWeek() {
 
 /* ---------- PÅMELDTE BARN (jul, påske, sommer) ----------
    Bare antall, ikke navn: små (under 3 år) og store (over 3 år) per dag, i de
-   samme periodene som bakvakt. Admin/avdelingsleder fyller inn, alle ser. */
+   samme periodene som bakvakt. Bare admin fyller inn, alle ser. */
 
 let childCountCache = {}; // "YYYY-MM-DD" -> { small, large }
 
@@ -344,7 +344,8 @@ function renderChildCounts() {
     return;
   }
 
-  const canEdit = canEditStandby();
+  // Bare admin legger inn barnetallene.
+  const canEdit = typeof currentEmployee !== "undefined" && !!currentEmployee?.is_admin;
   const field = (day, name, label) => {
     const value = childCountCache[day.key]?.[name];
     return `<label>${label} <input type="number" min="0" max="99" inputmode="numeric" data-cc-date="${day.key}" data-cc-field="${name}" value="${value ?? ""}"></label>`;
