@@ -33,6 +33,66 @@ function isDepartmentLeadRole(role) {
 }
 const DEPARTMENT_LEAD_ROLE_FILTER = "role.ilike.%avdelingsleder%,role.ilike.%pedagog%,role.ilike.%pedleder%";
 
+/* ---------- RØDE DAGER (norske helligdager) ----------
+   Beregnes automatisk for hvert år: faste datoer + dager regnet ut fra
+   første påskedag (påske, Kristi himmelfart, pinse). */
+
+function easterSundayFor(year) {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day, 12);
+}
+
+const holidayCacheByYear = {};
+
+function norwegianHolidaysFor(year) {
+  if (holidayCacheByYear[year]) return holidayCacheByYear[year];
+
+  const easter = easterSundayFor(year);
+  const offset = days => {
+    const date = new Date(easter);
+    date.setDate(date.getDate() + days);
+    return toDateKey(date);
+  };
+  const fixed = (month, day) => toDateKey(new Date(year, month - 1, day, 12));
+
+  const map = {
+    [fixed(1, 1)]: "Nyttårsdag",
+    [offset(-3)]: "Skjærtorsdag",
+    [offset(-2)]: "Langfredag",
+    [offset(0)]: "1. påskedag",
+    [offset(1)]: "2. påskedag",
+    [fixed(5, 1)]: "Arbeidernes dag",
+    [fixed(5, 17)]: "Grunnlovsdagen",
+    [offset(39)]: "Kristi himmelfartsdag",
+    [offset(49)]: "1. pinsedag",
+    [offset(50)]: "2. pinsedag",
+    [fixed(12, 25)]: "1. juledag",
+    [fixed(12, 26)]: "2. juledag"
+  };
+
+  holidayCacheByYear[year] = map;
+  return map;
+}
+
+// Navnet på den røde dagen (eller null) for en dato som "YYYY-MM-DD".
+function holidayName(dateKey) {
+  if (!dateKey) return null;
+  return norwegianHolidaysFor(Number(dateKey.slice(0, 4)))[dateKey] || null;
+}
+
 /* ---------- HJELPEFUNKSJONER ---------- */
 
 // Anything an employee typed (notes, item names, reasons, etc.) must go
@@ -1833,12 +1893,16 @@ async function renderMonthView() {
             a.week_start.localeCompare(b.week_start) ||
             a.day_index - b.day_index
           )
-          .map(shift => `
-            <div class="compact-item">
+          .map(shift => {
+            const dayKey = toDateKey(addDays(new Date(shift.week_start + "T12:00:00"), shift.day_index));
+            const holiday = holidayName(dayKey);
+            return `
+            <div class="compact-item${holiday ? " compact-item-holiday" : ""}">
               <strong>${formatMonthShiftDate(shift.week_start, shift.day_index)}</strong>
-              <span>${escapeHtml(shift.shift_value) || "-"}</span>
+              <span>${holiday ? `Fri · ${escapeHtml(holiday)}` : escapeHtml(shift.shift_value) || "-"}</span>
             </div>
-          `)
+          `;
+          })
           .join("")}
       </div>
     `)
@@ -2426,7 +2490,35 @@ document.querySelectorAll(".support-toggle").forEach(toggle => {
   });
 });
 
+// Røde dager: rød dagoverskrift med navnet, og kolonnen merkes "Fri".
+function applyHolidaysToWeek() {
+  document.querySelectorAll(".day-head").forEach(head => {
+    head.classList.remove("day-head-holiday");
+    head.querySelectorAll(".day-holiday-chip").forEach(chip => chip.remove());
+
+    const name = holidayName(toDateKey(addDays(viewedWeekStart, Number(head.dataset.day))));
+    if (!name) return;
+
+    head.classList.add("day-head-holiday");
+    const chip = document.createElement("div");
+    chip.className = "day-holiday-chip";
+    chip.textContent = `Fri · ${name}`;
+    head.appendChild(chip);
+  });
+
+  document.querySelectorAll(".department-table tbody tr").forEach(row => {
+    row.querySelectorAll(".shift-cell").forEach((cell, dayIndex) => {
+      const holiday = holidayName(toDateKey(addDays(viewedWeekStart, dayIndex)));
+      cell.classList.toggle("holiday-cell", !!holiday);
+      if (holiday) cell.title = `${holiday} - fri`;
+      else cell.removeAttribute("title");
+    });
+  });
+}
+
 function renderWeekEvents() {
+  applyHolidaysToWeek();
+
   // Datoene også rett over hver dag i vaktplanen.
   document.querySelectorAll(".day-head").forEach(head => {
     head.querySelectorAll(".day-event-chip").forEach(chip => chip.remove());

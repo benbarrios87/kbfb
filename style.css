@@ -5599,3 +5599,45 @@ mark.handbok-mark {
 .tariff-new-input {
   width: 120px;
 }
+
+
+/* Røde dager i vaktplanen */
+.day-head-holiday {
+  background: #fde2e2 !important;
+  color: #b3261e !important;
+}
+
+.day-holiday-chip {
+  margin-top: 4px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: #b3261e;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.holiday-cell {
+  background: #fdeaea !important;
+}
+
+.holiday-cell::before {
+  content: "Fri";
+  display: block;
+  margin-bottom: 2px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: #b3261e;
+}
+
+.holiday-cell select,
+.holiday-cell .badge {
+  opacity: 0.55;
+}
+
+.compact-item-holiday {
+  background: #fde2e2;
+  color: #b3261e;
+}
