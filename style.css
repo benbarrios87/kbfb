@@ -5906,3 +5906,50 @@ button.standby-chip {
   color: #e65100;
   border-color: #e65100;
 }
+
+
+/* Påmeldte barn (jul, påske, sommer) */
+.child-count-bar {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #eef6ef;
+  border: 1px solid #cfe3d2;
+  font-size: 0.88rem;
+}
+
+.child-count-title {
+  font-weight: 800;
+  color: var(--green-dark, #2f5d3a);
+  margin-bottom: 6px;
+}
+
+.child-count-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+
+.child-count-day {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.child-count-day label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.8rem;
+}
+
+.child-count-day input {
+  width: 3.2rem;
+  padding: 2px 4px;
+  font-size: 0.85rem;
+}
+
+.child-count-total {
+  font-weight: 800;
+}

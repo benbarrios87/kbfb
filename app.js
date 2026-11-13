@@ -301,6 +301,104 @@ function applyStandbyToWeek() {
   });
 }
 
+/* ---------- PÅMELDTE BARN (jul, påske, sommer) ----------
+   Bare antall, ikke navn: små (under 3 år) og store (over 3 år) per dag, i de
+   samme periodene som bakvakt. Admin/avdelingsleder fyller inn, alle ser. */
+
+let childCountCache = {}; // "YYYY-MM-DD" -> { small, large }
+
+async function loadChildCountsForWeek() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_child_counts")
+    .select("date, small, large")
+    .gte("date", toDateKey(viewedWeekStart))
+    .lte("date", toDateKey(addDays(viewedWeekStart, 4)));
+
+  childCountCache = {};
+  if (error) return;
+  (data || []).forEach(row => { childCountCache[row.date] = { small: row.small, large: row.large }; });
+}
+
+function renderChildCounts() {
+  let bar = document.getElementById("childCountBar");
+  const anchor = document.getElementById("responsibilityBanner");
+
+  if (!bar && anchor) {
+    bar = document.createElement("div");
+    bar.id = "childCountBar";
+    bar.className = "child-count-bar";
+    anchor.insertAdjacentElement("afterend", bar);
+  }
+  if (!bar) return;
+
+  const dayNames = ["Man", "Tir", "Ons", "Tor", "Fre"];
+  const days = [0, 1, 2, 3, 4]
+    .map(index => {
+      const date = addDays(viewedWeekStart, index);
+      return { date, key: toDateKey(date), label: dayNames[index] };
+    })
+    .filter(day => isStandbyPeriod(day.key) && !holidayName(day.key));
+
+  if (!days.length) {
+    bar.style.display = "none";
+    return;
+  }
+
+  const canEdit = canEditStandby();
+  const field = (day, name, label) => {
+    const value = childCountCache[day.key]?.[name];
+    return `<label>${label} <input type="number" min="0" max="99" inputmode="numeric" data-cc-date="${day.key}" data-cc-field="${name}" value="${value ?? ""}"></label>`;
+  };
+
+  bar.style.display = "";
+  bar.innerHTML = `
+    <div class="child-count-title">Påmeldte barn denne uka</div>
+    <div class="child-count-days">
+      ${days.map(day => {
+        const count = childCountCache[day.key];
+        const total = count ? (count.small || 0) + (count.large || 0) : null;
+        return `
+          <div class="child-count-day">
+            <strong>${day.label} ${escapeHtml(formatShortDate(day.date))}</strong>
+            ${canEdit
+              ? `${field(day, "small", "Små")}${field(day, "large", "Store")}`
+              : count
+                ? `<span>${count.small || 0} små · ${count.large || 0} store</span>`
+                : `<span class="muted">ikke registrert</span>`}
+            <span class="child-count-total" data-cc-total="${day.key}">${total === null ? "" : `= ${total}`}</span>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+
+  bar.querySelectorAll("input[data-cc-date]").forEach(input => {
+    input.addEventListener("change", async () => {
+      const date = input.dataset.ccDate;
+      const read = name => {
+        const raw = bar.querySelector(`input[data-cc-date="${date}"][data-cc-field="${name}"]`).value;
+        return raw === "" ? 0 : Math.max(0, parseInt(raw, 10) || 0);
+      };
+      const small = read("small");
+      const large = read("large");
+
+      const { error } = await supabaseClient
+        .from("kbfb_child_counts")
+        .upsert({ date, small, large, updated_at: new Date().toISOString() }, { onConflict: "date" });
+
+      if (error) {
+        console.error("Kunne ikke lagre barnetall:", error);
+        alert("Kunne ikke lagre. Har du kjørt siste SQL-steg (STEP 74) i Supabase?");
+        return;
+      }
+
+      childCountCache[date] = { small, large };
+      const total = bar.querySelector(`[data-cc-total="${date}"]`);
+      if (total) total.textContent = `= ${small + large}`;
+    });
+  });
+}
+
 // Navnet på den røde dagen (eller null) for en dato som "YYYY-MM-DD".
 function holidayName(dateKey) {
   if (!dateKey) return null;
@@ -1299,8 +1397,25 @@ async function loadTodayShiftsForDashboard() {
     .select("employee")
     .eq("date", toDateKey(target));
 
+  const { data: countRow } = await supabaseClient
+    .from("kbfb_child_counts")
+    .select("small, large")
+    .eq("date", toDateKey(target))
+    .maybeSingle();
+
+  if (countRow) {
+    standbyHtml += `
+      <div class="today-shift-department">
+        <h3>👧 Påmeldte barn</h3>
+        <div class="today-shift-list">
+          <span class="today-shift-person">${countRow.small || 0} små · ${countRow.large || 0} store (${(countRow.small || 0) + (countRow.large || 0)} totalt)</span>
+        </div>
+      </div>
+    `;
+  }
+
   if (standbyRows?.length) {
-    standbyHtml = `
+    standbyHtml += `
       <div class="today-shift-department standby-dept">
         <h3>🔔 Bakvakt</h3>
         <div class="today-shift-list">
@@ -2849,12 +2964,13 @@ async function updateWeekView() {
     head.innerHTML = `${dayNames[dayIndex]}<br><span>${formatShortDate(date)}</span>`;
   });
 
-  await loadStandbyForWeek();
+  await Promise.all([loadStandbyForWeek(), loadChildCountsForWeek()]);
 
   buildShiftDropdowns();
   applySupportRowVisibility();
   updateShiftHeadcounts();
   renderWeekEvents();
+  renderChildCounts();
   populateSwapWithSelect();
   loadSwapInbox();
   renderResponsibilityBanner(toDateKey(viewedWeekStart));
