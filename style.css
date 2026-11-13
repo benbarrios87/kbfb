@@ -5820,3 +5820,13 @@ mark.handbok-mark {
 .eo-current-week th {
   background: var(--green-soft);
 }
+
+.eo-week-link {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.eo-week-link:hover {
+  background: var(--green-soft);
+}

@@ -3280,11 +3280,22 @@ async function loadHomeNavBadge() {
 /* ----- Oversikt for én ansatt: flere uker i ett (Vakter) ----- */
 
 let employeeOverviewRequest = 0;
+let keepEmployeeOverview = false;
 
 async function renderEmployeeOverview() {
   const card = document.getElementById("employeeOverview");
   const body = document.getElementById("employeeOverviewBody");
   if (!card || !body) return;
+
+  // Etter et trykk på en uke i oversikten: la lista stå, bare flytt markeringen.
+  if (keepEmployeeOverview) {
+    keepEmployeeOverview = false;
+    const current = toDateKey(viewedWeekStart);
+    body.querySelectorAll("tbody tr").forEach(row => {
+      row.classList.toggle("eo-current-week", row.querySelector("[data-eo-week]")?.dataset.eoWeek === current);
+    });
+    return;
+  }
 
   const name = employeeFilter?.value || "all";
   if (name === "all") {
@@ -3360,7 +3371,7 @@ async function renderEmployeeOverview() {
 
     rows.push(`
       <tr${weekKey === toDateKey(viewedWeekStart) ? ` class="eo-current-week"` : ""}>
-        <th>Uke ${getWeekNumber(weekStart)}</th>
+        <th class="eo-week-link" data-eo-week="${weekKey}" title="Gå til uke ${getWeekNumber(weekStart)}">Uke ${getWeekNumber(weekStart)} →</th>
         ${cells}
       </tr>
     `);
@@ -3377,6 +3388,20 @@ async function renderEmployeeOverview() {
 }
 
 document.getElementById("employeeOverviewRange")?.addEventListener("change", renderEmployeeOverview);
+
+// Trykk på en uke i oversikten for å gå rett til den uka i vaktplanen.
+document.getElementById("employeeOverviewBody")?.addEventListener("click", event => {
+  const link = event.target.closest("[data-eo-week]");
+  if (!link) return;
+
+  viewedWeekStart = new Date(link.dataset.eoWeek + "T12:00:00");
+  keepEmployeeOverview = true;
+  updateWeekView();
+  filterShifts();
+
+  const target = document.getElementById("weekViewSection") || document.querySelector(".department-section");
+  target?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 function filterShifts() {
   const employee = employeeFilter?.value || "all";
