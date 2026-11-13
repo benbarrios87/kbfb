@@ -81,7 +81,8 @@ function norwegianHolidaysFor(year) {
     [offset(50)]: "2. pinsedag",
     [fixed(12, 24)]: "Julaften (stengt)",
     [fixed(12, 25)]: "1. juledag",
-    [fixed(12, 26)]: "2. juledag"
+    [fixed(12, 26)]: "2. juledag",
+    [fixed(12, 31)]: "Nyttårsaften (stengt)"
   };
 
   holidayCacheByYear[year] = map;
