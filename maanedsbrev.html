@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Månedsbrev | KBFB Personal</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="images/icon-192.png" type="image/png" />
+  <meta name="theme-color" content="#234d31" />
+  <link rel="apple-touch-icon" href="images/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="KBFB" />
+</head>
+
+<body class="newsletter-page">
+  <div class="layout">
+    <aside class="sidebar nature-sidebar">
+      <div class="brand">
+        <div class="brand-icon">🌲</div>
+        <h2>KBFB</h2>
+        <p>Personalrommet</p>
+      </div>
+
+      <nav>
+        <a href="dashboard.html">🏠 Hjem</a>
+        <a href="vakter.html">📅 Vakter<span class="nav-badge" style="display:none;"></span></a>
+        <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
+        <a data-admin-only href="oppgaver.html">🗒️ Oppgaver</a>
+
+        <details class="nav-folder">
+          <summary>📁 Personal</summary>
+          <div class="nav-folder-links">
+            <a data-hide-from-vikar href="datoer.html">📆 Datoer</a>
+            <a href="vikarer.html">🕒 Vikarer</a>
+            <a data-hide-from-vikar data-hide-from-guest href="ferieogavspasering.html">🌴 Ferie og fravær</a>
+            <a data-hide-from-vikar data-hide-from-guest href="kjorebok.html">🚗 Kjørebok</a>
+            <a data-hide-from-guest href="personalhandbok.html">📕 Personalhåndbok</a>
+            <a data-hide-from-guest href="vedtekter.html">⚖️ Vedtekter</a>
+          </div>
+        </details>
+
+        <details class="nav-folder" data-hide-from-vikar>
+          <summary>📁 Ressurser</summary>
+          <div class="nav-folder-links">
+            <a href="filarkiv.html">📁 Filarkiv</a>
+            <a href="aarshjul.html">🗓️ Årshjul</a>
+            <a href="arsplan.html">📘 Årsplan</a>
+          </div>
+        </details>
+
+        <details class="nav-folder">
+          <summary>📁 Praktisk</summary>
+          <div class="nav-folder-links">
+            <a href="bestillinger.html">🛒 Bestillinger</a>
+            <a class="active" data-hide-from-vikar data-hide-from-guest href="maanedsbrev.html">📰 Månedsbrev</a>
+            <a data-hide-from-vikar href="kalender.html">📍 Hvor er Benjamin?</a>
+          </div>
+        </details>
+
+        <details class="nav-folder" data-admin-only>
+          <summary>📁 Admin</summary>
+          <div class="nav-folder-links">
+            <a href="nokkeltall.html">📊 Nøkkeltall</a>
+            <a href="admin.html">⚙️ Admin</a>
+            <a href="hms.html">🏥 HMS</a>
+            <a href="lederutfordring.html">🎯 Lederutfordringen</a>
+          </div>
+        </details>
+        <a class="nav-help" href="hjelp.html">❓ Hjelp og spørsmål</a>
+      </nav>
+
+      <div class="sidebar-feedback" data-hide-from-guest>
+        <p>💬 Innspill?</p>
+        <form id="feedbackForm">
+          <textarea id="feedbackText" rows="2" placeholder="Skriv her..." required></textarea>
+          <button type="submit">Send</button>
+        </form>
+        <p id="feedbackStatus"></p>
+      </div>
+
+      <div class="sidebar-footer">
+        <span class="user-badge" id="userBadge"></span>
+        <button class="logout-btn" id="logoutBtn">Logg ut</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="forest-hero compact">
+        <div>
+          <p class="eyebrow">Til foreldre</p>
+          <h1>Månedsbrev</h1>
+          <p class="muted">Fyll inn de faste delene, så lager siden et ferdig brev. Lagre som PDF og send på e-post.</p>
+        </div>
+        <div class="hero-badge">Samme format for alle avdelinger</div>
+      </section>
+
+      <div id="newsletterApp" class="newsletter-app">
+        <section class="card nl-toolbar">
+          <div class="nl-toolbar-row">
+            <label class="compact-filter">
+              Avdeling
+              <select id="nlDepartment"></select>
+            </label>
+            <label class="compact-filter">
+              Måned
+              <select id="nlMonth"></select>
+            </label>
+            <label class="compact-filter">
+              År
+              <select id="nlYear"></select>
+            </label>
+            <span id="nlStatusBadge" class="nl-status nl-status-draft">Utkast</span>
+            <span id="nlSaveStatus" class="nl-save-status"></span>
+          </div>
+          <div class="nl-toolbar-row nl-actions">
+            <button type="button" class="secondary-btn" id="nlCopyPrevBtn">Kopier Praktisk og Hilsen fra forrige brev</button>
+            <button type="button" class="primary-btn" id="nlPublishBtn">Publiser</button>
+            <button type="button" class="secondary-btn" id="nlPrintBtn">Lagre som PDF / skriv ut</button>
+            <button type="button" class="secondary-btn" id="nlCopyTextBtn">Kopier som tekst</button>
+          </div>
+          <p class="muted" id="nlNotPublished" style="display: none;">Det finnes ikke noe publisert brev for denne måneden ennå.</p>
+        </section>
+
+        <div class="nl-grid">
+          <section class="card nl-editor" id="nlEditor"></section>
+
+          <section class="nl-preview-wrap">
+            <p class="eyebrow nl-preview-label">Slik ser brevet ut</p>
+            <div id="nlPreview" class="nl-preview"></div>
+          </section>
+        </div>
+
+        <section class="card nl-archive">
+          <p class="eyebrow">Arkiv</p>
+          <h2>Tidligere brev</h2>
+          <div id="nlArchiveList" class="nl-archive-list"><p class="muted">Laster ...</p></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+  <script src="maanedsbrev.js"></script>
+  <script src="pwa.js"></script>
+</body>
+</html>

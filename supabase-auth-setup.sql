@@ -2402,3 +2402,76 @@ CREATE POLICY "kbfb_child_counts_write" ON public.kbfb_child_counts
   FOR ALL TO authenticated
   USING (public.kbfb_is_admin())
   WITH CHECK (public.kbfb_is_admin());
+
+
+-- =========================================================
+-- STEP 75: Månedsbrev til foreldre
+--   Ett brev per avdeling og måned. Alle ansatte kan lese, bare admin og
+--   avdelingsleder i SAMME avdeling kan skrive. Bildene ligger i en lukket
+--   bøtte (bare innloggede ansatte ser dem).
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_newsletters (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  department text NOT NULL,
+  month date NOT NULL,
+  issue_no integer NOT NULL DEFAULT 1,
+  status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+  done_title text NOT NULL DEFAULT '',
+  done_text text NOT NULL DEFAULT '',
+  working_title text NOT NULL DEFAULT '',
+  working_text text NOT NULL DEFAULT '',
+  upcoming jsonb NOT NULL DEFAULT '[]'::jsonb,
+  home_text text NOT NULL DEFAULT '',
+  practical jsonb NOT NULL DEFAULT '[]'::jsonb,
+  greeting text NOT NULL DEFAULT '',
+  images jsonb NOT NULL DEFAULT '[]'::jsonb,
+  author text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  published_at timestamptz,
+  UNIQUE (department, month)
+);
+
+ALTER TABLE public.kbfb_newsletters ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_newsletters_read" ON public.kbfb_newsletters;
+CREATE POLICY "kbfb_newsletters_read" ON public.kbfb_newsletters
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "kbfb_newsletters_write" ON public.kbfb_newsletters;
+CREATE POLICY "kbfb_newsletters_write" ON public.kbfb_newsletters
+  FOR ALL TO authenticated
+  USING (
+    public.kbfb_is_admin()
+    OR (public.kbfb_is_department_lead() AND department = public.kbfb_current_employee_department())
+  )
+  WITH CHECK (
+    public.kbfb_is_admin()
+    OR (public.kbfb_is_department_lead() AND department = public.kbfb_current_employee_department())
+  );
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('newsletter-photos', 'newsletter-photos', false)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "newsletter_photos_read" ON storage.objects;
+CREATE POLICY "newsletter_photos_read" ON storage.objects
+  FOR SELECT TO authenticated
+  USING (bucket_id = 'newsletter-photos');
+
+DROP POLICY IF EXISTS "newsletter_photos_insert" ON storage.objects;
+CREATE POLICY "newsletter_photos_insert" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'newsletter-photos'
+    AND (public.kbfb_is_admin() OR public.kbfb_is_department_lead())
+  );
+
+DROP POLICY IF EXISTS "newsletter_photos_delete" ON storage.objects;
+CREATE POLICY "newsletter_photos_delete" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'newsletter-photos'
+    AND (public.kbfb_is_admin() OR public.kbfb_is_department_lead())
+  );
