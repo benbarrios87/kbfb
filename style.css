@@ -6530,3 +6530,25 @@ button.standby-chip {
   .newsletter-page .nl-images img { max-height: 48mm; }
   .newsletter-page .nl-greeting { margin: 2px 16px 0; padding: 10px 0 8px; }
 }
+
+
+/* Flere temaer under "Dette jobber vi med" */
+.nl-work-item {
+  padding: 8px 0 10px;
+  border-bottom: 1px dashed var(--line);
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.nl-work-item input[type="text"],
+.nl-work-item textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 4px;
+}
+
+.nl-work-head { display: flex; justify-content: space-between; align-items: center; }
+.nl-work-counter { display: block; text-align: right; }
+
+.nl-topic + .nl-topic { margin-top: 10px; }
+.nl-topic h3 { font-size: 1.15rem; margin: 8px 0 3px; }

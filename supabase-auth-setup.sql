@@ -2421,6 +2421,7 @@ CREATE TABLE IF NOT EXISTS public.kbfb_newsletters (
   done_text text NOT NULL DEFAULT '',
   working_title text NOT NULL DEFAULT '',
   working_text text NOT NULL DEFAULT '',
+  working_items jsonb NOT NULL DEFAULT '[]'::jsonb,
   upcoming jsonb NOT NULL DEFAULT '[]'::jsonb,
   home_text text NOT NULL DEFAULT '',
   practical jsonb NOT NULL DEFAULT '[]'::jsonb,
@@ -2475,3 +2476,12 @@ CREATE POLICY "newsletter_photos_delete" ON storage.objects
     bucket_id = 'newsletter-photos'
     AND (public.kbfb_is_admin() OR public.kbfb_is_department_lead())
   );
+
+
+-- =========================================================
+-- STEP 76: Flere temaer under "Dette jobber vi med" i månedsbrevet
+--   (kjør denne hvis du allerede har kjørt STEP 75)
+-- =========================================================
+
+ALTER TABLE public.kbfb_newsletters
+  ADD COLUMN IF NOT EXISTS working_items jsonb NOT NULL DEFAULT '[]'::jsonb;

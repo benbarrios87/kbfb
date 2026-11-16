@@ -24,7 +24,7 @@
 
   const LIMITS = {
     done_title: 60, done_text: 500,
-    working_title: 60, working_text: 400,
+    workItemTitle: 50, workItemText: 250, maxWorkItems: 4,
     home_text: 250, greeting: 90,
     practicalLines: 8, practicalLine: 90
   };
@@ -129,6 +129,20 @@
     return `<span class="nl-datetile"><i>${esc(month)}</i><b>${esc(day)}</b></span>`;
   }
 
+  function cleanWorkItems(letter) {
+    return (letter.working_items || [])
+      .map(item => ({ title: String(item.title || "").trim(), text: String(item.text || "").trim() }))
+      .filter(item => item.title || item.text);
+  }
+
+  // Eldre brev har ett tema i working_title/working_text: løft det inn i listen.
+  function normalizeWorkItems(letter) {
+    if (Array.isArray(letter.working_items) && letter.working_items.length) return;
+    letter.working_items = letter.working_title || letter.working_text
+      ? [{ title: letter.working_title || "", text: letter.working_text || "" }]
+      : [{ title: "", text: "" }];
+  }
+
   function firstName(name) {
     return String(name || "").split(" ")[0];
   }
@@ -149,6 +163,7 @@
       done_text: "",
       working_title: "",
       working_text: "",
+      working_items: [{ title: "", text: "" }],
       upcoming: [],
       home_text: "",
       practical: [],
@@ -269,7 +284,8 @@
     const images = (letter.images || []).filter(path => state.imageUrls[path]);
 
     const hasDone = letter.done_title || letter.done_text || images.length;
-    const hasWorking = letter.working_title || letter.working_text;
+    const workItems = cleanWorkItems(letter);
+    const hasWorking = workItems.length > 0;
     const hasAnything = hasDone || hasWorking || includedDates.length || letter.home_text || practical.length || letter.greeting;
 
     if (!hasAnything) {
@@ -287,8 +303,11 @@
     const working = hasWorking ? `
       <section class="nl-section nl-working">
         ${pill("working", "Dette jobber vi med")}
-        ${letter.working_title ? `<h3>${esc(letter.working_title)}</h3>` : ""}
-        <div class="nl-body">${paragraphs(letter.working_text)}</div>
+        ${workItems.map(item => `
+          <div class="nl-topic">
+            ${item.title ? `<h3>${esc(item.title)}</h3>` : ""}
+            <div class="nl-body">${paragraphs(item.text)}</div>
+          </div>`).join("")}
       </section>` : "";
 
     const upcoming = includedDates.length ? `
@@ -356,11 +375,14 @@
       if (letter.done_text) lines.push(letter.done_text);
       lines.push("");
     }
-    if (letter.working_title || letter.working_text) {
+    const topics = cleanWorkItems(letter);
+    if (topics.length) {
       lines.push("DETTE JOBBER VI MED");
-      if (letter.working_title) lines.push(letter.working_title);
-      if (letter.working_text) lines.push(letter.working_text);
-      lines.push("");
+      topics.forEach(item => {
+        if (item.title) lines.push(item.title);
+        if (item.text) lines.push(item.text);
+        lines.push("");
+      });
     }
     const dates = sortUpcoming((letter.upcoming || []).filter(item => item.include));
     if (dates.length) {
@@ -402,8 +424,9 @@
       status: letter.status,
       done_title: letter.done_title,
       done_text: letter.done_text,
-      working_title: letter.working_title,
-      working_text: letter.working_text,
+      working_items: cleanWorkItems(letter),
+      working_title: cleanWorkItems(letter)[0]?.title || "",
+      working_text: cleanWorkItems(letter)[0]?.text || "",
       upcoming: letter.upcoming,
       home_text: letter.home_text,
       practical: letter.practical,
@@ -518,6 +541,7 @@
     await ensureImageUrls(letter.images || []);
     if (loadId !== state.loadId) return;
 
+    normalizeWorkItems(letter);
     state.letter = letter;
     state.canWrite = state.canWriteFor(department);
     state.dirty = false;
@@ -667,7 +691,7 @@
     const points = (l.practical || []).length;
     return {
       done: l.done_title || l.done_text ? "Fylt ut" : "Tom",
-      working: l.working_title || l.working_text ? "Fylt ut" : "Tom",
+      working: cleanWorkItems(l).length ? `${cleanWorkItems(l).length} ${cleanWorkItems(l).length === 1 ? "tema" : "temaer"}` : "Tom",
       upcoming: dates ? `${dates} ${dates === 1 ? "dato" : "datoer"}` : "Ingen",
       home: l.home_text ? "Fylt ut" : "Tom",
       practical: points ? `${points} ${points === 1 ? "punkt" : "punkter"}` : "Tom"
@@ -695,6 +719,22 @@
       </details>`;
   }
 
+  function workItemsHtml() {
+    const items = state.letter.working_items || [];
+    return items.map((item, index) => `
+      <div class="nl-work-item">
+        <div class="nl-work-head">
+          <span class="nl-label">Tema ${index + 1}</span>
+          ${items.length > 1 ? `<button type="button" class="nl-remove" data-work-remove="${index}">Fjern</button>` : ""}
+        </div>
+        <input type="text" data-work-field="title" data-work-index="${index}" maxlength="${LIMITS.workItemTitle}" placeholder="Vennskap og samspill" value="${esc(item.title || "")}">
+        <textarea data-work-field="text" data-work-index="${index}" rows="3" maxlength="${LIMITS.workItemText}" placeholder="Vi øver oss på å vente på tur ...">${esc(item.text || "")}</textarea>
+        <span class="nl-counter nl-work-counter" data-work-counter="${index}">${String(item.text || "").length}/${LIMITS.workItemText}</span>
+      </div>`).join("") + (items.length < LIMITS.maxWorkItems
+        ? `<button type="button" class="secondary-btn" id="nlWorkAdd">+ Legg til et tema</button>`
+        : `<p class="muted nl-small">Maks ${LIMITS.maxWorkItems} temaer.</p>`);
+  }
+
   function renderEditor() {
     const letter = state.letter;
     const el = $("#nlEditor");
@@ -716,8 +756,8 @@
       `, true)}
 
       ${accordion("working", "working", "Dette jobber vi med", `
-        ${textField({ field: "working_title", label: "Overskrift", multiline: false, placeholder: "Vennskap og samspill", hint: "Kort og konkret." })}
-        ${textField({ field: "working_text", label: "Tekst", rows: 4, placeholder: "Fremover jobber vi med ...", hint: "Hva fokuserer vi på nå, og hvorfor?" })}
+        <p class="muted nl-small">Ett tema per overskrift, opptil ${LIMITS.maxWorkItems}. Eksempel: «Vennskap», «Tall og telling», «Sanger».</p>
+        <div id="nlWorkItems">${workItemsHtml()}</div>
       `)}
 
       ${accordion("upcoming", "upcoming", "Fremover", `
@@ -756,6 +796,41 @@
     const el = $("#nlEditor");
 
     $("#nlCopyPrevBtn")?.addEventListener("click", copyFromPrevious);
+
+    // Temaer under "Dette jobber vi med"
+    el.querySelectorAll("[data-work-field]").forEach(input => {
+      input.addEventListener("input", () => {
+        const item = state.letter.working_items[Number(input.dataset.workIndex)];
+        if (!item) return;
+        item[input.dataset.workField] = input.value;
+        if (input.dataset.workField === "text") {
+          const counterEl = el.querySelector(`[data-work-counter="${input.dataset.workIndex}"]`);
+          if (counterEl) counterEl.textContent = `${input.value.length}/${LIMITS.workItemText}`;
+        }
+        scheduleSave();
+        renderPreview();
+      });
+    });
+
+    el.querySelectorAll("[data-work-remove]").forEach(button => {
+      button.addEventListener("click", () => {
+        state.letter.working_items.splice(Number(button.dataset.workRemove), 1);
+        if (!state.letter.working_items.length) state.letter.working_items.push({ title: "", text: "" });
+        $("#nlWorkItems").innerHTML = workItemsHtml();
+        bindEditor();
+        scheduleSave();
+        renderPreview();
+      });
+    });
+
+    $("#nlWorkAdd")?.addEventListener("click", () => {
+      if (state.letter.working_items.length >= LIMITS.maxWorkItems) return;
+      state.letter.working_items.push({ title: "", text: "" });
+      $("#nlWorkItems").innerHTML = workItemsHtml();
+      bindEditor();
+      const inputs = el.querySelectorAll('[data-work-field="title"]');
+      inputs[inputs.length - 1]?.focus();
+    });
 
     el.querySelectorAll("[data-field]").forEach(input => {
       input.addEventListener("input", () => {
@@ -915,7 +990,7 @@
     const letter = state.letter;
     const publishing = letter.status !== "published";
 
-    if (publishing && !(letter.done_text || letter.working_text || letter.done_title)) {
+    if (publishing && !(letter.done_text || letter.done_title || cleanWorkItems(letter).length)) {
       alert("Skriv litt i brevet først.");
       return;
     }
