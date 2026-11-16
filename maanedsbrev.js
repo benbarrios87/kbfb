@@ -28,7 +28,8 @@
     done_title: 80, done_text: 2000,
     workItemTitle: 80, workItemText: 800, maxWorkItems: 6,
     home_text: 800, greeting: 120,
-    practicalLines: 14, practicalLine: 140
+    practicalLines: 14, practicalLine: 140,
+    maxImages: 4
   };
 
   const MONTHS = ["januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"];
@@ -252,7 +253,7 @@
     });
   }
 
-  async function resizeImage(file, maxSide = 1400) {
+  async function resizeImage(file, maxSide = 1000) {
     const bitmap = await createImageBitmap(file);
     const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
@@ -392,7 +393,7 @@
     wrap.appendChild(clone);
     document.body.appendChild(wrap);
 
-    clone.querySelectorAll(".nl-images img").forEach(img => { img.style.height = `${(48 / 25.4) * 96 / scale}px`; });
+    clone.querySelectorAll(".nl-images img").forEach(img => { img.style.height = `${(30 / 25.4) * 96 / scale}px`; });
     const height = clone.getBoundingClientRect().height * scale;
     wrap.remove();
 
@@ -721,13 +722,13 @@
           ${state.imageUrls[path] ? `<img src="${esc(state.imageUrls[path])}" alt="">` : ""}
           <button type="button" data-remove-image="${esc(path)}" title="Fjern bildet">Fjern</button>
         </div>`).join("")}</div>` : ""}
-      ${images.length < 2 ? `
+      ${images.length < LIMITS.maxImages ? `
         <div class="nl-upload">
           <label class="nl-confirm">
             <input type="checkbox" id="nlNoFaces"> Bildet viser <strong>ikke ansikter</strong> (hender, ryggen, ting vi har laget, natur)
           </label>
           <input type="file" id="nlImageInput" accept="image/*" disabled>
-        </div>` : `<p class="muted">Maks 2 bilder.</p>`}`;
+        </div>` : `<p class="muted">Maks ${LIMITS.maxImages} bilder.</p>`}`;
   }
 
   function accState() {
@@ -795,7 +796,7 @@
         ${textField({ field: "done_title", label: "Overskrift", multiline: false, placeholder: "Bål og pinnebrød ved Kirkerud", hint: "Kort og konkret." })}
         ${textField({ field: "done_text", label: "Tekst", rows: 5, placeholder: "Denne måneden har vi ...", hint: "Skriv så mye du synes er fornuftig. Lengden ser du over forhåndsvisningen." })}
         <div class="nl-field">
-          <span class="nl-label">Bilder (0–2)</span>
+          <span class="nl-label">Bilder (0–4, små)</span>
           <div id="nlImages">${imagesEditorHtml()}</div>
         </div>
       `, true)}
