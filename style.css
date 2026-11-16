@@ -6552,3 +6552,10 @@ button.standby-chip {
 
 .nl-topic + .nl-topic { margin-top: 10px; }
 .nl-topic h3 { font-size: 1.15rem; margin: 8px 0 3px; }
+
+
+.nl-emoji {
+  font-size: 0.8em;
+  font-style: normal;
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+}

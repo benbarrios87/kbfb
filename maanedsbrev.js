@@ -17,10 +17,10 @@
   const DEPARTMENTS = ["Sommerfuglen", "Regnbuen"];
 
   const DEPT_STYLE = {
-    Sommerfuglen: { name: "Sommerfugl-posten", color: "#e8663d", dark: "#b84a25", soft: "#fde9e0" },
-    Regnbuen: { name: "Regnbue-posten", color: "#7a4e9b", dark: "#5a3475", soft: "#f0e8f6" }
+    Sommerfuglen: { name: "Sommerfugl-posten", emoji: "🦋", color: "#e8663d", dark: "#b84a25", soft: "#fde9e0" },
+    Regnbuen: { name: "Regnbue-posten", emoji: "🌈", color: "#7a4e9b", dark: "#5a3475", soft: "#f0e8f6" }
   };
-  const FALLBACK_STYLE = { name: "Månedsbrev", color: "#2f6b3f", dark: "#234d31", soft: "#e7f2e7" };
+  const FALLBACK_STYLE = { name: "Månedsbrev", emoji: "", color: "#2f6b3f", dark: "#234d31", soft: "#e7f2e7" };
 
   const LIMITS = {
     done_title: 60, done_text: 500,
@@ -340,7 +340,7 @@
       <article class="nl-paper" style="--nl:${style.color};--nl-dark:${style.dark};--nl-soft:${style.soft}">
         <div class="nl-topbar"></div>
         <header class="nl-nameplate">
-          <h1>${esc(style.name)}</h1>
+          <h1>${style.emoji ? `<span class="nl-emoji">${style.emoji}</span> ` : ""}${esc(style.name)}${style.emoji ? `&nbsp;<span class="nl-emoji">${style.emoji}</span>` : ""}</h1>
           <p class="nl-tagline"><span>Månedsbrev fra ${esc(letter.department)}</span></p>
         </header>
         <div class="nl-dateline">
@@ -352,7 +352,7 @@
           <div class="nl-main">${done}${working}</div>
           <aside class="nl-side">${upcoming}${home}${practicalHtml}</aside>
         </div>
-        ${letter.greeting ? `<footer class="nl-greeting">${esc(letter.greeting)}</footer>` : ""}
+        ${letter.greeting ? `<footer class="nl-greeting">${style.emoji ? `<span class="nl-emoji">${style.emoji}</span> ` : ""}${esc(letter.greeting)}${style.emoji ? `&nbsp;<span class="nl-emoji">${style.emoji}</span>` : ""}</footer>` : ""}
       </article>`;
   }
 
@@ -367,7 +367,7 @@
   function plainText(letter) {
     const style = styleFor(letter.department);
     const monthKey = String(letter.month).slice(0, 7);
-    const lines = [`${style.name} – ${monthTitle(monthKey)} (nr. ${letter.issue_no})`, "Kirkerudbakken Friluftsbarnehage", ""];
+    const lines = [`${style.emoji ? `${style.emoji} ` : ""}${style.name}${style.emoji ? ` ${style.emoji}` : ""} – ${monthTitle(monthKey)} (nr. ${letter.issue_no})`, "Kirkerudbakken Friluftsbarnehage", ""];
 
     if (letter.done_title || letter.done_text) {
       lines.push("DETTE HAR VI GJORT");
@@ -397,7 +397,7 @@
       practical.forEach(line => lines.push(`- ${line}`));
       lines.push("");
     }
-    if (letter.greeting) lines.push(letter.greeting);
+    if (letter.greeting) lines.push(`${style.emoji ? `${style.emoji} ` : ""}${letter.greeting}${style.emoji ? ` ${style.emoji}` : ""}`);
     return lines.join("\n").trim();
   }
 
