@@ -6328,7 +6328,7 @@ button.standby-chip {
 .nl-length { font-weight: 700; text-transform: none; letter-spacing: 0; margin-left: 6px; color: var(--muted); }
 .nl-length[data-level="ok"] { color: var(--green); }
 .nl-length[data-level="two"] { color: #9a6a00; }
-.nl-length[data-level="long"] { color: #b3261e; }
+.nl-length[data-level="long"] { color: #9a6a00; }
 
 .nl-section h3 {
   margin: 8px 0 4px;
@@ -6497,7 +6497,7 @@ button.standby-chip {
   background: var(--nl);
 }
 
-@media (max-width: 900px) {
+@media screen and (max-width: 900px) {
   .nl-grid { grid-template-columns: minmax(0, 1fr); }
   .nl-preview-wrap { position: static; }
   .nl-columns { display: flex; flex-direction: column; padding: 14px 16px 4px; }
@@ -6529,7 +6529,9 @@ button.standby-chip {
     display: none !important;
   }
 
-  .newsletter-page .layout { display: block !important; }
+  .newsletter-page .layout { display: block !important; min-height: 0 !important; height: auto !important; }
+  .newsletter-page { margin: 0 !important; padding: 0 !important; min-height: 0 !important; }
+  .newsletter-page .main { min-height: 0 !important; height: auto !important; }
   .newsletter-page .main { padding: 0 !important; margin: 0 !important; max-width: none !important; }
   .newsletter-page .nl-grid { display: block !important; margin: 0; }
   .newsletter-page .nl-preview-wrap { position: static; }
@@ -6553,7 +6555,16 @@ button.standby-chip {
   .newsletter-page .nl-columns { padding: 10px 16px 2px; }
   .newsletter-page .nl-dateline { margin: 8px 16px 0; }
   .newsletter-page .nl-section { margin-bottom: 8px; }
-  .newsletter-page .nl-side { margin-bottom: 8px; padding-left: 14px; margin-left: 16px; }
+  .newsletter-page .nl-columns { display: block; }
+  .newsletter-page .nl-side {
+    float: right;
+    width: 34%;
+    order: 0;
+    margin: 0 0 8px 16px;
+    padding: 0 0 0 14px;
+    border-left: 1px solid #d9d0bb;
+    border-top: none;
+  }
   .newsletter-page .nl-section + .nl-section { padding-top: 8px; }
   .newsletter-page .nl-section h3 { font-size: 12.5pt; }
   .newsletter-page .nl-images { grid-template-columns: repeat(auto-fill, minmax(30mm, 1fr)); }
@@ -6588,4 +6599,59 @@ button.standby-chip {
   font-size: 0.8em;
   font-style: normal;
   font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+}
+
+
+/* ===== Månedsbrev: innbydende på mobil =====
+   Større tekst, hver seksjon som et eget "kort", store datobrikker og bilder. */
+@media screen and (max-width: 700px) {
+  .nl-paper {
+    font-size: 1.02rem;
+    line-height: 1.65;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .nl-topbar { height: 14px; }
+  .nl-nameplate { padding: 22px 16px 6px; }
+  .nl-nameplate h1 { font-size: 2.3rem; letter-spacing: -0.5px; }
+  .nl-tagline { font-size: 0.72rem; }
+
+  .nl-dateline { margin: 12px 16px 0; font-size: 0.7rem; }
+
+  .nl-columns { padding: 16px 14px 6px; }
+
+  .nl-section {
+    background: #fff;
+    border: 1px solid #e8e0cc;
+    border-radius: 16px;
+    padding: 14px 16px 6px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.04);
+  }
+
+  .nl-section + .nl-section { border-top: 1px solid #e8e0cc; padding-top: 14px; }
+
+  .nl-pill { font-size: 0.74rem; padding: 4px 13px 4px 10px; }
+  .nl-pill svg { width: 16px; height: 16px; }
+
+  .nl-section h3 { font-size: 1.5rem; margin: 10px 0 6px; }
+  .nl-topic h3 { font-size: 1.3rem; }
+
+  .nl-dropcap p:first-of-type::first-letter { font-size: 3.4em; }
+
+  .nl-datetile { width: 58px; }
+  .nl-datetile i { font-size: 0.68rem; padding: 2px; }
+  .nl-datetile b { font-size: 1.3rem; padding: 3px 2px 4px; }
+  .nl-dates li { gap: 12px; margin-bottom: 12px; }
+  .nl-datetext strong { font-size: 1.02rem; }
+
+  .nl-callout { font-size: 1.08rem; padding: 12px 14px; }
+  .nl-note { padding: 12px 14px 8px; }
+
+  .nl-images { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .nl-images img { height: 130px; }
+
+  .nl-greeting { margin: 4px 16px 0; padding: 20px 0 26px; font-size: 1.2rem; }
 }

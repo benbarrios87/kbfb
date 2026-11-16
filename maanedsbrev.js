@@ -25,11 +25,11 @@
   // Romslige tak, bare for å hindre uhell. Hvor langt brevet blir, ser du i
   // måleren over forhåndsvisningen (ca. antall A4-sider).
   const LIMITS = {
-    done_title: 80, done_text: 3000,
-    workItemTitle: 80, workItemText: 2000, maxWorkItems: 6,
-    home_text: 1200, greeting: 120,
-    practicalLines: 14, practicalLine: 140,
-    maxImages: 4
+    done_title: 100, done_text: 10000,
+    workItemTitle: 100, workItemText: 10000, maxWorkItems: 20,
+    home_text: 5000, greeting: 200,
+    practicalLines: 40, practicalLine: 220,
+    maxImages: 6
   };
 
   const MONTHS = ["januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"];
@@ -401,12 +401,11 @@
     const pages = height / pageHeight;
     const rounded = Math.max(0.1, Math.round(pages * 10) / 10);
 
-    el.textContent = pages <= 1.02
+    const sheets = Math.max(1, Math.ceil(pages - 0.02));
+    el.textContent = sheets === 1
       ? `ca. ${rounded.toLocaleString("nb-NO")} side, passer på én A4`
-      : pages <= 2
-        ? `ca. ${rounded.toLocaleString("nb-NO")} sider, blir to A4`
-        : `ca. ${rounded.toLocaleString("nb-NO")} sider, vurder å korte ned`;
-    el.dataset.level = pages <= 1.02 ? "ok" : pages <= 2 ? "two" : "long";
+      : `ca. ${rounded.toLocaleString("nb-NO")} sider, blir ${sheets} A4-sider`;
+    el.dataset.level = sheets === 1 ? "ok" : sheets === 2 ? "two" : "long";
   }
 
   // Ren tekst som kan limes rett inn i en e-post.
