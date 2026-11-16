@@ -265,12 +265,17 @@
 
   /* ---------- Avisen (brukes av både forhåndsvisning og utskrift) ---------- */
 
-  function paragraphs(text) {
+  function paragraphs(text, dropCap = false) {
     return String(text || "")
       .split(/\n+/)
       .map(line => line.trim())
       .filter(Boolean)
-      .map(line => `<p>${esc(line)}</p>`)
+      .map((line, index) => {
+        if (dropCap && index === 0 && /^\p{L}/u.test(line) && line.length > 1) {
+          return `<p><span class="nl-dc">${esc(line.charAt(0))}</span>${esc(line.slice(1))}</p>`;
+        }
+        return `<p>${esc(line)}</p>`;
+      })
       .join("");
   }
 
@@ -299,7 +304,7 @@
       <section class="nl-section nl-done">
         ${pill("done", "Dette har vi gjort")}
         ${letter.done_title ? `<h3>${esc(letter.done_title)}</h3>` : ""}
-        <div class="nl-body nl-dropcap">${paragraphs(letter.done_text)}</div>
+        <div class="nl-body">${paragraphs(letter.done_text, true)}</div>
         ${images.length ? `<div class="nl-images nl-images-${images.length}">${images.map(path => `<img src="${esc(state.imageUrls[path])}" alt="">`).join("")}</div>` : ""}
       </section>` : "";
 
@@ -1062,12 +1067,104 @@
     style.textContent = "@page { size: A4; margin: 8mm; }";
     document.head.appendChild(style);
 
+    const oldTitle = document.title;
+    document.title = fileBase(state.letter);
+
     const cleanup = () => {
       style.remove();
+      document.title = oldTitle;
       window.removeEventListener("afterprint", cleanup);
     };
     window.addEventListener("afterprint", cleanup);
     window.print();
+  }
+
+  /* ----- Last ned som bilde (mobilformat) ----- */
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[src="${src}"]`);
+      if (existing) {
+        if (window.html2canvas) resolve();
+        else existing.addEventListener("load", resolve);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error("Kunne ikke laste " + src));
+      document.head.appendChild(script);
+    });
+  }
+
+  async function toDataUrl(url) {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function fileBase(letter) {
+    const style = styleFor(letter.department);
+    return `${style.name}-${String(letter.month).slice(0, 7)}`.replace(/[^\wæøåÆØÅ-]+/g, "-");
+  }
+
+  async function downloadImage() {
+    const paper = $("#nlPreview .nl-paper");
+    if (!paper || !state.letter) {
+      alert("Skriv litt i brevet først.");
+      return;
+    }
+
+    setSaveStatus("Lager bilde ...", "pending");
+
+    try {
+      await loadScript("https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js");
+
+      // Tegn en kopi i mobilbredde utenfor skjermen, så mobil-utseendet brukes.
+      const width = 420;
+      const wrap = document.createElement("div");
+      wrap.style.cssText = `position:fixed;left:-10000px;top:0;width:${width}px;background:#fffdf8;`;
+      const clone = paper.cloneNode(true);
+      wrap.appendChild(clone);
+      document.body.appendChild(wrap);
+
+      // Ikonene (SVG) tegnes ikke i bildeeksporten: fjern dem, så det ikke blir et tomt hull.
+      clone.querySelectorAll(".nl-pill svg").forEach(svg => svg.remove());
+      clone.querySelectorAll(".nl-pill").forEach(pillEl => { pillEl.style.paddingLeft = "11px"; });
+
+      // Bildene som data, så de kommer med i bildet.
+      await Promise.all([...clone.querySelectorAll("img")].map(async img => {
+        try { img.src = await toDataUrl(img.src); } catch (error) { console.warn("Bilde ikke med:", error); }
+      }));
+
+      const canvas = await window.html2canvas(clone, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#fffdf8",
+        windowWidth: width,
+        width
+      });
+      wrap.remove();
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `${fileBase(state.letter)}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+
+      setSaveStatus("Bildet er lastet ned", "ok");
+    } catch (error) {
+      console.error("Kunne ikke lage bilde:", error);
+      setSaveStatus("Kunne ikke lage bilde", "error");
+      alert("Kunne ikke lage bildet. Bruk «Lagre som PDF» i stedet.");
+    }
   }
 
   async function copyText() {
@@ -1113,6 +1210,7 @@
 
     $("#nlPublishBtn").addEventListener("click", togglePublish);
     $("#nlPrintBtn").addEventListener("click", printLetter);
+    $("#nlImageBtn").addEventListener("click", downloadImage);
     $("#nlCopyTextBtn").addEventListener("click", copyText);
 
     await openLetter(startDepartment, monthKeyOf(now));
