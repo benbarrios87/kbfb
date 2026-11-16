@@ -25,9 +25,9 @@
   // Romslige tak, bare for å hindre uhell. Hvor langt brevet blir, ser du i
   // måleren over forhåndsvisningen (ca. antall A4-sider).
   const LIMITS = {
-    done_title: 80, done_text: 2000,
-    workItemTitle: 80, workItemText: 800, maxWorkItems: 6,
-    home_text: 800, greeting: 120,
+    done_title: 80, done_text: 3000,
+    workItemTitle: 80, workItemText: 2000, maxWorkItems: 6,
+    home_text: 1200, greeting: 120,
     practicalLines: 14, practicalLine: 140,
     maxImages: 4
   };
