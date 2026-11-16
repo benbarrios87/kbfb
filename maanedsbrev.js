@@ -22,11 +22,13 @@
   };
   const FALLBACK_STYLE = { name: "Månedsbrev", emoji: "", color: "#2f6b3f", dark: "#234d31", soft: "#e7f2e7" };
 
+  // Romslige tak, bare for å hindre uhell. Hvor langt brevet blir, ser du i
+  // måleren over forhåndsvisningen (ca. antall A4-sider).
   const LIMITS = {
-    done_title: 60, done_text: 500,
-    workItemTitle: 50, workItemText: 250, maxWorkItems: 4,
-    home_text: 250, greeting: 90,
-    practicalLines: 8, practicalLine: 90
+    done_title: 80, done_text: 2000,
+    workItemTitle: 80, workItemText: 800, maxWorkItems: 6,
+    home_text: 800, greeting: 120,
+    practicalLines: 14, practicalLine: 140
   };
 
   const MONTHS = ["januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"];
@@ -349,8 +351,8 @@
           <span>Nr. ${esc(letter.issue_no)}</span>
         </div>
         <div class="nl-columns">
+          ${upcoming || home || practicalHtml ? `<aside class="nl-side">${upcoming}${home}${practicalHtml}</aside>` : ""}
           <div class="nl-main">${done}${working}</div>
-          <aside class="nl-side">${upcoming}${home}${practicalHtml}</aside>
         </div>
         ${letter.greeting ? `<footer class="nl-greeting">${style.emoji ? `<span class="nl-emoji">${style.emoji}</span> ` : ""}${esc(letter.greeting)}${style.emoji ? `&nbsp;<span class="nl-emoji">${style.emoji}</span>` : ""}</footer>` : ""}
       </article>`;
@@ -361,6 +363,49 @@
     if (!target || !state.letter) return;
     target.innerHTML = paperHtml(state.letter);
     refreshAccStates();
+    scheduleLengthEstimate();
+  }
+
+  // Måler hvor høyt brevet blir med utskriftsmålene (A4, 9,5 pt) ved å tegne en
+  // kopi utenfor skjermen. Skjermen bruker større skrift, så vi skalerer.
+  let lengthTimer = null;
+
+  function scheduleLengthEstimate() {
+    clearTimeout(lengthTimer);
+    lengthTimer = setTimeout(updateLengthEstimate, 250);
+  }
+
+  function updateLengthEstimate() {
+    const el = $("#nlLength");
+    const paper = $("#nlPreview .nl-paper");
+    if (!el) return;
+
+    if (!paper) {
+      el.textContent = "";
+      return;
+    }
+
+    const scale = 9.5 / (0.93 * 16 * 0.75); // utskriftsskrift / skjermskrift
+    const wrap = document.createElement("div");
+    wrap.style.cssText = `position:absolute;left:-9999px;top:0;width:${733 / scale}px;visibility:hidden;`;
+    const clone = paper.cloneNode(true);
+    wrap.appendChild(clone);
+    document.body.appendChild(wrap);
+
+    clone.querySelectorAll(".nl-images img").forEach(img => { img.style.height = `${(48 / 25.4) * 96 / scale}px`; });
+    const height = clone.getBoundingClientRect().height * scale;
+    wrap.remove();
+
+    const pageHeight = ((297 - 16) / 25.4) * 96;
+    const pages = height / pageHeight;
+    const rounded = Math.max(0.1, Math.round(pages * 10) / 10);
+
+    el.textContent = pages <= 1.02
+      ? `ca. ${rounded.toLocaleString("nb-NO")} side, passer på én A4`
+      : pages <= 2
+        ? `ca. ${rounded.toLocaleString("nb-NO")} sider, blir to A4`
+        : `ca. ${rounded.toLocaleString("nb-NO")} sider, vurder å korte ned`;
+    el.dataset.level = pages <= 1.02 ? "ok" : pages <= 2 ? "two" : "long";
   }
 
   // Ren tekst som kan limes rett inn i en e-post.
@@ -634,7 +679,7 @@
   /* ---------- Skjemaet ---------- */
 
   function counter(field, value) {
-    return `${String(value || "").length}/${LIMITS[field]}`;
+    return `${String(value || "").length} tegn`;
   }
 
   function textField({ field, label, hint, rows, placeholder, multiline = true }) {
@@ -729,7 +774,7 @@
         </div>
         <input type="text" data-work-field="title" data-work-index="${index}" maxlength="${LIMITS.workItemTitle}" placeholder="Vennskap og samspill" value="${esc(item.title || "")}">
         <textarea data-work-field="text" data-work-index="${index}" rows="3" maxlength="${LIMITS.workItemText}" placeholder="Vi øver oss på å vente på tur ...">${esc(item.text || "")}</textarea>
-        <span class="nl-counter nl-work-counter" data-work-counter="${index}">${String(item.text || "").length}/${LIMITS.workItemText}</span>
+        <span class="nl-counter nl-work-counter" data-work-counter="${index}">${String(item.text || "").length} tegn</span>
       </div>`).join("") + (items.length < LIMITS.maxWorkItems
         ? `<button type="button" class="secondary-btn" id="nlWorkAdd">+ Legg til et tema</button>`
         : `<p class="muted nl-small">Maks ${LIMITS.maxWorkItems} temaer.</p>`);
@@ -748,7 +793,7 @@
 
       ${accordion("done", "done", "Dette har vi gjort", `
         ${textField({ field: "done_title", label: "Overskrift", multiline: false, placeholder: "Bål og pinnebrød ved Kirkerud", hint: "Kort og konkret." })}
-        ${textField({ field: "done_text", label: "Tekst", rows: 5, placeholder: "Denne måneden har vi ...", hint: "3–5 setninger om hva barna har gjort." })}
+        ${textField({ field: "done_text", label: "Tekst", rows: 5, placeholder: "Denne måneden har vi ...", hint: "Skriv så mye du synes er fornuftig. Lengden ser du over forhåndsvisningen." })}
         <div class="nl-field">
           <span class="nl-label">Bilder (0–2)</span>
           <div id="nlImages">${imagesEditorHtml()}</div>
@@ -776,9 +821,9 @@
 
       ${accordion("practical", "practical", "Praktisk", `
         <label class="nl-field">
-          <span class="nl-label">Ett punkt per linje <span class="nl-counter" data-counter="practical">${(letter.practical || []).length}/${LIMITS.practicalLines}</span></span>
+          <span class="nl-label">Ett punkt per linje <span class="nl-counter" data-counter="practical">${(letter.practical || []).length} punkter</span></span>
           <textarea data-field="practical" rows="4" placeholder="Husk varme votter og ekstra sokker&#10;Planleggingsdag fredag 14.">${esc((letter.practical || []).join("\n"))}</textarea>
-          <small class="muted">Klær, påminnelser, frister. Maks ${LIMITS.practicalLines} punkter.</small>
+          <small class="muted">Klær, påminnelser, frister.</small>
         </label>
         <button type="button" class="nl-linkbtn" id="nlCopyPrevBtn">Hent Praktisk og Hilsen fra forrige brev</button>
       `)}
@@ -805,7 +850,7 @@
         item[input.dataset.workField] = input.value;
         if (input.dataset.workField === "text") {
           const counterEl = el.querySelector(`[data-work-counter="${input.dataset.workIndex}"]`);
-          if (counterEl) counterEl.textContent = `${input.value.length}/${LIMITS.workItemText}`;
+          if (counterEl) counterEl.textContent = `${input.value.length} tegn`;
         }
         scheduleSave();
         renderPreview();
@@ -840,7 +885,7 @@
           const lines = input.value.split("\n").map(line => line.trim().slice(0, LIMITS.practicalLine)).filter(Boolean).slice(0, LIMITS.practicalLines);
           state.letter.practical = lines;
           const counterEl = el.querySelector('[data-counter="practical"]');
-          if (counterEl) counterEl.textContent = `${lines.length}/${LIMITS.practicalLines}`;
+          if (counterEl) counterEl.textContent = `${lines.length} punkter`;
         } else if (field === "issue_no") {
           state.letter.issue_no = Math.max(1, parseInt(input.value, 10) || 1);
         } else {

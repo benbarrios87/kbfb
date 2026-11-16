@@ -6302,17 +6302,33 @@ button.standby-chip {
   letter-spacing: 0.12em;
 }
 
-.nl-columns {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  padding: 16px 22px 6px;
+/* Sidekolonnen flyter til høyre. Hovedteksten flyter rundt den og går over
+   hele bredden når sidekolonnen er slutt (f.eks. på side 2). */
+.nl-columns { display: block; padding: 16px 22px 6px; }
+.nl-columns::after { content: ""; display: block; clear: both; }
+
+.nl-side {
+  float: right;
+  width: 34%;
+  margin: 0 0 14px 20px;
+  padding-left: 18px;
+  border-left: 1px solid #d9d0bb;
 }
 
-.nl-main { padding-right: 20px; border-right: 1px solid #d9d0bb; }
-.nl-side { padding-left: 20px; }
+.nl-main { min-width: 0; }
 
-.nl-section { margin-bottom: 14px; break-inside: avoid; }
+.nl-section { margin-bottom: 14px; }
 .nl-section + .nl-section { border-top: 1px solid #e6dfcc; padding-top: 14px; }
+.nl-side .nl-section { break-inside: avoid; }
+
+.nl-body p, .nl-callout p { orphans: 3; widows: 3; }
+.nl-section h3 { break-after: avoid; }
+.nl-datetile, .nl-dates li, .nl-note, .nl-callout, .nl-images img { break-inside: avoid; }
+
+.nl-length { font-weight: 700; text-transform: none; letter-spacing: 0; margin-left: 6px; color: var(--muted); }
+.nl-length[data-level="ok"] { color: var(--green); }
+.nl-length[data-level="two"] { color: #9a6a00; }
+.nl-length[data-level="long"] { color: #b3261e; }
 
 .nl-section h3 {
   margin: 8px 0 4px;
@@ -6479,10 +6495,17 @@ button.standby-chip {
 @media (max-width: 900px) {
   .nl-grid { grid-template-columns: minmax(0, 1fr); }
   .nl-preview-wrap { position: static; }
-  .nl-columns { grid-template-columns: minmax(0, 1fr); padding: 14px 16px 4px; }
-  .nl-main { padding-right: 0; border-right: none; }
-  .nl-side { padding-left: 0; }
-  .nl-main + .nl-side { border-top: 1px solid #e6dfcc; padding-top: 14px; }
+  .nl-columns { display: flex; flex-direction: column; padding: 14px 16px 4px; }
+  .nl-main { order: 1; }
+  .nl-side {
+    order: 2;
+    float: none;
+    width: auto;
+    margin: 4px 0 14px;
+    padding: 14px 0 0;
+    border-left: none;
+    border-top: 1px solid #e6dfcc;
+  }
   .nl-nameplate h1 { font-size: 2.2rem; }
   .nl-dateline, .nl-greeting { margin-left: 16px; margin-right: 16px; }
 }
@@ -6525,6 +6548,7 @@ button.standby-chip {
   .newsletter-page .nl-columns { padding: 10px 16px 2px; }
   .newsletter-page .nl-dateline { margin: 8px 16px 0; }
   .newsletter-page .nl-section { margin-bottom: 8px; }
+  .newsletter-page .nl-side { margin-bottom: 8px; padding-left: 14px; margin-left: 16px; }
   .newsletter-page .nl-section + .nl-section { padding-top: 8px; }
   .newsletter-page .nl-section h3 { font-size: 12.5pt; }
   .newsletter-page .nl-images img { max-height: 48mm; }
