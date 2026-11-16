@@ -6655,3 +6655,19 @@ button.standby-chip {
 
   .nl-greeting { margin: 4px 16px 0; padding: 20px 0 26px; font-size: 1.2rem; }
 }
+
+
+@media screen and (max-width: 700px) {
+  .nl-dateline {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px 16px;
+    text-align: center;
+    font-size: 0.66rem;
+  }
+  .nl-dateline span:first-child { flex-basis: 100%; }
+}
+
+@media screen and (max-width: 420px) {
+  .nl-nameplate h1 { font-size: 1.85rem; }
+}
