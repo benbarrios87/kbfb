@@ -134,16 +134,44 @@
 
   function cleanWorkItems(letter) {
     return (letter.working_items || [])
-      .map(item => ({ title: String(item.title || "").trim(), text: String(item.text || "").trim() }))
-      .filter(item => item.title || item.text);
+      .map(item => ({
+        title: String(item.title || "").trim(),
+        text: String(item.text || "").trim(),
+        images: Array.isArray(item.images) ? item.images : []
+      }))
+      .filter(item => item.title || item.text || item.images.length);
+  }
+
+  // Alle bildestier i brevet (under Dette har vi gjort og under hvert tema).
+  function allImagePaths(letter) {
+    return [
+      ...(letter.images || []),
+      ...(letter.working_items || []).flatMap(item => item.images || [])
+    ];
+  }
+
+  // Bildelista for et sted i brevet: "done" eller "w0", "w1" ... (tema).
+  function imagesOf(scope) {
+    if (scope === "done") {
+      state.letter.images = state.letter.images || [];
+      return state.letter.images;
+    }
+    const item = state.letter.working_items[Number(scope.slice(1))];
+    item.images = item.images || [];
+    return item.images;
+  }
+
+  function setImagesOf(scope, list) {
+    if (scope === "done") state.letter.images = list;
+    else state.letter.working_items[Number(scope.slice(1))].images = list;
   }
 
   // Eldre brev har ett tema i working_title/working_text: løft det inn i listen.
   function normalizeWorkItems(letter) {
     if (Array.isArray(letter.working_items) && letter.working_items.length) return;
     letter.working_items = letter.working_title || letter.working_text
-      ? [{ title: letter.working_title || "", text: letter.working_text || "" }]
-      : [{ title: "", text: "" }];
+      ? [{ title: letter.working_title || "", text: letter.working_text || "", images: [] }]
+      : [{ title: "", text: "", images: [] }];
   }
 
   function firstName(name) {
@@ -283,6 +311,13 @@
     return `<span class="nl-pill nl-pill-${kind}">${ICONS[kind]}${esc(label)}</span>`;
   }
 
+  // Små bilder i et rutenett (bare de som har lenke).
+  function gridHtml(paths) {
+    const shown = (paths || []).filter(path => state.imageUrls[path]);
+    if (!shown.length) return "";
+    return `<div class="nl-images">${shown.map(path => `<img src="${esc(state.imageUrls[path])}" alt="">`).join("")}</div>`;
+  }
+
   function paperHtml(letter) {
     const style = styleFor(letter.department);
     const monthKey = String(letter.month).slice(0, 7);
@@ -305,7 +340,7 @@
         ${pill("done", "Dette har vi gjort")}
         ${letter.done_title ? `<h3>${esc(letter.done_title)}</h3>` : ""}
         <div class="nl-body">${paragraphs(letter.done_text, true)}</div>
-        ${images.length ? `<div class="nl-images nl-images-${images.length}">${images.map(path => `<img src="${esc(state.imageUrls[path])}" alt="">`).join("")}</div>` : ""}
+        ${gridHtml(images)}
       </section>` : "";
 
     const working = hasWorking ? `
@@ -315,6 +350,7 @@
           <div class="nl-topic">
             ${item.title ? `<h3>${esc(item.title)}</h3>` : ""}
             <div class="nl-body">${paragraphs(item.text)}</div>
+            ${gridHtml(item.images)}
           </div>`).join("")}
       </section>` : "";
 
@@ -588,10 +624,10 @@
       letter.upcoming = mergeUpcoming(letter, events);
     }
 
-    await ensureImageUrls(letter.images || []);
+    normalizeWorkItems(letter);
+    await ensureImageUrls(allImagePaths(letter));
     if (loadId !== state.loadId) return;
 
-    normalizeWorkItems(letter);
     state.letter = letter;
     state.canWrite = state.canWriteFor(department);
     state.dirty = false;
@@ -718,8 +754,8 @@
       </label>`).join("");
   }
 
-  function imagesEditorHtml() {
-    const images = state.letter.images || [];
+  function imagesEditorHtml(scope) {
+    const images = imagesOf(scope);
     return `
       ${images.length ? `<div class="nl-thumbs">${images.map(path => `
         <div class="nl-thumb">
@@ -729,10 +765,10 @@
       ${images.length < LIMITS.maxImages ? `
         <div class="nl-upload">
           <label class="nl-confirm">
-            <input type="checkbox" id="nlNoFaces"> Bildet viser <strong>ikke ansikter</strong> (hender, ryggen, ting vi har laget, natur)
+            <input type="checkbox" class="nl-nofaces"> Bildet viser <strong>ikke ansikter</strong> (hender, ryggen, ting vi har laget, natur)
           </label>
-          <input type="file" id="nlImageInput" accept="image/*" disabled>
-        </div>` : `<p class="muted">Maks ${LIMITS.maxImages} bilder.</p>`}`;
+          <input type="file" class="nl-imginput" accept="image/*" disabled>
+        </div>` : `<p class="muted">Maks ${LIMITS.maxImages} bilder her.</p>`}`;
   }
 
   function accState() {
@@ -780,6 +816,10 @@
         <input type="text" data-work-field="title" data-work-index="${index}" maxlength="${LIMITS.workItemTitle}" placeholder="Vennskap og samspill" value="${esc(item.title || "")}">
         <textarea data-work-field="text" data-work-index="${index}" rows="3" maxlength="${LIMITS.workItemText}" placeholder="Vi øver oss på å vente på tur ...">${esc(item.text || "")}</textarea>
         <span class="nl-counter nl-work-counter" data-work-counter="${index}">${String(item.text || "").length} tegn</span>
+        <div class="nl-work-images">
+          <span class="nl-label">Bilder til dette temaet (valgfritt)</span>
+          <div class="nl-images-ed" data-scope="w${index}">${imagesEditorHtml("w" + index)}</div>
+        </div>
       </div>`).join("") + (items.length < LIMITS.maxWorkItems
         ? `<button type="button" class="secondary-btn" id="nlWorkAdd">+ Legg til et tema</button>`
         : `<p class="muted nl-small">Maks ${LIMITS.maxWorkItems} temaer.</p>`);
@@ -800,8 +840,8 @@
         ${textField({ field: "done_title", label: "Overskrift", multiline: false, placeholder: "Bål og pinnebrød ved Kirkerud", hint: "Kort og konkret." })}
         ${textField({ field: "done_text", label: "Tekst", rows: 5, placeholder: "Denne måneden har vi ...", hint: "Skriv så mye du synes er fornuftig. Lengden ser du over forhåndsvisningen." })}
         <div class="nl-field">
-          <span class="nl-label">Bilder (0–4, små)</span>
-          <div id="nlImages">${imagesEditorHtml()}</div>
+          <span class="nl-label">Bilder (små, valgfritt)</span>
+          <div class="nl-images-ed" data-scope="done">${imagesEditorHtml("done")}</div>
         </div>
       `, true)}
 
@@ -864,8 +904,9 @@
 
     el.querySelectorAll("[data-work-remove]").forEach(button => {
       button.addEventListener("click", () => {
-        state.letter.working_items.splice(Number(button.dataset.workRemove), 1);
-        if (!state.letter.working_items.length) state.letter.working_items.push({ title: "", text: "" });
+        const removed = state.letter.working_items.splice(Number(button.dataset.workRemove), 1)[0];
+        if (removed?.images?.length) supabaseClient.storage.from(BUCKET).remove(removed.images);
+        if (!state.letter.working_items.length) state.letter.working_items.push({ title: "", text: "", images: [] });
         $("#nlWorkItems").innerHTML = workItemsHtml();
         bindEditor();
         scheduleSave();
@@ -875,7 +916,7 @@
 
     $("#nlWorkAdd")?.addEventListener("click", () => {
       if (state.letter.working_items.length >= LIMITS.maxWorkItems) return;
-      state.letter.working_items.push({ title: "", text: "" });
+      state.letter.working_items.push({ title: "", text: "", images: [] });
       $("#nlWorkItems").innerHTML = workItemsHtml();
       bindEditor();
       const inputs = el.querySelectorAll('[data-work-field="title"]');
@@ -950,23 +991,30 @@
     });
 
     // Bilder: må bekrefte "ingen ansikter" før en fil kan velges.
-    const noFaces = $("#nlNoFaces");
-    const fileInput = $("#nlImageInput");
-    if (noFaces && fileInput) {
-      noFaces.addEventListener("change", () => { fileInput.disabled = !noFaces.checked; });
-      fileInput.addEventListener("change", () => uploadImage(fileInput));
-    }
+    el.querySelectorAll(".nl-images-ed").forEach(box => {
+      const scope = box.dataset.scope;
+      const noFaces = box.querySelector(".nl-nofaces");
+      const fileInput = box.querySelector(".nl-imginput");
 
-    el.querySelectorAll("[data-remove-image]").forEach(button => {
-      button.addEventListener("click", () => removeImage(button.dataset.removeImage));
+      if (noFaces && fileInput && !fileInput.dataset.bound) {
+        fileInput.dataset.bound = "1";
+        noFaces.addEventListener("change", () => { fileInput.disabled = !noFaces.checked; });
+        fileInput.addEventListener("change", () => uploadImage(scope, box, fileInput));
+      }
+
+      box.querySelectorAll("[data-remove-image]").forEach(button => {
+        if (button.dataset.bound) return;
+        button.dataset.bound = "1";
+        button.addEventListener("click", () => removeImage(scope, box, button.dataset.removeImage));
+      });
     });
   }
 
-  async function uploadImage(input) {
+  async function uploadImage(scope, box, input) {
     const file = input.files?.[0];
     if (!file) return;
 
-    if (!$("#nlNoFaces").checked) {
+    if (!box.querySelector(".nl-nofaces")?.checked) {
       alert("Bekreft først at bildet ikke viser ansikter.");
       input.value = "";
       return;
@@ -983,9 +1031,9 @@
       const { error } = await supabaseClient.storage.from(BUCKET).upload(path, blob, { contentType: "image/jpeg" });
       if (error) throw error;
 
-      state.letter.images = [...(state.letter.images || []), path];
+      setImagesOf(scope, [...imagesOf(scope), path]);
       await ensureImageUrls([path]);
-      $("#nlImages").innerHTML = imagesEditorHtml();
+      box.innerHTML = imagesEditorHtml(scope);
       bindEditor();
       scheduleSave();
       renderPreview();
@@ -997,12 +1045,12 @@
     }
   }
 
-  async function removeImage(path) {
+  async function removeImage(scope, box, path) {
     if (!confirm("Fjerne dette bildet fra brevet?")) return;
-    state.letter.images = (state.letter.images || []).filter(item => item !== path);
+    setImagesOf(scope, imagesOf(scope).filter(item => item !== path));
     delete state.imageUrls[path];
     await supabaseClient.storage.from(BUCKET).remove([path]);
-    $("#nlImages").innerHTML = imagesEditorHtml();
+    box.innerHTML = imagesEditorHtml(scope);
     bindEditor();
     scheduleSave();
     renderPreview();

@@ -6671,3 +6671,9 @@ button.standby-chip {
 @media screen and (max-width: 420px) {
   .nl-nameplate h1 { font-size: 1.85rem; }
 }
+
+
+/* Bilder under hvert tema */
+.nl-work-images { margin-top: 6px; }
+.nl-work-images .nl-label { font-weight: 600; font-size: 0.8rem; color: var(--muted); }
+.nl-topic .nl-images { margin-top: 8px; }
