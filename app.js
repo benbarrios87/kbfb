@@ -8369,9 +8369,10 @@ function openAdminOvertimeForm() {
   document.querySelector('#adminLeaveRegister .leave-tile[data-kind="ekstra"]')?.click();
 }
 
-const adminAddOvertimeBtn = document.getElementById("adminAddOvertimeBtn");
-if (adminAddOvertimeBtn && adminLeaveEmployee) {
-  adminAddOvertimeBtn.addEventListener("click", () => {
+// Alle knappene med data-admin-overtime (hurtigvalg øverst + i Lønnsoversikt)
+// gjør det samme: åpne føringene per ansatt, be deg velge ansatt, åpne skjemaet.
+if (adminLeaveEmployee) {
+  const startAdminOvertime = () => {
     const card = adminLeaveEmployee.closest("details");
     if (card) card.open = true;
     adminLeaveEmployee.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -8381,10 +8382,36 @@ if (adminAddOvertimeBtn && adminLeaveEmployee) {
     } else {
       pendingAdminOvertime = true;
       adminLeaveEmployee.focus();
+
+      let hint = document.getElementById("adminPickHint");
+      if (!hint) {
+        hint = document.createElement("span");
+        hint.id = "adminPickHint";
+        hint.className = "muted";
+        adminLeaveEmployee.insertAdjacentElement("afterend", hint);
+      }
+      hint.textContent = " ← Velg hvem overtiden gjelder, så åpnes skjemaet.";
     }
+  };
+
+  document.querySelectorAll("[data-admin-overtime]").forEach(button => {
+    button.addEventListener("click", startAdminOvertime);
+  });
+
+  // Registrer ferie/fravær for en ansatt: åpner samme kort og lar deg velge ansatt.
+  document.getElementById("adminQuickLeaveBtn")?.addEventListener("click", () => {
+    const card = adminLeaveEmployee.closest("details");
+    if (card) card.open = true;
+    adminLeaveEmployee.scrollIntoView({ behavior: "smooth", block: "center" });
+    adminLeaveEmployee.focus();
+  });
+
+  document.getElementById("adminQuickPayrollBtn")?.addEventListener("click", () => {
+    document.getElementById("payrollRunBtn")?.click();
   });
 
   adminLeaveEmployee.addEventListener("change", () => {
+    document.getElementById("adminPickHint")?.remove();
     if (pendingAdminOvertime && adminLeaveEmployee.value) openAdminOvertimeForm();
   });
 }

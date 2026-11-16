@@ -5975,3 +5975,13 @@ button.standby-chip {
   border: 1px solid #a8a8a8;
   background: #fff;
 }
+
+
+/* Hurtigvalg øverst i Admin */
+.admin-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
