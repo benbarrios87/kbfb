@@ -97,27 +97,34 @@
 
       <div id="newsletterApp" class="newsletter-app">
         <section class="card nl-toolbar">
-          <div class="nl-toolbar-row">
-            <label class="compact-filter">
-              Avdeling
-              <select id="nlDepartment"></select>
-            </label>
-            <label class="compact-filter">
-              Måned
-              <select id="nlMonth"></select>
-            </label>
-            <label class="compact-filter">
-              År
-              <select id="nlYear"></select>
-            </label>
-            <span id="nlStatusBadge" class="nl-status nl-status-draft">Utkast</span>
-            <span id="nlSaveStatus" class="nl-save-status"></span>
-          </div>
-          <div class="nl-toolbar-row nl-actions">
-            <button type="button" class="secondary-btn" id="nlCopyPrevBtn">Kopier Praktisk og Hilsen fra forrige brev</button>
-            <button type="button" class="primary-btn" id="nlPublishBtn">Publiser</button>
-            <button type="button" class="secondary-btn" id="nlPrintBtn">Lagre som PDF / skriv ut</button>
-            <button type="button" class="secondary-btn" id="nlCopyTextBtn">Kopier som tekst</button>
+          <div class="nl-bar">
+            <div class="nl-pickers">
+              <label class="compact-filter">
+                Avdeling
+                <select id="nlDepartment"></select>
+              </label>
+              <label class="compact-filter">
+                Måned
+                <select id="nlMonth"></select>
+              </label>
+              <label class="compact-filter">
+                År
+                <select id="nlYear"></select>
+              </label>
+            </div>
+
+            <div class="nl-bar-right">
+              <span id="nlStatusBadge" class="nl-status nl-status-draft">Utkast</span>
+              <span id="nlSaveStatus" class="nl-save-status"></span>
+              <button type="button" class="primary-btn" id="nlPublishBtn">Publiser</button>
+              <details class="nl-menu">
+                <summary class="secondary-btn">Send eller skriv ut ▾</summary>
+                <div class="nl-menu-items">
+                  <button type="button" id="nlPrintBtn">Lagre som PDF / skriv ut</button>
+                  <button type="button" id="nlCopyTextBtn">Kopier som tekst til e-post</button>
+                </div>
+              </details>
+            </div>
           </div>
           <p class="muted" id="nlNotPublished" style="display: none;">Det finnes ikke noe publisert brev for denne måneden ennå.</p>
         </section>
@@ -131,11 +138,11 @@
           </section>
         </div>
 
-        <section class="card nl-archive">
-          <p class="eyebrow">Arkiv</p>
-          <h2>Tidligere brev</h2>
+        <details class="card nl-archive">
+          <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Tidligere brev <span class="muted" id="nlArchiveCount"></span></h2></summary>
+          <p class="muted">Åpne et gammelt brev for å se hvordan det ble formulert, eller bruk det som mal.</p>
           <div id="nlArchiveList" class="nl-archive-list"><p class="muted">Laster ...</p></div>
-        </section>
+        </details>
       </div>
     </main>
   </div>

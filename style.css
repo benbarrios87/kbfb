@@ -5989,22 +5989,30 @@ button.standby-chip {
 
 /* ===== MÅNEDSBREV ===== */
 
-.nl-toolbar-row {
+/* --- Verktøylinje --- */
+
+.nl-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 18px;
+}
+
+.nl-pickers {
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px 14px;
 }
 
-.nl-toolbar-row + .nl-toolbar-row {
-  margin-top: 12px;
+.nl-bar-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
 }
 
-.nl-save-status {
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
+.nl-save-status { font-size: 0.82rem; color: var(--muted); }
 .nl-save-status[data-kind="ok"] { color: var(--green); }
 .nl-save-status[data-kind="error"] { color: #b3261e; font-weight: 700; }
 
@@ -6019,32 +6027,52 @@ button.standby-chip {
 .nl-status-draft { background: #eee7d8; color: #6b5a33; }
 .nl-status-published { background: #dff0df; color: #1f5a2c; }
 
+.nl-menu { position: relative; }
+.nl-menu summary { list-style: none; cursor: pointer; display: inline-block; }
+.nl-menu summary::-webkit-details-marker { display: none; }
+
+.nl-menu-items {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  min-width: 240px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.nl-menu-items button {
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.nl-menu-items button:hover { background: var(--green-soft); }
+
 .nl-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 18px;
   align-items: start;
   margin-top: 16px;
 }
 
-.newsletter-app.nl-readonly .nl-grid {
-  grid-template-columns: minmax(0, 1fr);
-}
+.newsletter-app.nl-readonly .nl-grid { grid-template-columns: minmax(0, 1fr); }
 
-.nl-preview-wrap {
-  position: sticky;
-  top: 12px;
-}
+.nl-preview-wrap { position: sticky; top: 12px; }
 
-.nl-archive {
-  margin-top: 16px;
-}
-
-.nl-archive-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
+.nl-archive { margin-top: 16px; }
+.nl-archive-list { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .nl-archive-item {
   display: flex;
@@ -6062,36 +6090,65 @@ button.standby-chip {
 .nl-archive-item span { font-size: 0.78rem; color: var(--muted); }
 .nl-archive-item.active { border-color: var(--green); background: var(--green-soft); }
 
-/* Skjema */
+/* --- Skjema (trekkspill) --- */
+
+.nl-editor { padding: 14px; }
 
 .nl-reminder {
-  padding: 10px 12px;
-  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
   background: #fff6dc;
   border: 1px solid #ecd58a;
-  font-size: 0.88rem;
-  margin-bottom: 14px;
-}
-
-.nl-group {
-  border: none;
-  border-left: 4px solid var(--line);
-  margin: 0 0 18px;
-  padding: 0 0 0 14px;
-}
-
-.nl-group legend { padding: 0; margin-bottom: 8px; }
-
-.nl-group-done { border-left-color: #e8663d; }
-.nl-group-working { border-left-color: #4c8c4a; }
-.nl-group-upcoming { border-left-color: #3b7ea1; }
-.nl-group-home { border-left-color: #d6648a; }
-.nl-group-practical { border-left-color: #e0a800; }
-
-.nl-field {
-  display: block;
+  font-size: 0.82rem;
   margin-bottom: 12px;
 }
+
+.nl-issue-inline { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; white-space: nowrap; }
+.nl-issue-inline input { width: 64px; }
+
+.nl-acc {
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  background: #fff;
+}
+
+.nl-acc-done { border-left-color: #e8663d; }
+.nl-acc-working { border-left-color: #4c8c4a; }
+.nl-acc-upcoming { border-left-color: #3b7ea1; }
+.nl-acc-home { border-left-color: #d6648a; }
+.nl-acc-practical { border-left-color: #e0a800; }
+
+.nl-acc summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+}
+
+.nl-acc summary::-webkit-details-marker { display: none; }
+
+.nl-acc-state {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.nl-acc-state.filled { color: var(--green); font-weight: 700; }
+
+.nl-acc[open] summary { border-bottom: 1px solid var(--line); }
+.nl-acc-body { padding: 12px; }
+
+.nl-small { font-size: 0.82rem; margin: 0 0 8px; }
+
+.nl-field { display: block; margin-bottom: 10px; }
 
 .nl-field textarea,
 .nl-field input[type="text"],
@@ -6100,17 +6157,31 @@ button.standby-chip {
   box-sizing: border-box;
 }
 
+.nl-field small { display: block; margin-top: 2px; font-size: 0.76rem; }
+
 .nl-label {
   display: flex;
   justify-content: space-between;
   gap: 8px;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   margin-bottom: 3px;
 }
 
-.nl-counter { font-weight: 600; font-size: 0.78rem; color: var(--muted); }
-.nl-issue-field input { max-width: 100px; }
+.nl-counter { font-weight: 600; font-size: 0.76rem; color: var(--muted); }
+
+.nl-greeting-field { margin-top: 12px; }
+
+.nl-linkbtn {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.82rem;
+  color: var(--green);
+  text-decoration: underline;
+  cursor: pointer;
+}
 
 .nl-date-row {
   display: flex;
@@ -6122,13 +6193,7 @@ button.standby-chip {
 
 .nl-date-title { flex: 1; min-width: 120px; }
 
-.nl-add-date {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-
+.nl-add-date { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .nl-add-date input[type="text"] { flex: 1; min-width: 160px; }
 
 .nl-remove,
@@ -6147,9 +6212,24 @@ button.standby-chip {
 .nl-thumb button { position: absolute; top: 4px; right: 4px; }
 
 .nl-upload { display: flex; flex-direction: column; gap: 6px; }
-.nl-confirm { font-size: 0.88rem; }
+.nl-confirm { font-size: 0.82rem; }
 
-/* Avisen */
+/* Datobrikke (brukes både i skjema og i avisen) */
+
+.nl-datechip,
+.nl-date-row .nl-datechip {
+  flex: none;
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 7px;
+  background: #3b7ea1;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* --- Avisen --- */
 
 .nl-preview { min-height: 120px; }
 
@@ -6163,58 +6243,97 @@ button.standby-chip {
 }
 
 .nl-paper {
-  background: #fff;
-  border-radius: 10px;
+  background: #fffdf8;
+  border: 1px solid #e3dac6;
+  border-radius: 4px;
   box-shadow: var(--shadow);
   overflow: hidden;
-  color: #26302a;
+  color: #2a2a26;
   font-size: 0.93rem;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
-.nl-masthead {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 12px;
-  padding: 18px 22px;
-  background: var(--nl);
-  color: #fff;
-}
+.nl-topbar { height: 10px; background: var(--nl); }
 
-.nl-masthead h1 {
+.nl-nameplate { text-align: center; padding: 18px 22px 4px; }
+
+.nl-nameplate h1 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 2.1rem;
-  line-height: 1.05;
-  letter-spacing: -0.5px;
-  color: #fff;
+  font-size: 2.9rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -1px;
+  color: var(--nl-dark);
 }
 
-.nl-masthead p { margin: 4px 0 0; font-size: 0.82rem; opacity: 0.95; color: #fff; }
+.nl-tagline {
+  margin: 10px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #6a6a60;
+}
 
-.nl-issue { text-align: right; display: flex; flex-direction: column; font-size: 0.9rem; }
-.nl-issue strong { font-family: Georgia, "Times New Roman", serif; font-size: 1.15rem; }
-.nl-issue span { opacity: 0.95; }
+.nl-tagline::before,
+.nl-tagline::after {
+  content: "";
+  flex: 1;
+  max-width: 90px;
+  height: 1px;
+  background: #cfc6b0;
+}
+
+.nl-dateline {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 12px 22px 0;
+  padding: 5px 0;
+  border-top: 3px double #3a3a34;
+  border-bottom: 1px solid #3a3a34;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
 
 .nl-columns {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
-  gap: 22px;
-  padding: 18px 22px 8px;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  padding: 16px 22px 6px;
 }
 
-.nl-section { margin-bottom: 16px; break-inside: avoid; }
+.nl-main { padding-right: 20px; border-right: 1px solid #d9d0bb; }
+.nl-side { padding-left: 20px; }
+
+.nl-section { margin-bottom: 14px; break-inside: avoid; }
+.nl-section + .nl-section { border-top: 1px solid #e6dfcc; padding-top: 14px; }
 
 .nl-section h3 {
-  margin: 6px 0 4px;
+  margin: 8px 0 4px;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   line-height: 1.2;
-  color: #1f2a23;
+  color: #1f2320;
 }
 
-.nl-section p { margin: 0 0 6px; }
+.nl-body p,
+.nl-callout p { margin: 0 0 6px; }
+
+.nl-dropcap p:first-of-type::first-letter {
+  float: left;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 3.1em;
+  font-weight: 700;
+  line-height: 0.85;
+  padding: 4px 7px 0 0;
+  color: var(--nl-dark);
+}
 
 .nl-pill {
   display: inline-flex;
@@ -6222,9 +6341,9 @@ button.standby-chip {
   gap: 5px;
   padding: 3px 11px 3px 8px;
   border-radius: 999px;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
@@ -6244,38 +6363,85 @@ button.standby-chip {
 .nl-pill-home { background: #fbe1eb; color: #a8325f; }
 .nl-pill-practical { background: #fff1bd; color: #7a5a00; }
 
-.nl-images { display: grid; gap: 8px; margin-top: 8px; }
+.nl-images { display: grid; gap: 8px; margin-top: 10px; }
 .nl-images-2 { grid-template-columns: 1fr 1fr; }
-.nl-images img { width: 100%; max-height: 230px; object-fit: cover; border-radius: 8px; display: block; }
 
-.nl-dates, .nl-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.nl-images img {
+  width: 100%;
+  max-height: 230px;
+  object-fit: cover;
+  display: block;
+  padding: 3px;
+  background: #fff;
+  border: 1px solid #d9d0bb;
+}
+
+.nl-dates, .nl-list { list-style: none; margin: 10px 0 0; padding: 0; }
 
 .nl-dates li {
   display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  margin-bottom: 7px;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 9px;
 }
 
-.nl-datechip {
+.nl-datetile {
   flex: none;
-  display: inline-block;
-  padding: 1px 8px;
+  width: 48px;
+  border: 1.5px solid #3b7ea1;
   border-radius: 7px;
+  overflow: hidden;
+  text-align: center;
+  background: #fff;
+}
+
+.nl-datetile i {
+  display: block;
+  padding: 1px 2px;
   background: #3b7ea1;
   color: #fff;
-  font-size: 0.74rem;
+  font-style: normal;
+  font-size: 0.6rem;
   font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   white-space: nowrap;
 }
 
-.nl-datetext small { color: #5a6a60; }
-
-.nl-list li {
-  position: relative;
-  padding-left: 16px;
-  margin-bottom: 5px;
+.nl-datetile b {
+  display: block;
+  padding: 2px 2px 3px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.05rem;
+  line-height: 1.2;
+  color: #1f5f8b;
+  white-space: nowrap;
 }
+
+.nl-datetext strong { display: block; line-height: 1.25; }
+.nl-datetext small { display: block; color: #5a6a60; }
+
+.nl-callout {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #fdeaf1;
+  border-left: 4px solid #d6648a;
+  border-radius: 0 8px 8px 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+}
+
+.nl-note {
+  margin-top: 8px;
+  padding: 10px 12px 6px;
+  background: #fff6c9;
+  border: 1px solid #ecd98a;
+  border-radius: 3px;
+  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.06);
+}
+
+.nl-note .nl-list { margin: 0; }
+.nl-list li { position: relative; padding-left: 16px; margin-bottom: 5px; }
 
 .nl-list li::before {
   content: "";
@@ -6285,26 +6451,43 @@ button.standby-chip {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #e0a800;
+  background: #d39b00;
 }
 
 .nl-greeting {
-  margin: 4px 22px 0;
-  padding: 12px 0 18px;
-  border-top: 2px solid var(--nl);
+  position: relative;
+  margin: 6px 22px 0;
+  padding: 16px 0 20px;
+  text-align: center;
+  border-top: 1px solid #cfc6b0;
   font-family: Georgia, "Times New Roman", serif;
   font-style: italic;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
+}
+
+.nl-greeting::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  width: 64px;
+  height: 3px;
+  margin-left: -32px;
+  background: var(--nl);
 }
 
 @media (max-width: 900px) {
   .nl-grid { grid-template-columns: minmax(0, 1fr); }
   .nl-preview-wrap { position: static; }
-  .nl-columns { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 16px 16px 4px; }
-  .nl-masthead { padding: 16px; }
-  .nl-masthead h1 { font-size: 1.7rem; }
-  .nl-greeting { margin: 4px 16px 0; }
+  .nl-columns { grid-template-columns: minmax(0, 1fr); padding: 14px 16px 4px; }
+  .nl-main { padding-right: 0; border-right: none; }
+  .nl-side { padding-left: 0; }
+  .nl-main + .nl-side { border-top: 1px solid #e6dfcc; padding-top: 14px; }
+  .nl-nameplate h1 { font-size: 2.2rem; }
+  .nl-dateline, .nl-greeting { margin-left: 16px; margin-right: 16px; }
 }
+
+/* --- Utskrift (A4) --- */
 
 @media print {
   .newsletter-page .sidebar,
@@ -6332,15 +6515,18 @@ button.standby-chip {
   .newsletter-page .nl-paper {
     box-shadow: none;
     border-radius: 0;
+    border: none;
     font-size: 9.5pt;
     line-height: 1.4;
   }
 
-  .newsletter-page .nl-masthead { padding: 12px 16px; }
-  .newsletter-page .nl-masthead h1 { font-size: 24pt; }
-  .newsletter-page .nl-columns { gap: 16px; padding: 12px 16px 4px; }
-  .newsletter-page .nl-section { margin-bottom: 10px; }
-  .newsletter-page .nl-section h3 { font-size: 12pt; }
+  .newsletter-page .nl-nameplate { padding: 10px 16px 2px; }
+  .newsletter-page .nl-nameplate h1 { font-size: 28pt; }
+  .newsletter-page .nl-columns { padding: 10px 16px 2px; }
+  .newsletter-page .nl-dateline { margin: 8px 16px 0; }
+  .newsletter-page .nl-section { margin-bottom: 8px; }
+  .newsletter-page .nl-section + .nl-section { padding-top: 8px; }
+  .newsletter-page .nl-section h3 { font-size: 12.5pt; }
   .newsletter-page .nl-images img { max-height: 48mm; }
-  .newsletter-page .nl-greeting { margin: 2px 16px 0; padding: 8px 0 8px; }
+  .newsletter-page .nl-greeting { margin: 2px 16px 0; padding: 10px 0 8px; }
 }

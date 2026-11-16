@@ -113,6 +113,22 @@
     return `${a.day}. ${MONTHS_SHORT[a.month - 1]}–${b.day}. ${MONTHS_SHORT[b.month - 1]}`;
   }
 
+  // Liten kalenderbrikke: måned øverst, dag(er) stort under.
+  function tileHtml(dateKey, endKey) {
+    const a = parseDay(dateKey);
+    const short = month => MONTHS_SHORT[month - 1].replace(".", "");
+    let day = String(a.day);
+    let month = short(a.month);
+
+    if (endKey && endKey !== dateKey) {
+      const b = parseDay(endKey);
+      day = `${a.day}–${b.day}`;
+      month = a.month === b.month && a.year === b.year ? short(b.month) : `${short(a.month)}–${short(b.month)}`;
+    }
+
+    return `<span class="nl-datetile"><i>${esc(month)}</i><b>${esc(day)}</b></span>`;
+  }
+
   function firstName(name) {
     return String(name || "").split(" ")[0];
   }
@@ -264,7 +280,7 @@
       <section class="nl-section nl-done">
         ${pill("done", "Dette har vi gjort")}
         ${letter.done_title ? `<h3>${esc(letter.done_title)}</h3>` : ""}
-        ${paragraphs(letter.done_text)}
+        <div class="nl-body nl-dropcap">${paragraphs(letter.done_text)}</div>
         ${images.length ? `<div class="nl-images nl-images-${images.length}">${images.map(path => `<img src="${esc(state.imageUrls[path])}" alt="">`).join("")}</div>` : ""}
       </section>` : "";
 
@@ -272,7 +288,7 @@
       <section class="nl-section nl-working">
         ${pill("working", "Dette jobber vi med")}
         ${letter.working_title ? `<h3>${esc(letter.working_title)}</h3>` : ""}
-        ${paragraphs(letter.working_text)}
+        <div class="nl-body">${paragraphs(letter.working_text)}</div>
       </section>` : "";
 
     const upcoming = includedDates.length ? `
@@ -281,8 +297,8 @@
         <ul class="nl-dates">
           ${includedDates.map(item => `
             <li>
-              <span class="nl-datechip">${esc(chipLabel(item.date, item.end_date))}</span>
-              <span class="nl-datetext"><strong>${esc(item.title)}</strong>${item.note ? `<br><small>${esc(item.note)}</small>` : ""}</span>
+              ${tileHtml(item.date, item.end_date)}
+              <span class="nl-datetext"><strong>${esc(item.title)}</strong>${item.note ? `<small>${esc(item.note)}</small>` : ""}</span>
             </li>`).join("")}
         </ul>
       </section>` : "";
@@ -290,27 +306,29 @@
     const home = letter.home_text ? `
       <section class="nl-section nl-home">
         ${pill("home", "Til dere hjemme")}
-        ${paragraphs(letter.home_text)}
+        <div class="nl-callout">${paragraphs(letter.home_text)}</div>
       </section>` : "";
 
     const practicalHtml = practical.length ? `
       <section class="nl-section nl-practical">
         ${pill("practical", "Praktisk")}
-        <ul class="nl-list">${practical.map(line => `<li>${esc(line)}</li>`).join("")}</ul>
+        <div class="nl-note">
+          <ul class="nl-list">${practical.map(line => `<li>${esc(line)}</li>`).join("")}</ul>
+        </div>
       </section>` : "";
 
     return `
       <article class="nl-paper" style="--nl:${style.color};--nl-dark:${style.dark};--nl-soft:${style.soft}">
-        <header class="nl-masthead">
-          <div>
-            <h1>${esc(style.name)}</h1>
-            <p>Kirkerudbakken Friluftsbarnehage · ${esc(letter.department)}</p>
-          </div>
-          <div class="nl-issue">
-            <strong>${esc(monthTitle(monthKey))}</strong>
-            <span>Nr. ${esc(letter.issue_no)}</span>
-          </div>
+        <div class="nl-topbar"></div>
+        <header class="nl-nameplate">
+          <h1>${esc(style.name)}</h1>
+          <p class="nl-tagline"><span>Månedsbrev fra ${esc(letter.department)}</span></p>
         </header>
+        <div class="nl-dateline">
+          <span>Kirkerudbakken Friluftsbarnehage</span>
+          <span>${esc(monthTitle(monthKey))}</span>
+          <span>Nr. ${esc(letter.issue_no)}</span>
+        </div>
         <div class="nl-columns">
           <div class="nl-main">${done}${working}</div>
           <aside class="nl-side">${upcoming}${home}${practicalHtml}</aside>
@@ -323,6 +341,7 @@
     const target = $("#nlPreview");
     if (!target || !state.letter) return;
     target.innerHTML = paperHtml(state.letter);
+    refreshAccStates();
   }
 
   // Ren tekst som kan limes rett inn i en e-post.
@@ -528,7 +547,6 @@
     publishBtn.textContent = published ? "Sett tilbake til utkast" : "Publiser";
     publishBtn.className = published ? "secondary-btn" : "primary-btn";
 
-    $("#nlCopyPrevBtn").style.display = state.canWrite ? "" : "none";
     $("#nlEditor").style.display = state.canWrite ? "" : "none";
     app.classList.toggle("nl-readonly", !state.canWrite);
 
@@ -553,6 +571,9 @@
       list.innerHTML = `<p class="muted">Kunne ikke hente arkivet.</p>`;
       return;
     }
+
+    const countEl = $("#nlArchiveCount");
+    if (countEl) countEl.textContent = data?.length ? `(${data.length})` : "";
 
     if (!data?.length) {
       list.innerHTML = `<p class="muted">Ingen brev ennå for ${esc(state.department)}.</p>`;
@@ -634,10 +655,44 @@
       ${images.length < 2 ? `
         <div class="nl-upload">
           <label class="nl-confirm">
-            <input type="checkbox" id="nlNoFaces"> Bildet viser <strong>ikke ansikter</strong>
+            <input type="checkbox" id="nlNoFaces"> Bildet viser <strong>ikke ansikter</strong> (hender, ryggen, ting vi har laget, natur)
           </label>
           <input type="file" id="nlImageInput" accept="image/*" disabled>
         </div>` : `<p class="muted">Maks 2 bilder.</p>`}`;
+  }
+
+  function accState() {
+    const l = state.letter;
+    const dates = (l.upcoming || []).filter(item => item.include).length;
+    const points = (l.practical || []).length;
+    return {
+      done: l.done_title || l.done_text ? "Fylt ut" : "Tom",
+      working: l.working_title || l.working_text ? "Fylt ut" : "Tom",
+      upcoming: dates ? `${dates} ${dates === 1 ? "dato" : "datoer"}` : "Ingen",
+      home: l.home_text ? "Fylt ut" : "Tom",
+      practical: points ? `${points} ${points === 1 ? "punkt" : "punkter"}` : "Tom"
+    };
+  }
+
+  function refreshAccStates() {
+    if (!state.letter) return;
+    const states = accState();
+    app.querySelectorAll("[data-acc-state]").forEach(el => {
+      const text = states[el.dataset.accState];
+      el.textContent = text;
+      el.classList.toggle("filled", text !== "Tom" && text !== "Ingen");
+    });
+  }
+
+  function accordion(key, kind, label, content, open) {
+    return `
+      <details class="nl-acc nl-acc-${kind}" ${open ? "open" : ""}>
+        <summary>
+          ${pill(kind, label)}
+          <span class="nl-acc-state" data-acc-state="${key}"></span>
+        </summary>
+        <div class="nl-acc-body">${content}</div>
+      </details>`;
   }
 
   function renderEditor() {
@@ -647,65 +702,60 @@
 
     el.innerHTML = `
       <div class="nl-reminder">
-        <strong>Husk:</strong> ikke skriv fulle navn på barn eller sensitive opplysninger.
-        Bilder uten ansikter: hender som jobber, ryggen til barna, ting de har laget, natur, bålplassen, utstyr.
+        <span><strong>Husk:</strong> ikke fulle navn på barn, og ingen ansikter på bilder.</span>
+        <label class="nl-issue-inline">Nr. <input type="number" min="1" max="999" data-field="issue_no" value="${esc(letter.issue_no)}"></label>
       </div>
 
-      <label class="nl-field nl-issue-field">
-        <span class="nl-label">Utgave nr.</span>
-        <input type="number" min="1" max="999" data-field="issue_no" value="${esc(letter.issue_no)}">
-      </label>
-
-      <fieldset class="nl-group nl-group-done">
-        <legend>${pill("done", "Dette har vi gjort")}</legend>
-        ${textField({ field: "done_title", label: "Overskrift", multiline: false, placeholder: "Bål og pinnebrød ved Kirkerud", hint: "Kort og konkret. Eksempel: «Vi utforsket skogen i snø»." })}
-        ${textField({ field: "done_text", label: "Tekst", rows: 6, placeholder: "Denne måneden har vi ...", hint: "Hva har barna gjort? 3–5 setninger er nok. Ikke fulle navn på barn." })}
+      ${accordion("done", "done", "Dette har vi gjort", `
+        ${textField({ field: "done_title", label: "Overskrift", multiline: false, placeholder: "Bål og pinnebrød ved Kirkerud", hint: "Kort og konkret." })}
+        ${textField({ field: "done_text", label: "Tekst", rows: 5, placeholder: "Denne måneden har vi ...", hint: "3–5 setninger om hva barna har gjort." })}
         <div class="nl-field">
           <span class="nl-label">Bilder (0–2)</span>
           <div id="nlImages">${imagesEditorHtml()}</div>
-          <small class="muted">Ingen ansikter. Bildene ligger i en lukket lagring, og brevet sendes som PDF.</small>
         </div>
-      </fieldset>
+      `, true)}
 
-      <fieldset class="nl-group nl-group-working">
-        <legend>${pill("working", "Dette jobber vi med")}</legend>
-        ${textField({ field: "working_title", label: "Overskrift", multiline: false, placeholder: "Vennskap og samspill", hint: "Eksempel: «Vi øver oss på å vente på tur»." })}
-        ${textField({ field: "working_text", label: "Tekst", rows: 5, placeholder: "Fremover jobber vi med ...", hint: "Hva fokuserer vi på nå, og hvorfor? Gjerne hvordan dere kan støtte hjemme." })}
-      </fieldset>
+      ${accordion("working", "working", "Dette jobber vi med", `
+        ${textField({ field: "working_title", label: "Overskrift", multiline: false, placeholder: "Vennskap og samspill", hint: "Kort og konkret." })}
+        ${textField({ field: "working_text", label: "Tekst", rows: 4, placeholder: "Fremover jobber vi med ...", hint: "Hva fokuserer vi på nå, og hvorfor?" })}
+      `)}
 
-      <fieldset class="nl-group nl-group-upcoming">
-        <legend>${pill("upcoming", "Fremover")}</legend>
-        <p class="muted">Hentet fra datolista (resten av måneden og neste måned). Hak av det som gjelder ${esc(letter.department)}.</p>
+      ${accordion("upcoming", "upcoming", "Fremover", `
+        <p class="muted nl-small">Fra datolista, resten av måneden og neste måned. Hak av det som gjelder ${esc(letter.department)}.</p>
         <div id="nlUpcomingList">${upcomingEditorHtml()}</div>
         <div class="nl-add-date">
           <input type="date" id="nlCustomDate" aria-label="Dato">
           <input type="text" id="nlCustomTitle" maxlength="70" placeholder="Egen dato, f.eks. Tur til skogen" aria-label="Tekst">
           <button type="button" class="secondary-btn" id="nlCustomAdd">Legg til</button>
         </div>
-      </fieldset>
+      `)}
 
-      <fieldset class="nl-group nl-group-home">
-        <legend>${pill("home", "Til dere hjemme")}</legend>
-        ${textField({ field: "home_text", label: "Tekst", rows: 3, placeholder: "Snakk om hva dere ser på vei til barnehagen.", hint: "Noe enkelt foreldre kan gjøre hjemme. Maks 250 tegn." })}
-      </fieldset>
+      ${accordion("home", "home", "Til dere hjemme", `
+        ${textField({ field: "home_text", label: "Tekst", rows: 3, placeholder: "Snakk om hva dere ser på vei til barnehagen.", hint: "Noe enkelt dere kan gjøre hjemme." })}
+      `)}
 
-      <fieldset class="nl-group nl-group-practical">
-        <legend>${pill("practical", "Praktisk")}</legend>
+      ${accordion("practical", "practical", "Praktisk", `
         <label class="nl-field">
           <span class="nl-label">Ett punkt per linje <span class="nl-counter" data-counter="practical">${(letter.practical || []).length}/${LIMITS.practicalLines}</span></span>
           <textarea data-field="practical" rows="4" placeholder="Husk varme votter og ekstra sokker&#10;Planleggingsdag fredag 14.">${esc((letter.practical || []).join("\n"))}</textarea>
-          <small class="muted">Klær, påminnelser, frister. Maks ${LIMITS.practicalLines} punkter, kort og tydelig.</small>
+          <small class="muted">Klær, påminnelser, frister. Maks ${LIMITS.practicalLines} punkter.</small>
         </label>
-      </fieldset>
+        <button type="button" class="nl-linkbtn" id="nlCopyPrevBtn">Hent Praktisk og Hilsen fra forrige brev</button>
+      `)}
 
-      ${textField({ field: "greeting", label: "Hilsen", multiline: false, placeholder: "Hilsen Imelda og alle på Sommerfuglen", hint: "Eksempel: «Hilsen Imelda og alle på Sommerfuglen»." })}
+      <div class="nl-greeting-field">
+        ${textField({ field: "greeting", label: "Hilsen", multiline: false, placeholder: "Hilsen Imelda og alle på Sommerfuglen", hint: "Avslutningen nederst i brevet." })}
+      </div>
     `;
 
     bindEditor();
+    refreshAccStates();
   }
 
   function bindEditor() {
     const el = $("#nlEditor");
+
+    $("#nlCopyPrevBtn")?.addEventListener("click", copyFromPrevious);
 
     el.querySelectorAll("[data-field]").forEach(input => {
       input.addEventListener("input", () => {
@@ -942,7 +992,6 @@
     $("#nlYear").addEventListener("change", change);
 
     $("#nlPublishBtn").addEventListener("click", togglePublish);
-    $("#nlCopyPrevBtn").addEventListener("click", copyFromPrevious);
     $("#nlPrintBtn").addEventListener("click", printLetter);
     $("#nlCopyTextBtn").addEventListener("click", copyText);
 
