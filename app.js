@@ -302,7 +302,7 @@ function applyStandbyToWeek() {
 }
 
 /* ---------- PÅMELDTE BARN (jul, påske, sommer) ----------
-   Bare antall, ikke navn: små (under 3 år) og store (over 3 år) per dag, i de
+   Bare antall, ikke navn: Sommerfuglen (SF) og Regnbuen (RB) per dag, i de
    samme periodene som bakvakt. Bare admin fyller inn, alle ser. */
 
 let childCountCache = {}; // "YYYY-MM-DD" -> { small, large }
@@ -330,7 +330,7 @@ function applyChildCountsToHeads() {
 
     const chip = document.createElement("div");
     chip.className = "day-child-chip";
-    chip.textContent = `Barn: ${count.small || 0} små · ${count.large || 0} store`;
+    chip.textContent = `Barn: SF ${count.small || 0} · RB ${count.large || 0}`;
 
     // Alltid rett under datoen, over eventuelle hendelser.
     const dateSpan = head.querySelector(":scope > span");
@@ -384,9 +384,9 @@ function renderChildCounts() {
           <div class="child-count-day">
             <strong>${day.label} ${escapeHtml(formatShortDate(day.date))}</strong>
             ${canEdit
-              ? `${field(day, "small", "Små")}${field(day, "large", "Store")}`
+              ? `${field(day, "small", "SF")}${field(day, "large", "RB")}`
               : count
-                ? `<span>${count.small || 0} små · ${count.large || 0} store</span>`
+                ? `<span>SF ${count.small || 0} · RB ${count.large || 0}</span>`
                 : `<span class="muted">ikke registrert</span>`}
             <span class="child-count-total" data-cc-total="${day.key}">${total === null ? "" : `= ${total}`}</span>
           </div>
@@ -1432,7 +1432,7 @@ async function loadTodayShiftsForDashboard() {
       <div class="today-shift-department">
         <h3>👧 Påmeldte barn</h3>
         <div class="today-shift-list">
-          <span class="today-shift-person">${countRow.small || 0} små · ${countRow.large || 0} store (${(countRow.small || 0) + (countRow.large || 0)} totalt)</span>
+          <span class="today-shift-person">SF ${countRow.small || 0} · RB ${countRow.large || 0} (${(countRow.small || 0) + (countRow.large || 0)} totalt)</span>
         </div>
       </div>
     `;
