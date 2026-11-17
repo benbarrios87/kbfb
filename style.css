@@ -6780,3 +6780,69 @@ button.standby-chip {
   body.fagtid-printing .fagtid-plan > li { break-inside: avoid; }
 }
 .fagtid-form button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Fagtid: løypa og admin */
+.fagtid-intro p { margin: 0 0 10px; line-height: 1.55; }
+.fagtid-intro p:last-child { margin-bottom: 0; }
+.fagtid-admin-bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+  margin: 0 0 22px; padding: 12px 18px; border: 1px dashed var(--line); border-radius: 18px; background: rgba(255,255,255,0.6);
+}
+.fagtid-switch { display: flex; align-items: center; gap: 10px; font-weight: 700; cursor: pointer; }
+.fagtid-switch input { width: 20px; height: 20px; accent-color: var(--green); }
+.fagtid-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.fagtid-row label { display: grid; gap: 8px; font-weight: 800; color: var(--text); }
+.fagtid-row input, .fagtid-row select {
+  border: 1px solid var(--line); border-radius: 14px; padding: 11px 14px; font: inherit; width: 100%; background: white; color: var(--text);
+}
+.fagtid-section-title { margin: 6px 0 14px; }
+.fagtid-columns { display: grid; gap: 22px; margin-bottom: 22px; }
+.fagtid-columns.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fagtid-column { min-width: 0; }
+.fagtid-col-label { margin-bottom: 12px; }
+.fagtid-treff header h3 { margin: 4px 0 8px; font-size: 1.35rem; }
+.fagtid-treff-meta { margin: 0; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fagtid-tag {
+  display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 800;
+  background: var(--green-soft); color: var(--green-dark);
+}
+.fagtid-tag-sommerfuglen { background: #f7e3d1; color: #8a4a1c; }
+.fagtid-tag-regnbuen { background: #dce9f0; color: #2c5466; }
+.fagtid-class-chip {
+  display: inline-block; margin: 0 0 6px; padding: 4px 12px; border-radius: 10px;
+  background: var(--sand); border: 1px solid var(--line); font-size: 0.9rem; font-weight: 700;
+}
+.fagtid-block { margin-top: 16px; }
+.fagtid-block h4 {
+  margin: 0 0 6px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--green);
+}
+.fagtid-block p { margin: 0; line-height: 1.55; }
+.fagtid-lekse { padding: 12px 14px; border-radius: 14px; background: var(--green-soft); }
+.fagtid-highlights { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 10px; }
+.fagtid-highlights li { padding: 10px 14px; border-left: 3px solid var(--green); background: white; border-radius: 0 12px 12px 0; }
+.fagtid-highlights blockquote { margin: 0 0 4px; font-style: italic; font-size: 1.02rem; line-height: 1.45; }
+.fagtid-hl-author { font-size: 0.85rem; font-weight: 700; color: var(--muted); }
+.fagtid-hl-author::before { content: "— "; }
+.fagtid-hl-form { display: flex; gap: 8px; }
+.fagtid-hl-form input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 999px; padding: 10px 14px; font: inherit; }
+.fagtid-link-btn { background: none; border: 0; padding: 0 0 0 10px; color: var(--muted); font: inherit; font-size: 0.85rem; text-decoration: underline; cursor: pointer; }
+.fagtid-treff-admin { margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; gap: 6px; }
+.fagtid-treff-admin .fagtid-link-btn { padding: 0 10px 0 0; }
+.fagtid-small { font-size: 0.9rem; margin: 0 0 8px; }
+.fagtid-empty { margin: 0 0 22px; }
+.fagtid-archive { display: grid; gap: 10px; margin-top: 14px; }
+.fagtid-archive-item { border: 1px solid var(--line); border-radius: 14px; background: white; padding: 12px 16px; }
+.fagtid-archive-item summary { cursor: pointer; }
+.fagtid-archive-item .fagtid-treff { margin-top: 10px; }
+.fagtid-treff.compact header { display: none; }
+
+@media (max-width: 800px) {
+  .fagtid-columns.two, .fagtid-row { grid-template-columns: 1fr; }
+}
+@media print {
+  body.fagtid-printing .fagtid-intro,
+  body.fagtid-printing .fagtid-admin-bar,
+  body.fagtid-printing #fagtidTreffFormCard,
+  body.fagtid-printing #fagtidLoype,
+  body.fagtid-printing #fagtidEmpty { display: none !important; }
+}

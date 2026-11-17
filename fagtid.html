@@ -91,16 +91,88 @@
         <div>
           <p class="eyebrow">Assistenttreff</p>
           <h1>Fagtid</h1>
-          <p class="muted">Dere bestemmer hva vi skal snakke om. Svar på noen korte spørsmål, så bygger vi treffene rundt det.</p>
+          <p class="muted">Korte, lærerike treff bygget på det dere er opptatt av i hverdagen.</p>
         </div>
-        <div class="hero-badge">Anonymt</div>
       </section>
 
       <div id="fagtidApp">
-        <section class="card fagtid-card" id="fagtidSurveyCard">
+        <section class="card fagtid-card fagtid-intro">
+          <h2>Tanken med fagtid</h2>
+          <p>Vi vil at assistenttreffene skal handle om det <strong>dere</strong> møter i hverdagen. Derfor starter vi med en kort undersøkelse, og så bygger vi treffene rundt svarene.</p>
+          <p>Hvert treff kombinerer et tema dere har valgt med en kort og konkret økt om <strong>CLASS</strong>. Vi ser på hva som allerede fungerer, og hvordan vi kan bli enda bedre, litt om gangen.</p>
+          <p class="muted">Alle i personalet kan følge med på hva vi jobber med her.</p>
+        </section>
+
+        <div class="fagtid-admin-bar" data-admin-only>
+          <label class="fagtid-switch">
+            <input type="checkbox" id="fagtidSurveyToggle" />
+            <span>Undersøkelsen er åpen for assistentene</span>
+          </label>
+          <button type="button" class="secondary-btn" id="fagtidNewTreffBtn">+ Nytt treff</button>
+        </div>
+
+        <!-- ===== Admin: skjema for treff ===== -->
+        <section class="card fagtid-card" id="fagtidTreffFormCard" data-admin-only hidden>
+          <h2 id="fagtidTreffFormTitle">Nytt treff</h2>
+          <form id="fagtidTreffForm" class="fagtid-form">
+            <div class="fagtid-row">
+              <label>
+                Dato
+                <input type="date" id="treffDato" required />
+              </label>
+              <label>
+                Hvem gjelder det?
+                <select id="treffAvdeling">
+                  <option value="Felles">Felles (begge avdelinger)</option>
+                  <option value="Sommerfuglen">Sommerfuglen</option>
+                  <option value="Regnbuen">Regnbuen</option>
+                </select>
+              </label>
+            </div>
+            <div class="fagtid-row">
+              <label>
+                Tema
+                <input type="text" id="treffTema" maxlength="200" required placeholder="F.eks. Barn som utfordrer oss" />
+              </label>
+              <label>
+                CLASS-fokus
+                <input type="text" id="treffClass" maxlength="200" list="classFokusListe" placeholder="F.eks. Sensitivitet" />
+                <datalist id="classFokusListe">
+                  <option value="Positivt klima"></option>
+                  <option value="Sensitivitet"></option>
+                  <option value="Hensyn til barnets perspektiv"></option>
+                  <option value="Atferdsveiledning"></option>
+                  <option value="Tilrettelegging for læring og utvikling"></option>
+                  <option value="Kvalitet på tilbakemeldinger"></option>
+                  <option value="Språkstimulering"></option>
+                </datalist>
+              </label>
+            </div>
+            <label>
+              Dette jobbet vi med
+              <textarea id="treffInnhold" rows="4" maxlength="5000" placeholder="Kort om hva vi gjorde og snakket om"></textarea>
+            </label>
+            <label>
+              Neste gang
+              <textarea id="treffNeste" rows="2" maxlength="3000" placeholder="Hva skal vi se på neste treff?"></textarea>
+            </label>
+            <label>
+              Lekse til neste gang
+              <textarea id="treffLekse" rows="2" maxlength="3000" placeholder="F.eks. Legg merke til ett øyeblikk der ..."></textarea>
+            </label>
+            <p class="fagtid-status" id="treffStatus" role="status"></p>
+            <div class="fagtid-admin-actions">
+              <button class="primary-btn form-button" type="submit" id="treffSave">Lagre treff</button>
+              <button type="button" class="secondary-btn" id="treffCancel">Avbryt</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- ===== Undersøkelsen ===== -->
+        <section class="card fagtid-card" id="fagtidSurveyCard" hidden>
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Undersøkelse · ca. 3 minutter</p>
+              <p class="eyebrow">Undersøkelse · ca. 5 minutter</p>
               <h2>Hva vil du bruke fagtiden på?</h2>
             </div>
           </div>
@@ -114,8 +186,13 @@
           </div>
 
           <form id="fagtidForm" class="fagtid-form" hidden>
+            <label>
+              1. Hva er mest krevende i hverdagen din akkurat nå?
+              <textarea id="fagtidKrevende" rows="3" maxlength="3000"></textarea>
+            </label>
+
             <fieldset>
-              <legend>1. Hva vil du helst bruke assistenttreffene på? <span class="fagtid-hint">Velg opptil 3</span></legend>
+              <legend>2. Hvilke temaer vil du helst jobbe med? <span class="fagtid-hint">Velg opptil 3</span></legend>
               <div class="fagtid-options" id="fagtidTopics"></div>
               <label class="fagtid-other">
                 Annet tema
@@ -125,17 +202,22 @@
             </fieldset>
 
             <label>
-              2. Er det en konkret situasjon fra hverdagen du gjerne vil ha hjelp til? <span class="fagtid-hint">Valgfritt</span>
+              3. Fortell om en situasjon der du følte at du virkelig traff et barn godt.
+              <textarea id="fagtidTraff" rows="3" maxlength="3000" placeholder="Stort eller lite, alt teller"></textarea>
+            </label>
+
+            <label>
+              4. Er det en konkret situasjon du vil ha hjelp til? <span class="fagtid-hint">Valgfritt</span>
               <textarea id="fagtidSituation" rows="3" maxlength="3000" placeholder="F.eks. et barn som ofte havner i konflikt i garderoben"></textarea>
             </label>
 
             <fieldset>
-              <legend>3. Hvordan lærer du best på et møte? <span class="fagtid-hint">Velg så mange du vil</span></legend>
+              <legend>5. Hvordan lærer du best? <span class="fagtid-hint">Velg så mange du vil</span></legend>
               <div class="fagtid-options" id="fagtidLearning"></div>
             </fieldset>
 
             <label>
-              4. Hva gjør at du går fra et møte og tenker «det var nyttig»?
+              6. Hva skal til for at du faktisk tar med deg noe fra et møte og ut på avdelingen?
               <textarea id="fagtidUseful" rows="2" maxlength="3000"></textarea>
             </label>
 
@@ -144,8 +226,22 @@
           </form>
         </section>
 
+        <!-- ===== Løypa ===== -->
+        <section id="fagtidLoype" hidden>
+          <h2 class="fagtid-section-title">Der vi er nå</h2>
+          <div id="fagtidCurrent" class="fagtid-columns"></div>
+
+          <details class="card fagtid-card" id="fagtidArchiveCard" hidden>
+            <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Tidligere treff</h2></summary>
+            <div id="fagtidArchive" class="fagtid-archive"></div>
+          </details>
+        </section>
+
+        <p class="muted fagtid-empty" id="fagtidEmpty" hidden>Ingen treff er lagt inn ennå.</p>
+
+        <!-- ===== Admin: resultater ===== -->
         <details class="card fagtid-card" data-admin-only id="fagtidResultsCard">
-          <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Resultater</h2> <span class="fagtid-count" id="fagtidCount"></span></summary>
+          <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Resultater fra undersøkelsen</h2> <span class="fagtid-count" id="fagtidCount"></span></summary>
           <p class="muted">Bare du som admin ser dette. Svarene har ikke navn.</p>
           <div id="fagtidResults"><p class="muted">Laster...</p></div>
           <div class="fagtid-admin-actions">
