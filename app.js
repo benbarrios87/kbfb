@@ -2560,6 +2560,14 @@ function colorShiftSelect(select) {
   // Row color replaces shift-type coloring for regular shifts - but
   // "unavailable" (F/AVS/TJ/PERM/PLANDAG) still needs to read as red at a
   // glance regardless of whose row it's on, so that one signal survives.
+  // ANNET: ikke fargelegg hele ruta, teksten du skriver er det som teller.
+  if (select.value === "ANNET") {
+    select.className = "shift-select custom";
+    select.style.background = "";
+    select.style.color = "";
+    return;
+  }
+
   const isUnavailable = getShiftSelectClass(select.value) === "free";
   select.className = isUnavailable ? "shift-select free" : "shift-select neutral";
 

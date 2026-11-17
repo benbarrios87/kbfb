@@ -6852,3 +6852,21 @@ button.standby-chip {
 .loan-row { background: #f1f7ff; }
 .loan-row td.person small { display: block; font-size: 0.72rem; }
 .loan-row .shift-cell .muted { opacity: 0.5; }
+
+
+/* ANNET: rolig utseende. Selve teksten er det som skal synes, ikke valget. */
+.shift-select.custom {
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+}
+
+.custom-shift-input {
+  margin-top: 3px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
