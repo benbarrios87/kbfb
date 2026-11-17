@@ -6677,3 +6677,106 @@ button.standby-chip {
 .nl-work-images { margin-top: 6px; }
 .nl-work-images .nl-label { font-weight: 600; font-size: 0.8rem; color: var(--muted); }
 .nl-topic .nl-images { margin-top: 8px; }
+
+/* ===== Fagtid (assistenttreff) ===== */
+.fagtid-card { margin-bottom: 22px; }
+#fagtidApp [hidden] { display: none !important; }
+.fagtid-anon {
+  margin: 0 0 18px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--green-soft);
+  color: var(--green-dark);
+  font-weight: 600;
+}
+.fagtid-form { display: grid; gap: 22px; }
+.fagtid-form fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 10px; }
+.fagtid-form legend,
+.fagtid-form > label { font-weight: 800; color: var(--text); margin-bottom: 4px; }
+.fagtid-form > label,
+.fagtid-other { display: grid; gap: 8px; }
+.fagtid-hint { font-weight: 500; color: var(--muted); font-size: 0.85rem; margin-left: 4px; }
+.fagtid-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.fagtid-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: white;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text);
+}
+.fagtid-option input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--green); flex-shrink: 0; }
+.fagtid-option:has(input:checked) { border-color: var(--green); background: var(--green-soft); }
+.fagtid-option:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+.fagtid-other { font-weight: 600; color: var(--muted); }
+.fagtid-other input {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 11px 14px;
+  font: inherit;
+  width: 100%;
+}
+.fagtid-limit { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.fagtid-status { margin: 0; min-height: 1.2em; color: var(--muted); font-weight: 600; }
+.fagtid-done { padding: 14px 16px; border-radius: 16px; background: var(--green-soft); }
+.fagtid-done p { margin: 0 0 12px; }
+.fagtid-count { margin-left: 8px; font-weight: 700; color: var(--muted); font-size: 0.9rem; }
+.fagtid-admin-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.fagtid-danger { color: #a00000; }
+.fagtid-danger:hover { background: #ffe4e4; }
+
+.fagtid-result-block { margin-top: 22px; }
+.fagtid-result-block h3 { margin: 0 0 10px; font-size: 1.05rem; }
+.fagtid-result-block h4 { margin: 16px 0 8px; font-size: 0.95rem; color: var(--muted); }
+.fagtid-bars { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.fagtid-bar-label { display: flex; justify-content: space-between; gap: 12px; font-size: 0.92rem; margin-bottom: 4px; }
+.fagtid-bar-label strong { white-space: nowrap; color: var(--muted); }
+.fagtid-bar { height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.fagtid-bar span { display: block; height: 100%; border-radius: 999px; background: var(--green); }
+.fagtid-quotes { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.fagtid-quotes li {
+  padding: 10px 14px;
+  border-left: 3px solid var(--green);
+  background: white;
+  border-radius: 0 12px 12px 0;
+  white-space: pre-wrap;
+}
+
+.fagtid-plan { list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 14px; }
+.fagtid-plan > li {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: white;
+}
+.fagtid-plan h3 { margin: 0 0 6px; font-size: 1.05rem; }
+.fagtid-plan p { margin: 0 0 8px; }
+.fagtid-plan ul { margin: 0 0 8px; padding-left: 20px; display: grid; gap: 4px; }
+.fagtid-time { font-weight: 800; color: var(--green); white-space: nowrap; }
+.fagtid-subhead { margin: 24px 0 8px; }
+.fagtid-tips { margin: 0; padding-left: 22px; display: grid; gap: 8px; }
+
+@media (max-width: 600px) {
+  .fagtid-plan > li { grid-template-columns: 1fr; gap: 4px; }
+}
+
+@media print {
+  body.fagtid-printing .sidebar,
+  body.fagtid-printing .forest-hero,
+  body.fagtid-printing .responsibility-banner,
+  body.fagtid-printing #fagtidSurveyCard,
+  body.fagtid-printing #fagtidResultsCard,
+  body.fagtid-printing .fagtid-admin-actions,
+  body.fagtid-printing .details-toggle-icon { display: none !important; }
+  body.fagtid-printing .main { padding: 0; }
+  body.fagtid-printing #fagtidPlanCard { box-shadow: none; border: 0; padding: 0; }
+  body.fagtid-printing .fagtid-plan > li { break-inside: avoid; }
+}
+.fagtid-form button:disabled { opacity: 0.45; cursor: not-allowed; }

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fagtid | KBFB Personal</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="images/icon-192.png" type="image/png" />
+  <meta name="theme-color" content="#234d31" />
+  <link rel="apple-touch-icon" href="images/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="KBFB" />
+</head>
+
+<body>
+  <div class="layout">
+    <aside class="sidebar nature-sidebar">
+      <div class="brand">
+        <div class="brand-icon">🌲</div>
+        <h2>KBFB</h2>
+        <p>Personalrommet</p>
+      </div>
+
+      <nav>
+        <a href="dashboard.html">🏠 Hjem</a>
+        <a href="vakter.html">📅 Vakter<span class="nav-badge" style="display:none;"></span></a>
+        <a href="kjokkenboka.html">📖 Kjøkkenboka</a>
+        <a data-admin-only href="oppgaver.html">🗒️ Oppgaver</a>
+
+        <details class="nav-folder">
+          <summary>📁 Personal</summary>
+          <div class="nav-folder-links">
+            <a data-hide-from-vikar href="datoer.html">📆 Datoer</a>
+            <a href="vikarer.html">🕒 Vikarer</a>
+            <a data-hide-from-vikar data-hide-from-guest href="ferieogavspasering.html">🌴 Ferie og fravær</a>
+            <a data-hide-from-vikar data-hide-from-guest href="kjorebok.html">🚗 Kjørebok</a>
+            <a data-hide-from-guest href="personalhandbok.html">📕 Personalhåndbok</a>
+            <a data-hide-from-guest href="vedtekter.html">⚖️ Vedtekter</a>
+          </div>
+        </details>
+
+        <details class="nav-folder" data-hide-from-vikar>
+          <summary>📁 Ressurser</summary>
+          <div class="nav-folder-links">
+            <a href="filarkiv.html">📁 Filarkiv</a>
+            <a href="aarshjul.html">🗓️ Årshjul</a>
+            <a href="arsplan.html">📘 Årsplan</a>
+            <a class="active" href="fagtid.html">💬 Fagtid</a>
+          </div>
+        </details>
+
+        <details class="nav-folder">
+          <summary>📁 Praktisk</summary>
+          <div class="nav-folder-links">
+            <a href="bestillinger.html">🛒 Bestillinger</a>
+            <a data-hide-from-vikar data-hide-from-guest href="maanedsbrev.html">📰 Månedsbrev</a>
+            <a data-hide-from-vikar href="kalender.html">📍 Hvor er Benjamin?</a>
+          </div>
+        </details>
+
+        <details class="nav-folder" data-admin-only>
+          <summary>📁 Admin</summary>
+          <div class="nav-folder-links">
+            <a href="nokkeltall.html">📊 Nøkkeltall</a>
+            <a href="admin.html">⚙️ Admin</a>
+            <a href="hms.html">🏥 HMS</a>
+            <a href="lederutfordring.html">🎯 Lederutfordringen</a>
+          </div>
+        </details>
+        <a class="nav-help" href="hjelp.html">❓ Hjelp og spørsmål</a>
+      </nav>
+
+      <div class="sidebar-feedback" data-hide-from-guest>
+        <p>💬 Innspill?</p>
+        <form id="feedbackForm">
+          <textarea id="feedbackText" rows="2" placeholder="Skriv her..." required></textarea>
+          <button type="submit">Send</button>
+        </form>
+        <p id="feedbackStatus"></p>
+      </div>
+
+      <div class="sidebar-footer">
+        <span class="user-badge" id="userBadge"></span>
+        <button class="logout-btn" id="logoutBtn">Logg ut</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="forest-hero compact">
+        <div>
+          <p class="eyebrow">Assistenttreff</p>
+          <h1>Fagtid</h1>
+          <p class="muted">Dere bestemmer hva vi skal snakke om. Svar på noen korte spørsmål, så bygger vi treffene rundt det.</p>
+        </div>
+        <div class="hero-badge">Anonymt</div>
+      </section>
+
+      <div id="fagtidApp">
+        <section class="card fagtid-card" id="fagtidSurveyCard">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Undersøkelse · ca. 3 minutter</p>
+              <h2>Hva vil du bruke fagtiden på?</h2>
+            </div>
+          </div>
+          <p class="fagtid-anon">Svarene er anonyme. Navnet ditt blir ikke lagret sammen med svaret.</p>
+
+          <p id="fagtidNotForYou" class="fagtid-done" hidden>Denne undersøkelsen er for assistentene. Takk for at du tittet innom!</p>
+
+          <div id="fagtidAlreadyAnswered" class="fagtid-done" hidden>
+            <p><strong>Takk! Svaret ditt er sendt.</strong> Det blir tatt med når vi planlegger neste assistenttreff.</p>
+            <button type="button" class="secondary-btn" id="fagtidAnswerAgain">Svar på nytt</button>
+          </div>
+
+          <form id="fagtidForm" class="fagtid-form" hidden>
+            <fieldset>
+              <legend>1. Hva vil du helst bruke assistenttreffene på? <span class="fagtid-hint">Velg opptil 3</span></legend>
+              <div class="fagtid-options" id="fagtidTopics"></div>
+              <label class="fagtid-other">
+                Annet tema
+                <input type="text" id="fagtidOtherTopic" maxlength="300" placeholder="Skriv eget tema her (valgfritt)" />
+              </label>
+              <p class="fagtid-limit" id="fagtidTopicLimit" hidden>Du kan velge maks 3 temaer.</p>
+            </fieldset>
+
+            <label>
+              2. Er det en konkret situasjon fra hverdagen du gjerne vil ha hjelp til? <span class="fagtid-hint">Valgfritt</span>
+              <textarea id="fagtidSituation" rows="3" maxlength="3000" placeholder="F.eks. et barn som ofte havner i konflikt i garderoben"></textarea>
+            </label>
+
+            <fieldset>
+              <legend>3. Hvordan lærer du best på et møte? <span class="fagtid-hint">Velg så mange du vil</span></legend>
+              <div class="fagtid-options" id="fagtidLearning"></div>
+            </fieldset>
+
+            <label>
+              4. Hva synes du om måten vi har jobbet med CLASS på så langt? <span class="fagtid-hint">Si det rett ut, det er anonymt</span>
+              <textarea id="fagtidClass" rows="3" maxlength="3000"></textarea>
+            </label>
+
+            <label>
+              5. Hva gjør at du går fra et møte og tenker «det var nyttig»?
+              <textarea id="fagtidUseful" rows="2" maxlength="3000"></textarea>
+            </label>
+
+            <p class="fagtid-status" id="fagtidStatus" role="status"></p>
+            <button class="primary-btn form-button" type="submit" id="fagtidSubmit">Send svar</button>
+          </form>
+        </section>
+
+        <details class="card fagtid-card" data-admin-only id="fagtidResultsCard">
+          <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Resultater</h2> <span class="fagtid-count" id="fagtidCount"></span></summary>
+          <p class="muted">Bare du som admin ser dette. Svarene har ikke navn.</p>
+          <div id="fagtidResults"><p class="muted">Laster...</p></div>
+          <div class="fagtid-admin-actions">
+            <button type="button" class="secondary-btn" id="fagtidRefresh">Oppdater</button>
+            <button type="button" class="secondary-btn fagtid-danger" id="fagtidClear">Slett alle svar (ny runde)</button>
+          </div>
+        </details>
+
+        <details class="card fagtid-card" data-admin-only id="fagtidPlanCard">
+          <summary><span class="details-toggle-icon">▸</span> <h2 style="display: inline;">Kjøreplan: 45 minutter</h2></summary>
+          <p class="muted">Her er CLASS ikke et eget punkt. Det brukes som verktøy på temaet de ansatte har valgt selv.</p>
+
+          <ol class="fagtid-plan">
+            <li>
+              <span class="fagtid-time">0–5 min</span>
+              <div>
+                <h3>Åpning: «Dette valgte dere»</h3>
+                <p>Vis resultatene fra undersøkelsen. Si tydelig at innholdet i treffene fremover styres av svarene deres.</p>
+              </div>
+            </li>
+            <li>
+              <span class="fagtid-time">5–20 min</span>
+              <div>
+                <h3>Dagens tema (det som fikk flest stemmer)</h3>
+                <p>Ta med et kort, anonymt case på 4–5 linjer, gjerne bygget på et av fritekstsvarene. De snakker i par:</p>
+                <ul>
+                  <li>Hva tror dere barnet trenger her?</li>
+                  <li>Hva gjør vi allerede som virker?</li>
+                </ul>
+                <p>Til slutt kobler du på CLASS-språket: «Det dere beskriver nå, kalles <em>sensitivitet</em> og <em>atferdsveiledning</em> i CLASS.» Det de allerede gjør, får et navn.</p>
+              </div>
+            </li>
+            <li>
+              <span class="fagtid-time">20–35 min</span>
+              <div>
+                <h3>«Glimt» i stedet for praksisfortellinger</h3>
+                <ul>
+                  <li><strong>Bare positive glimt:</strong> «Fortell om et øyeblikk denne uka der du så at et barn hadde det godt sammen med en voksen.» Det kan være deg selv eller en kollega.</li>
+                  <li><strong>Muntlig og i par,</strong> ikke skriftlig og i plenum.</li>
+                  <li><strong>Én CLASS-dimensjon om gangen,</strong> den som passer dagens tema.</li>
+                  <li><strong>Du går først,</strong> gjerne med et eksempel der du selv bommet litt.</li>
+                </ul>
+              </div>
+            </li>
+            <li>
+              <span class="fagtid-time">35–42 min</span>
+              <div>
+                <h3>Én ting jeg prøver</h3>
+                <p>Hver person sier, eller skriver på en lapp, én konkret ting de vil prøve neste uke. Neste treff starter med «hvordan gikk det?».</p>
+              </div>
+            </li>
+            <li>
+              <span class="fagtid-time">42–45 min</span>
+              <div>
+                <h3>Avslutning</h3>
+                <p>Hva tar vi opp neste gang? Ta utgangspunkt i tema nummer to fra undersøkelsen.</p>
+              </div>
+            </li>
+          </ol>
+
+          <h3 class="fagtid-subhead">Tre råd om motstanden mot CLASS</h3>
+          <ol class="fagtid-tips">
+            <li><strong>Bytt ord.</strong> «Veiledning» kan høres ut som at noe er galt. «Glimt», «gullkorn» eller «det som virker» gir et annet utgangspunkt.</li>
+            <li><strong>Ros før du korrigerer.</strong> I lang tid fremover bør CLASS-snakket handle om det som allerede fungerer.</li>
+            <li><strong>La dem eie det.</strong> Når temaet er valgt av dem selv, blir CLASS et verktøy de bruker, og ikke noe de blir målt etter.</li>
+          </ol>
+
+          <div class="fagtid-admin-actions">
+            <button type="button" class="secondary-btn" id="fagtidPrint">Skriv ut kjøreplanen</button>
+          </div>
+        </details>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+  <script src="fagtid.js"></script>
+  <script src="pwa.js"></script>
+</body>
+</html>
