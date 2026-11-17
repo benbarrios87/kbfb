@@ -93,12 +93,11 @@
       annet_tema: $("#fagtidOtherTopic").value.trim() || null,
       situasjon: $("#fagtidSituation").value.trim() || null,
       laeringsform: checkedValues("fagtidLearning"),
-      class_tanker: $("#fagtidClass").value.trim() || null,
       nyttig_mote: $("#fagtidUseful").value.trim() || null
     };
 
     const isEmpty = !answer.temaer.length && !answer.annet_tema && !answer.situasjon &&
-      !answer.laeringsform.length && !answer.class_tanker && !answer.nyttig_mote;
+      !answer.laeringsform.length && !answer.nyttig_mote;
     if (isEmpty) {
       status.textContent = "Svar på minst ett av spørsmålene før du sender.";
       return;
@@ -183,10 +182,6 @@
       <div class="fagtid-result-block">
         <h3>Hvordan de lærer best</h3>
         ${barList(countValues(rows, "laeringsform"), rows.length)}
-      </div>
-      <div class="fagtid-result-block">
-        <h3>Tanker om CLASS</h3>
-        ${textList(rows, "class_tanker")}
       </div>
       <div class="fagtid-result-block">
         <h3>Hva gjør et møte nyttig</h3>

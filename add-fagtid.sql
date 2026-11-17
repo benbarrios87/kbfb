@@ -10,13 +10,11 @@ CREATE TABLE IF NOT EXISTS public.kbfb_fagtid_svar (
   annet_tema    text,                                -- "Annet: ..."
   situasjon     text,                                -- konkret situasjon de vil ha hjelp til
   laeringsform  text[]      NOT NULL DEFAULT '{}',   -- hvordan de lærer best
-  class_tanker  text,                                -- hva de synes om CLASS-arbeidet
   nyttig_mote   text,                                -- hva gjør et møte nyttig
   CONSTRAINT fagtid_maks_tre_temaer CHECK (cardinality(temaer) <= 3),
   CONSTRAINT fagtid_tekst_lengde CHECK (
     coalesce(length(annet_tema), 0)   <= 300  AND
     coalesce(length(situasjon), 0)    <= 3000 AND
-    coalesce(length(class_tanker), 0) <= 3000 AND
     coalesce(length(nyttig_mote), 0)  <= 3000
   )
 );
