@@ -6846,3 +6846,9 @@ button.standby-chip {
   body.fagtid-printing #fagtidLoype,
   body.fagtid-printing #fagtidEmpty { display: none !important; }
 }
+
+
+/* Lånt inn fra den andre avdelingen */
+.loan-row { background: #f1f7ff; }
+.loan-row td.person small { display: block; font-size: 0.72rem; }
+.loan-row .shift-cell .muted { opacity: 0.5; }

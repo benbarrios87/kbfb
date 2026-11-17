@@ -1468,7 +1468,7 @@ async function loadTodayShiftsForDashboard() {
           ? renderTodayVikarChip(shift.shift_value)
           : supportRows.includes(shift.employee)
           ? `<span class="today-shift-person">🕒 ${escapeHtml(shift.shift_value)}</span>`
-          : `<span class="today-shift-person">${avatarSpanFor(shift.employee, "avatar-medium")}${escapeHtml(shift.employee)} <span class="badge ${getShiftSelectClass(shift.shift_value)}">${escapeHtml(shift.shift_value)}</span></span>`
+          : `<span class="today-shift-person">${avatarSpanFor(loanDisplayName(shift.employee), "avatar-medium")}${escapeHtml(loanDisplayName(shift.employee))}${String(shift.employee).startsWith(LOAN_PREFIX) ? ` <span class="muted">(lånt)</span>` : ""} <span class="badge ${getShiftSelectClass(shift.shift_value)}">${escapeHtml(shift.shift_value)}</span></span>`
         ).join("")}
       </div>
     </div>
@@ -2444,7 +2444,68 @@ const monthViewContent = document.getElementById("monthViewContent");
 let viewedWeekStart = getMonday(new Date());
 const realCurrentWeekStart = getMonday(new Date());
 
-const shiftValues = ["", "TV", "TM", "MV", "SV", "F", "AVS", "Tjenestefri", "Velferdsperm", "Perm u/lønn", "PLANDAG", "SYK", "SB", "MØTE", "ANNET"];
+const shiftValues = ["", "TV", "TM", "MV", "SV", "F", "AVS", "Tjenestefri", "Velferdsperm", "Perm u/lønn", "PLANDAG", "SYK", "SB", "Lånt til RB", "Lånt til SF", "MØTE", "ANNET"];
+
+/* ---------- LÅNT TIL ANNEN AVDELING ----------
+   Velger du "Lånt til RB" i en SF-ansatts rute (eller "Lånt til SF" hos en
+   RB-ansatt), dukker personen opp som en egen rad i den andre avdelingens
+   vaktliste den dagen, der du velger vakt. Raden lagres som en vanlig vakt
+   med "Lån: Navn" som ansatt, så den ikke blandes med personens egne vakter. */
+const LOAN_TARGET = { "Lånt til RB": "Regnbuen", "Lånt til SF": "Sommerfuglen" };
+const LOAN_FOR_DEPARTMENT = { Sommerfuglen: "Lånt til RB", Regnbuen: "Lånt til SF" };
+const LOAN_SHORT = { Sommerfuglen: "SF", Regnbuen: "RB" };
+const LOAN_PREFIX = "Lån: ";
+
+function loanDisplayName(employee) {
+  return String(employee || "").startsWith(LOAN_PREFIX) ? String(employee).slice(LOAN_PREFIX.length) : employee;
+}
+
+// Tegner en rad for hver som er lånt inn til avdelingen denne uka.
+function renderLoanRows() {
+  document.querySelectorAll("tr[data-loan]").forEach(row => row.remove());
+
+  const weekKey = getCurrentWeekKey();
+  const markers = shiftsCache.filter(item => item.week_start === weekKey && LOAN_TARGET[item.shift_value]);
+
+  document.querySelectorAll(".department-table").forEach(table => {
+    const body = table.querySelector("tbody");
+    const first = body?.querySelector("tr[data-department]");
+    if (!first) return;
+
+    const department = first.dataset.department;
+    const mine = markers.filter(marker => LOAN_TARGET[marker.shift_value] === department);
+    const names = [...new Set(mine.map(marker => marker.employee))];
+    const anchor = body.querySelector(".support-row");
+
+    names.forEach(name => {
+      const days = new Set(mine.filter(marker => marker.employee === name).map(marker => marker.day_index));
+      const home = mine.find(marker => marker.employee === name)?.department;
+
+      const row = document.createElement("tr");
+      row.dataset.employee = LOAN_PREFIX + name;
+      row.dataset.department = department;
+      row.dataset.loan = "1";
+      row.className = "loan-row";
+      row.innerHTML =
+        `<td class="person"><span class="avatar">${escapeHtml(name.charAt(0))}</span>${escapeHtml(name)} <small class="muted">lånt fra ${escapeHtml(LOAN_SHORT[home] || "")}</small></td>` +
+        [0, 1, 2, 3, 4].map(day => `<td class="shift-cell" data-default="" ${days.has(day) ? "" : 'data-loan-off="1"'}></td>`).join("");
+
+      body.insertBefore(row, anchor || null);
+    });
+  });
+}
+
+async function removeLoanShift(homeEmployee, targetDepartment, weekStart, dayIndex) {
+  const { error } = await supabaseClient
+    .from("kbfb_shifts")
+    .delete()
+    .eq("week_start", weekStart)
+    .eq("department", targetDepartment)
+    .eq("employee", LOAN_PREFIX + homeEmployee)
+    .eq("day_index", dayIndex);
+
+  if (error) console.error("Kunne ikke fjerne lånt vakt:", error);
+}
 
 function getCurrentWeekKey() {
   return toDateKey(viewedWeekStart);
@@ -2486,6 +2547,7 @@ function getShiftSelectClass(value) {
   if (value === "SV") return "sv";
   if (value === "PT") return "pt";
   if (value === "F" || value === "AVS" || value === "TJ" || value === "Tjenestefri" || value === "Velferdsperm" || value === "Perm u/lønn" || value === "PERM" || value === "PLANDAG" || value === "SYK" || value === "SB") return "free";
+  if (LOAN_TARGET[value]) return "office";
   if (value === "KONTOR" || value === "MØTE") return "office";
   if (value === "ANNET") return "custom";
   return "";
@@ -2550,10 +2612,17 @@ function buildShiftDropdowns() {
   const shiftEditHelp = document.getElementById("shiftEditHelp");
   if (shiftEditHelp) shiftEditHelp.style.display = isAdmin ? "" : "none";
 
+  renderLoanRows();
   applyEmployeeRowColors();
 
   document.querySelectorAll(".shift-cell").forEach(cell => {
     const row = cell.closest("tr");
+
+    // Lånt inn: bare dagene personen er lånt ut har vakt.
+    if (cell.dataset.loanOff === "1") {
+      cell.innerHTML = `<span class="muted">–</span>`;
+      return;
+    }
 
     const dayIndex =
       Array.from(row.querySelectorAll(".shift-cell")).indexOf(cell);
@@ -2715,6 +2784,7 @@ function buildShiftDropdowns() {
     select.className = "shift-select";
 
     shiftValues.forEach(value => {
+      if (LOAN_TARGET[value] && (row.dataset.loan || value !== LOAN_FOR_DEPARTMENT[row.dataset.department])) return;
       const option = document.createElement("option");
       option.value = value;
       option.textContent = value === "" ? "—" : value;
@@ -2734,9 +2804,12 @@ function buildShiftDropdowns() {
     }
 
     colorShiftSelect(select);
+    select.dataset.prev = select.value;
 
     select.addEventListener("change", async () => {
       colorShiftSelect(select);
+      const previousValue = select.dataset.prev || "";
+      select.dataset.prev = select.value;
 
       if (select.value === "ANNET") {
         customInput.style.display = "block";
@@ -2777,6 +2850,17 @@ function buildShiftDropdowns() {
             await ensureSickAbsenceForShift(row.dataset.employee, shiftDate, "Omsorgsdager", ["Omsorgsdager"]);
           }
         }
+      }
+
+      // Lånt ut / ikke lenger lånt ut: rydd den andre avdelingens rad og tegn på nytt.
+      if (LOAN_TARGET[select.value] || LOAN_TARGET[previousValue]) {
+        if (LOAN_TARGET[previousValue] && previousValue !== select.value) {
+          await removeLoanShift(row.dataset.employee, LOAN_TARGET[previousValue], getCurrentWeekKey(), dayIndex);
+        }
+        await loadShiftsFromSupabase();
+        buildShiftDropdowns();
+        updateShiftHeadcounts();
+        return;
       }
 
       await loadShiftsFromSupabase();
@@ -3013,7 +3097,7 @@ async function updateWeekView() {
   renderResponsibilityBanner(toDateKey(viewedWeekStart));
 }
 
-const absenceShiftCodes = ["F", "AVS", "TJ", "Tjenestefri", "Velferdsperm", "Perm u/lønn", "PERM", "PLANDAG", "SYK", "SB"];
+const absenceShiftCodes = ["F", "AVS", "TJ", "Tjenestefri", "Velferdsperm", "Perm u/lønn", "PERM", "PLANDAG", "SYK", "SB", "Lånt til RB", "Lånt til SF"];
 
 function updateShiftHeadcounts() {
   document.querySelectorAll(".department-table").forEach(table => {
