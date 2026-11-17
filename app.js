@@ -172,15 +172,21 @@ async function loadClosureOverrides() {
 
 let standbyCache = {}; // "Navn|YYYY-MM-DD" -> rad
 
-// Bakvakt trengs bare uke 26, 27, 31 og 32, i romjula (27.-31.12) og i påskeuka.
+// Bakvakt og påmeldte barn vises uke 26, 27, 31, 32 og 52, dagene før julaften
+// (fra mandagen i julaftens uke), i romjula (27.-31.12) og i påskeuka.
 // Endre ukene her hvis det endrer seg.
-const STANDBY_WEEKS = [26, 27, 31, 32];
+const STANDBY_WEEKS = [26, 27, 31, 32, 52];
 
 function isStandbyPeriod(dateKey) {
   const date = new Date(dateKey + "T12:00:00");
   if (STANDBY_WEEKS.includes(getWeekNumber(date))) return true;
 
   if (date.getMonth() === 11 && date.getDate() >= 27) return true;
+
+  // Dagene før julaften: fra mandagen i uka julaften faller i, til og med 23.12.
+  const year = date.getFullYear();
+  const mondayOfChristmasWeek = toDateKey(getMonday(new Date(year, 11, 24, 12)));
+  if (dateKey >= mondayOfChristmasWeek && dateKey <= `${year}-12-23`) return true;
 
   const easter = easterSundayFor(date.getFullYear());
   const diffDays = Math.round((date - easter) / (24 * 60 * 60 * 1000));
