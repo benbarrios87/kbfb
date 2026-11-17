@@ -6029,9 +6029,17 @@ function countWeekdays(startDate, endDate) {
 // Alt som teller som 50 % overtid: alle "Overtid"-føringer, pluss
 // "Avspasering opptjent" uten koblet Overtid-føring (f.eks. admin sin
 // egen) - all ekstra tid gir 50 %, uansett hvordan den ble ført.
+// Unntak: "Bare avspasering" (valgt i skjemaet) gir timer til gode, men ingen
+// overtidsbetaling. Den kjennes igjen på notatet.
+const AVS_ONLY_NOTE = "Kun avspasering (ingen overtid)";
+
+function isAvsOnlyRecord(record) {
+  return record?.type === "Avspasering opptjent" && String(record.note || "").startsWith(AVS_ONLY_NOTE);
+}
+
 function isFiftyPercentOvertime(record) {
   if (record.type === "Overtid") return true;
-  return record.type === "Avspasering opptjent" && !findLinkedAbsence(record);
+  return record.type === "Avspasering opptjent" && !findLinkedAbsence(record) && !isAvsOnlyRecord(record);
 }
 
 // Overtid: alle får avspasering time for time OG 50 % overtid. Admin
@@ -7394,8 +7402,8 @@ const OTHER_LEAVE_TYPES = ["Tjenestefri", "Velferdspermisjon", "Permisjon med l�
 
 // Hvilke felter hvert valg viser.
 const LEAVE_KIND_FIELDS = {
-  personalmote: ["date", "hours", "ordinaryPay"],
-  ekstra: ["date", "hours", "ordinaryPay", "note"],
+  personalmote: ["date", "hours", "avsOnly", "ordinaryPay"],
+  ekstra: ["date", "hours", "avsOnly", "ordinaryPay", "note"],
   avspasering: ["date", "multi", "hours", "note"],
   ferie: ["date", "multi", "note"],
   syk: ["sickType", "date", "multi", "note"],
@@ -8800,6 +8808,11 @@ function mountLeaveRegister(container, { getEmployeeName }) {
         <small class="muted" data-hours-help></small>
       </label>
 
+      <label class="wide-field checkbox-field" data-f="avsOnly">
+        <input type="checkbox" name="avsOnly" />
+        Bare avspasering (timene til gode, men ingen overtidsbetaling)
+      </label>
+
       <label class="wide-field checkbox-field" data-f="ordinaryPay">
         <input type="checkbox" name="ordinaryPay" />
         Bare ekstra timer til vanlig lønn (ikke overtid, ingen avspasering)
@@ -8976,8 +8989,12 @@ function mountLeaveRegister(container, { getEmployeeName }) {
       case "opptjent": {
         const avs = stats.avspasering;
         const ordinaryPay = kind !== "opptjent" && !editing && !!field("ordinaryPay")?.checked;
+        const avsOnly = kind !== "opptjent" && !editing && !!field("avsOnly")?.checked;
 
-        if (ordinaryPay) {
+        if (avsOnly) {
+          lines.push(arrow("Avspaseringen din", formatHoursNo(avs), formatHoursNo(avs + hours), " t"));
+          lines.push("<strong>Ingen overtidsbetaling</strong> - bare timene til gode.");
+        } else if (ordinaryPay) {
           lines.push(`Betales som <strong>vanlig lønn</strong> for ${formatHoursNo(hours)} t.`);
           lines.push("Ingen avspasering og ingen 50 % overtid.");
         } else {
@@ -9074,8 +9091,13 @@ function mountLeaveRegister(container, { getEmployeeName }) {
       el.hidden = !fields.includes(el.dataset.f);
     });
     // "Kun avspasering" velges bare når en ny føring lages, ikke ved endring.
-    if (editing) form.querySelector('[data-f="ordinaryPay"]').hidden = true;
-    else field("ordinaryPay").checked = false;
+    if (editing) {
+      form.querySelector('[data-f="ordinaryPay"]').hidden = true;
+      form.querySelector('[data-f="avsOnly"]').hidden = true;
+    } else {
+      field("ordinaryPay").checked = false;
+      field("avsOnly").checked = false;
+    }
 
     const name = getEmployeeName();
     const forWhom = currentEmployee?.is_admin && name && name !== currentEmployee.name ? ` for ${name}` : "";
@@ -9156,6 +9178,8 @@ function mountLeaveRegister(container, { getEmployeeName }) {
   });
 
   field("multi").addEventListener("change", () => { updateMultiVisibility(); updateEffect(); });
+  field("avsOnly").addEventListener("change", () => { if (field("avsOnly").checked) field("ordinaryPay").checked = false; });
+  field("ordinaryPay").addEventListener("change", () => { if (field("ordinaryPay").checked) field("avsOnly").checked = false; });
   form.addEventListener("input", updateEffect);
   form.addEventListener("change", updateEffect);
   form.querySelector("[data-cancel]").addEventListener("click", close);
@@ -9180,12 +9204,13 @@ function mountLeaveRegister(container, { getEmployeeName }) {
     }
 
     const ordinaryPay = !editing && fields.includes("ordinaryPay") && !!field("ordinaryPay")?.checked;
+    const avsOnly = !editing && fields.includes("avsOnly") && !!field("avsOnly")?.checked;
     const ordinaryPayType = ordinaryPay || editing?.type === "Ekstra timer";
     let type;
     let status;
     switch (kind) {
       case "personalmote":
-      case "ekstra": type = ordinaryPayType ? "Ekstra timer" : "Overtid"; status = "Registrert"; break;
+      case "ekstra": type = avsOnly ? "Avspasering opptjent" : ordinaryPayType ? "Ekstra timer" : "Overtid"; status = "Registrert"; break;
       case "avspasering": type = editing?.type === "Avspasering brukt" ? "Avspasering brukt" : "Ønsker å avspasere"; status = "Ønsket"; break;
       case "ferie": type = "Ferie"; status = "Ønsket"; break;
       case "syk": type = form.querySelector('input[name="sickType"]:checked')?.value || "Egenmelding"; status = "Registrert"; break;
@@ -9205,7 +9230,9 @@ function mountLeaveRegister(container, { getEmployeeName }) {
       start_date: start,
       end_date: end,
       hours: kind === "personalmote" || kind === "ekstra" || kind === "opptjent" || kind === "avspasering" ? hours : null,
-      note: kind === "personalmote" ? PERSONALMOTE_NOTE : note
+      note: avsOnly
+        ? `${AVS_ONLY_NOTE}${kind === "personalmote" ? ": Personalmøte" : note ? `: ${note}` : ""}`
+        : kind === "personalmote" ? PERSONALMOTE_NOTE : note
     };
 
     const submitButton = form.querySelector('button[type="submit"]');
@@ -9351,6 +9378,7 @@ function mountLeaveRegister(container, { getEmployeeName }) {
     const days = countWeekdays(record.start_date, record.end_date);
     let detail;
     if (type === "Overtid") detail = `+ ${formatHoursNo(hours)} t avspasering og 50 % overtid for ${formatHoursNo(hours)} t.`;
+    else if (avsOnly) detail = `+ ${formatHoursNo(hours)} t avspasering (ingen overtidsbetaling).`;
     else if (status === "Ønsket") detail = `${formatDateRange(start, end)}. Venter på godkjenning.`;
     else detail = `${formatDateRange(record.start_date, record.end_date)} (${days} ${days === 1 ? "dag" : "dager"}).`;
 
