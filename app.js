@@ -2369,7 +2369,7 @@ function neighbourWorkday(dateKey, direction) {
   return toDateKey(date);
 }
 
-async function ensureSickAbsenceForShift(name, dateKey, type = "Egenmelding", matchTypes = ["Egenmelding", "Sykemelding"]) {
+async function ensureSickAbsenceForShift(name, dateKey, type = "Egenmelding", matchTypes = ["Egenmelding", "Sykemelding"], status = "Registrert", note = "Registrert automatisk fra vaktplanen") {
   const { data: existing, error: selectError } = await supabaseClient
     .from("kbfb_absences")
     .select("id, type, status, start_date, end_date")
@@ -2415,8 +2415,8 @@ async function ensureSickAbsenceForShift(name, dateKey, type = "Egenmelding", ma
     type,
     start_date: dateKey,
     end_date: dateKey,
-    status: "Registrert",
-    note: "Registrert automatisk fra vaktplanen"
+    status,
+    note
   }]);
 
   if (insertError) {
@@ -2444,7 +2444,7 @@ const monthViewContent = document.getElementById("monthViewContent");
 let viewedWeekStart = getMonday(new Date());
 const realCurrentWeekStart = getMonday(new Date());
 
-const shiftValues = ["", "TV", "TM", "MV", "SV", "F", "AVS", "Tjenestefri", "Velferdsperm", "PLANDAG", "SYK", "SB", "MØTE", "ANNET"];
+const shiftValues = ["", "TV", "TM", "MV", "SV", "F", "AVS", "Tjenestefri", "Velferdsperm", "Perm u/lønn", "PLANDAG", "SYK", "SB", "MØTE", "ANNET"];
 
 function getCurrentWeekKey() {
   return toDateKey(viewedWeekStart);
@@ -2485,7 +2485,7 @@ function getShiftSelectClass(value) {
   if (value === "SM") return "sm";
   if (value === "SV") return "sv";
   if (value === "PT") return "pt";
-  if (value === "F" || value === "AVS" || value === "TJ" || value === "Tjenestefri" || value === "Velferdsperm" || value === "PERM" || value === "PLANDAG" || value === "SYK" || value === "SB") return "free";
+  if (value === "F" || value === "AVS" || value === "TJ" || value === "Tjenestefri" || value === "Velferdsperm" || value === "Perm u/lønn" || value === "PERM" || value === "PLANDAG" || value === "SYK" || value === "SB") return "free";
   if (value === "KONTOR" || value === "MØTE") return "office";
   if (value === "ANNET") return "custom";
   return "";
@@ -2763,6 +2763,12 @@ function buildShiftDropdowns() {
           shift_value: select.value
         });
 
+        // Permisjon uten lønn: lag en godkjent føring, så den kommer i Kjør lønn.
+        if (select.value === "Perm u/lønn") {
+          const shiftDate = toDateKey(addDays(new Date(getCurrentWeekKey() + "T12:00:00"), dayIndex));
+          await ensureSickAbsenceForShift(row.dataset.employee, shiftDate, "Permisjon uten lønn", ["Permisjon uten lønn"], "Godkjent", "Satt i vaktplanen");
+        }
+
         if (select.value === "SYK" || select.value === "SB") {
           const shiftDate = toDateKey(addDays(new Date(getCurrentWeekKey() + "T12:00:00"), dayIndex));
           if (select.value === "SYK") {
@@ -3007,7 +3013,7 @@ async function updateWeekView() {
   renderResponsibilityBanner(toDateKey(viewedWeekStart));
 }
 
-const absenceShiftCodes = ["F", "AVS", "TJ", "Tjenestefri", "Velferdsperm", "PERM", "PLANDAG", "SYK", "SB"];
+const absenceShiftCodes = ["F", "AVS", "TJ", "Tjenestefri", "Velferdsperm", "Perm u/lønn", "PERM", "PLANDAG", "SYK", "SB"];
 
 function updateShiftHeadcounts() {
   document.querySelectorAll(".department-table").forEach(table => {
@@ -5835,7 +5841,7 @@ const shiftTypesFromAbsence = {
   "Ferie": "F",
   "Tjenestefri": "Tjenestefri",
   "Permisjon med lønn": "Velferdsperm",
-  "Permisjon uten lønn": "Velferdsperm",
+  "Permisjon uten lønn": "Perm u/lønn",
   "Velferdspermisjon": "Velferdsperm",
   "Ønsker å avspasere": "AVS",
   "Egenmelding": "SYK",
@@ -5979,13 +5985,17 @@ function groupOvertimeByName(records) {
    enkelt innføring krysses av (lagres som payroll_done_on). Det som
    kommer inn i ettertid er ikke avkrysset, og vises som etterslep. */
 
-const PAYROLL_KIND_ORDER = ["overtid", "ekstra", "vikar", "syk"];
+const PAYROLL_KIND_ORDER = ["overtid", "ekstra", "vikar", "syk", "perm"];
 const PAYROLL_KIND_TITLE = {
   overtid: "Overtid (50 %)",
   ekstra: "Ekstra timer (vanlig lønn)",
   vikar: "Vikartimer (timelønn)",
-  syk: "Egenmelding / sykemelding / omsorgsdager"
+  syk: "Egenmelding / sykemelding / omsorgsdager",
+  perm: "Permisjon uten lønn (trekk)"
 };
+
+// Fraværstyper som føres i dager (ikke timer) og står under "Fravær".
+const PAYROLL_DAY_KINDS = ["syk", "perm"];
 
 function payrollRunEntries() {
   const entries = [];
@@ -5997,12 +6007,15 @@ function payrollRunEntries() {
     if (isFiftyPercentOvertime(record)) kind = "overtid";
     else if (record.type === "Ekstra timer") kind = "ekstra";
     else if (record.type === "Egenmelding" || record.type === "Sykemelding" || record.type === "Omsorgsdager") kind = "syk";
+    else if (record.type === "Permisjon uten lønn" && record.status === "Godkjent") kind = "perm";
     if (!kind) return;
 
     const range = formatDateRange(record.start_date, record.end_date || record.start_date);
     let amount;
-    if (kind === "syk") {
-      const days = getWeekdaysBetween(record.start_date, record.end_date || record.start_date).length;
+    if (PAYROLL_DAY_KINDS.includes(kind)) {
+      // Vanlige røde dager er uansett fri og regnes ikke som permisjonsdager.
+      const days = getWeekdaysBetween(record.start_date, record.end_date || record.start_date)
+        .filter(day => kind !== "perm" || !holidayName(day) || holidayName(day).includes("(stengt)")).length;
       amount = `${days} ${days === 1 ? "dag" : "dager"}`;
     } else {
       amount = `${formatHoursNo(record.hours)} t`;
@@ -6160,7 +6173,7 @@ async function openPayrollRun() {
     return heading + `
       <div class="pr-grid">
         ${groupByName(visible).map(([name, items]) => {
-          const total = kind === "syk"
+          const total = PAYROLL_DAY_KINDS.includes(kind)
             ? ""
             : ` · ${formatHoursNo(items.reduce((sum, entry) => sum + (Number(entry.ref.hours) || 0), 0))} t`;
           return `
@@ -6229,18 +6242,18 @@ async function openPayrollRun() {
 
       ${lateEntries.length ? `
         <h2 class="meeting-subheading payroll-run-late">⚠ Etterslep fra tidligere måneder (kom etter lønnskjøringen)</h2>
-        ${sectionHtml(["overtid", "ekstra", "vikar", "syk"], lateEntries)}
+        ${sectionHtml(["overtid", "ekstra", "vikar", "syk", "perm"], lateEntries)}
       ` : ""}
 
       <h2 class="meeting-subheading">2. Lønn - ${escapeHtml(formatMonth(month))}</h2>
-      ${monthEntries.some(entry => entry.kind !== "syk")
+      ${monthEntries.some(entry => !PAYROLL_DAY_KINDS.includes(entry.kind))
         ? sectionHtml(["overtid", "ekstra", "vikar"], monthEntries)
         : `<p class="muted">Ingen overtid, ekstra timer eller vikartimer i ${escapeHtml(formatMonth(month))}.</p>`}
 
       <h2 class="meeting-subheading">3. Fravær - ${escapeHtml(formatMonth(month))}</h2>
-      ${monthEntries.some(entry => entry.kind === "syk")
-        ? sectionHtml(["syk"], monthEntries)
-        : `<p class="muted">Ingen egenmeldinger eller omsorgsdager i ${escapeHtml(formatMonth(month))}.</p>`}
+      ${monthEntries.some(entry => PAYROLL_DAY_KINDS.includes(entry.kind))
+        ? sectionHtml(["syk", "perm"], monthEntries)
+        : `<p class="muted">Ingen egenmeldinger, omsorgsdager eller permisjon uten lønn i ${escapeHtml(formatMonth(month))}.</p>`}
       <p class="muted side-note">📝 Husk å legge fravær inn offisielt i Weblønn også.</p>
     `;
 
