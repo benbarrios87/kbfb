@@ -313,6 +313,35 @@ function applyStandbyToWeek() {
 
 let childCountCache = {}; // "YYYY-MM-DD" -> { small, large }
 
+/* ---------- ÅPNINGSTID (redusert i jul, påske og sommer) ----------
+   Vanlig åpningstid er 07:30-17:00. Dager med annen åpningstid fylles inn
+   av admin i samme rad som påmeldte barn, og vises i dagoverskriften. */
+const OPENING_STANDARD = { from: "07:30", to: "17:00" };
+let openingCache = {}; // "YYYY-MM-DD" -> { from, to }
+
+async function loadOpeningHoursForWeek() {
+  const { data, error } = await supabaseClient
+    .from("kbfb_opening_hours")
+    .select("date, open_from, open_to")
+    .gte("date", toDateKey(viewedWeekStart))
+    .lte("date", toDateKey(addDays(viewedWeekStart, 4)));
+
+  openingCache = {};
+  if (error) return;
+  (data || []).forEach(row => {
+    openingCache[row.date] = { from: String(row.open_from || "").slice(0, 5), to: String(row.open_to || "").slice(0, 5) };
+  });
+}
+
+function openingText(hours) {
+  return `${hours.from.replace(":", ".")}–${hours.to.replace(":", ".")}`;
+}
+
+// Avviker fra vanlig åpningstid (åpner senere eller stenger tidligere)?
+function isReducedOpening(hours) {
+  return hours.from > OPENING_STANDARD.from || hours.to < OPENING_STANDARD.to;
+}
+
 async function loadChildCountsForWeek() {
   const { data, error } = await supabaseClient
     .from("kbfb_child_counts")
@@ -328,20 +357,32 @@ async function loadChildCountsForWeek() {
 // Barnetallene med liten skrift rett under datoen i hver dagoverskrift.
 function applyChildCountsToHeads() {
   document.querySelectorAll(".day-head").forEach(head => {
-    head.querySelectorAll(".day-child-chip").forEach(chip => chip.remove());
+    head.querySelectorAll(".day-child-chip, .day-open-chip").forEach(chip => chip.remove());
 
     const key = toDateKey(addDays(viewedWeekStart, Number(head.dataset.day)));
-    const count = childCountCache[key];
-    if (!count || !isStandbyPeriod(key) || holidayName(key)) return;
+    if (holidayName(key)) return;
 
-    const chip = document.createElement("div");
-    chip.className = "day-child-chip";
-    chip.textContent = `Barn: 🦋 ${count.small || 0} · 🌈 ${count.large || 0}`;
-
-    // Alltid rett under datoen, over eventuelle hendelser.
+    // Alltid rett under datoen, over eventuelle hendelser. Åpningstid øverst,
+    // så barnetall under (settes inn i omvendt rekkefølge).
     const dateSpan = head.querySelector(":scope > span");
-    if (dateSpan) dateSpan.insertAdjacentElement("afterend", chip);
-    else head.appendChild(chip);
+    const place = chip => (dateSpan ? dateSpan.insertAdjacentElement("afterend", chip) : head.appendChild(chip));
+
+    const count = childCountCache[key];
+    if (count && isStandbyPeriod(key)) {
+      const chip = document.createElement("div");
+      chip.className = "day-child-chip";
+      chip.textContent = `Barn: 🦋 ${count.small || 0} · 🌈 ${count.large || 0}`;
+      place(chip);
+    }
+
+    const hours = openingCache[key];
+    if (hours && hours.from && hours.to) {
+      const chip = document.createElement("div");
+      chip.className = `day-open-chip${isReducedOpening(hours) ? " reduced" : ""}`;
+      chip.textContent = `Åpent ${openingText(hours)}`;
+      chip.title = isReducedOpening(hours) ? "Redusert åpningstid" : "Åpningstid";
+      place(chip);
+    }
   });
 }
 
@@ -378,10 +419,11 @@ function renderChildCounts() {
     const value = childCountCache[day.key]?.[name];
     return `<label>${label} <input type="number" min="0" max="99" inputmode="numeric" data-cc-date="${day.key}" data-cc-field="${name}" value="${value ?? ""}"></label>`;
   };
+  const openField = (day, name) => `<input type="time" data-oh-date="${day.key}" data-oh-field="${name}" value="${openingCache[day.key]?.[name === "open_from" ? "from" : "to"] || ""}">`;
 
   bar.style.display = "";
   bar.innerHTML = `
-    <div class="child-count-title">Påmeldte barn denne uka</div>
+    <div class="child-count-title">Påmeldte barn og åpningstid denne uka</div>
     <div class="child-count-days">
       ${days.map(day => {
         const count = childCountCache[day.key];
@@ -395,11 +437,47 @@ function renderChildCounts() {
                 ? `<span>🦋 ${count.small || 0} · 🌈 ${count.large || 0}</span>`
                 : `<span class="muted">ikke registrert</span>`}
             <span class="child-count-total" data-cc-total="${day.key}">${total === null ? "" : `= ${total}`}</span>
+            ${canEdit
+              ? `<span class="child-count-open">Åpent ${openField(day, "open_from")}–${openField(day, "open_to")}</span>`
+              : openingCache[day.key]
+                ? `<span class="child-count-open${isReducedOpening(openingCache[day.key]) ? " reduced" : ""}">Åpent ${openingText(openingCache[day.key])}</span>`
+                : ""}
           </div>
         `;
       }).join("")}
     </div>
   `;
+
+  // Åpningstid: lagres når begge klokkeslett er fylt inn (tomme felt fjerner den).
+  bar.querySelectorAll("input[data-oh-date]").forEach(input => {
+    input.addEventListener("change", async () => {
+      const date = input.dataset.ohDate;
+      const from = bar.querySelector(`input[data-oh-date="${date}"][data-oh-field="open_from"]`).value;
+      const to = bar.querySelector(`input[data-oh-date="${date}"][data-oh-field="open_to"]`).value;
+
+      if (!from && !to) {
+        const { error } = await supabaseClient.from("kbfb_opening_hours").delete().eq("date", date);
+        if (error) console.error("Kunne ikke fjerne åpningstid:", error);
+        delete openingCache[date];
+        applyChildCountsToHeads();
+        return;
+      }
+      if (!from || !to) return; // vent til begge er fylt inn
+
+      const { error } = await supabaseClient
+        .from("kbfb_opening_hours")
+        .upsert({ date, open_from: from, open_to: to }, { onConflict: "date" });
+
+      if (error) {
+        console.error("Kunne ikke lagre åpningstid:", error);
+        alert("Kunne ikke lagre. Har du kjørt siste SQL-steg (STEP 77) i Supabase?");
+        return;
+      }
+
+      openingCache[date] = { from, to };
+      applyChildCountsToHeads();
+    });
+  });
 
   bar.querySelectorAll("input[data-cc-date]").forEach(input => {
     input.addEventListener("change", async () => {
@@ -1432,6 +1510,24 @@ async function loadTodayShiftsForDashboard() {
     .select("small, large")
     .eq("date", toDateKey(target))
     .maybeSingle();
+
+  const { data: openRow } = await supabaseClient
+    .from("kbfb_opening_hours")
+    .select("open_from, open_to")
+    .eq("date", toDateKey(target))
+    .maybeSingle();
+
+  if (openRow?.open_from && openRow?.open_to) {
+    const hours = { from: String(openRow.open_from).slice(0, 5), to: String(openRow.open_to).slice(0, 5) };
+    standbyHtml += `
+      <div class="today-shift-department">
+        <h3>🕘 Åpningstid</h3>
+        <div class="today-shift-list">
+          <span class="today-shift-person">${escapeHtml(openingText(hours))}${isReducedOpening(hours) ? ` <span class="muted">(redusert)</span>` : ""}</span>
+        </div>
+      </div>
+    `;
+  }
 
   if (countRow) {
     standbyHtml += `
@@ -3093,7 +3189,7 @@ async function updateWeekView() {
     head.innerHTML = `${dayNames[dayIndex]}<br><span>${formatShortDate(date)}</span>`;
   });
 
-  await Promise.all([loadStandbyForWeek(), loadChildCountsForWeek()]);
+  await Promise.all([loadStandbyForWeek(), loadChildCountsForWeek(), loadOpeningHoursForWeek()]);
 
   buildShiftDropdowns();
   applySupportRowVisibility();

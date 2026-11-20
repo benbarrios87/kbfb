@@ -6870,3 +6870,29 @@ button.standby-chip {
   font-size: 0.85rem;
   font-weight: 600;
 }
+
+
+/* Åpningstid i dagoverskriften og i raden over tabellene */
+.day-open-chip {
+  margin-top: 3px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.day-open-chip { display: block; }
+
+.day-open-chip.reduced {
+  display: block;
+  width: fit-content;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #ffe9b8;
+  color: #6f4b00;
+}
+
+.child-count-open { font-size: 0.8rem; display: inline-flex; align-items: center; gap: 3px; }
+.child-count-open input { width: 5.4rem; padding: 2px 4px; font-size: 0.85rem; }
+.child-count-open.reduced { font-weight: 800; color: #6f4b00; }

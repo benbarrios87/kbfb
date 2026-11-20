@@ -2485,3 +2485,39 @@ CREATE POLICY "newsletter_photos_delete" ON storage.objects
 
 ALTER TABLE public.kbfb_newsletters
   ADD COLUMN IF NOT EXISTS working_items jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+
+-- =========================================================
+-- STEP 77: Åpningstid per dag (redusert i jul, påske og sommer)
+--   Alle kan se, bare admin kan endre. Dager uten rad har vanlig åpningstid
+--   (07:30-17:00). Vises i dagoverskriften i vaktplanen.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS public.kbfb_opening_hours (
+  date date PRIMARY KEY,
+  open_from text NOT NULL,
+  open_to text NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.kbfb_opening_hours ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "kbfb_opening_hours_read" ON public.kbfb_opening_hours;
+CREATE POLICY "kbfb_opening_hours_read" ON public.kbfb_opening_hours
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "kbfb_opening_hours_write" ON public.kbfb_opening_hours;
+CREATE POLICY "kbfb_opening_hours_write" ON public.kbfb_opening_hours
+  FOR ALL TO authenticated
+  USING (public.kbfb_is_admin())
+  WITH CHECK (public.kbfb_is_admin());
+
+-- Jula 2026 (kan endres i vaktplanen etterpå)
+INSERT INTO public.kbfb_opening_hours (date, open_from, open_to) VALUES
+  ('2026-12-21', '07:30', '16:30'),
+  ('2026-12-22', '07:30', '16:30'),
+  ('2026-12-23', '08:00', '16:00'),
+  ('2026-12-28', '08:30', '16:00'),
+  ('2026-12-29', '08:30', '16:00'),
+  ('2026-12-30', '08:30', '16:00')
+ON CONFLICT (date) DO NOTHING;
