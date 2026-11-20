@@ -15107,6 +15107,154 @@ function startMeeting(project) {
   overlay.requestFullscreen?.().catch(() => {});
 }
 
+/* ----- Lim inn agenda -> oppgaver (Oppgaver) -----
+   Tar en agenda (tekst fra e-post) og lager ett punkt per linje med
+   nummer/kulepunkt. Underpunkter blir notat på punktet over. */
+
+function parseAgendaText(raw) {
+  const lines = String(raw || "").replace(/\r/g, "").split("\n");
+  const timeLine = /^\s*\d{1,2}[.:]\d{2}\b/;
+
+  const classify = line => {
+    if (!line.trim()) return { type: "blank" };
+    if (/^\s*(agenda|dagsorden|saksliste)\b/i.test(line)) return { type: "skip" };
+
+    let m;
+    const indent = line.match(/^\s*/)[0].replace(/\t/g, "  ").length;
+
+    if (timeLine.test(line)) return { type: "num", indent, text: line.trim() };
+    if ((m = line.match(/^\s*\d+\.\d+(?:\.\d+)*\.?\s+(.+)$/))) return { type: "sub", indent, text: m[1].trim() };
+    if ((m = line.match(/^\s*(?:sak\s*\d+(?:\s*\/\s*\d+)?\s*[:.\-–—)]?|\d+\s*[.)]|\d+\s+[-–—])\s*(.+)$/i))) return { type: "num", indent, text: m[1].trim() };
+    if ((m = line.match(/^\s*(?:[-–—•*·▪●◦○■□]|[a-zæøå]\s*\))\s+(.+)$/i))) return { type: "bullet", indent, text: m[1].trim() };
+    return { type: "plain", indent, text: line.trim() };
+  };
+
+  const classified = lines.map(classify);
+  const hasNum = classified.some(c => c.type === "num");
+  const hasMarker = classified.some(c => ["num", "sub", "bullet"].includes(c.type));
+
+  const items = [];
+  let current = null;
+  const start = text => {
+    current = { text, note: [] };
+    items.push(current);
+  };
+
+  classified.forEach(c => {
+    if (c.type === "blank" || c.type === "skip") return;
+
+    // Ingen nummer eller kulepunkt i det hele tatt: hver linje er et punkt.
+    if (!hasMarker) {
+      start(c.text);
+      return;
+    }
+
+    if (c.type === "num") {
+      start(c.text);
+    } else if (c.type === "sub") {
+      if (current) current.note.push(c.text);
+      else start(c.text);
+    } else if (c.type === "bullet") {
+      // Kulepunkt under nummererte punkter (eller innrykket) er underpunkter.
+      if (current && (hasNum || c.indent >= 2)) current.note.push(c.text);
+      else start(c.text);
+    } else if (current) {
+      // Linje uten markør etter et punkt: fortsettelse. Før første punkt: tittel, hoppes over.
+      current.note.push(c.text);
+    }
+  });
+
+  return items.map(item => ({ text: item.text, note: item.note.join(" · ") }));
+}
+
+function initializeAgendaPaste() {
+  const card = document.getElementById("agendaPasteCard");
+  if (!card) return;
+
+  const textarea = document.getElementById("agendaPasteText");
+  const preview = document.getElementById("agendaPastePreview");
+  const target = document.getElementById("agendaPasteTarget");
+
+  const showTarget = () => { if (target) target.textContent = taskSelectedProject; };
+  showTarget();
+  document.getElementById("taskProjectToggle")?.addEventListener("click", () => setTimeout(showTarget, 0));
+
+  const clear = () => {
+    textarea.value = "";
+    preview.innerHTML = "";
+  };
+
+  document.getElementById("agendaPasteClear")?.addEventListener("click", clear);
+
+  document.getElementById("agendaPasteParse")?.addEventListener("click", () => {
+    const items = parseAgendaText(textarea.value);
+    showTarget();
+
+    if (!items.length) {
+      preview.innerHTML = `<p class="muted">Fant ingen punkter. Lim inn agendaen først.</p>`;
+      return;
+    }
+
+    preview.innerHTML = `
+      <h3 class="agenda-paste-heading">${items.length} ${items.length === 1 ? "punkt" : "punkter"} til <strong>${escapeHtml(taskSelectedProject)}</strong></h3>
+      <p class="muted">Fjern haken eller rett teksten på det som ikke skal med.</p>
+      <div class="agenda-paste-list">
+        ${items.map((item, index) => `
+          <label class="agenda-paste-item">
+            <input type="checkbox" checked data-ap-check="${index}">
+            <span class="agenda-paste-fields">
+              <input type="text" data-ap-text="${index}" value="${escapeHtml(item.text)}">
+              <input type="text" class="agenda-paste-note" data-ap-note="${index}" value="${escapeHtml(item.note)}" placeholder="Notat (underpunkter)">
+            </span>
+          </label>`).join("")}
+      </div>
+      <button type="button" class="primary-btn" id="agendaPasteSave">Legg til punktene</button>
+    `;
+
+    document.getElementById("agendaPasteSave").addEventListener("click", async event => {
+      const rows = [];
+      const now = Date.now();
+
+      preview.querySelectorAll("[data-ap-check]").forEach(box => {
+        if (!box.checked) return;
+        const index = box.dataset.apCheck;
+        const text = preview.querySelector(`[data-ap-text="${index}"]`).value.trim();
+        const note = preview.querySelector(`[data-ap-note="${index}"]`).value.trim();
+        if (!text) return;
+
+        // Egen opprettelsestid per punkt, så rekkefølgen fra agendaen beholdes.
+        rows.push({
+          project: taskSelectedProject,
+          text,
+          note: note || null,
+          priority: TASK_MEETING_PROJECTS.includes(taskSelectedProject) ? 4 : 3,
+          created_at: new Date(now + rows.length * 1000).toISOString()
+        });
+      });
+
+      if (!rows.length) {
+        alert("Ingen punkter er valgt.");
+        return;
+      }
+
+      event.target.disabled = true;
+      const { error } = await supabaseClient.from("kbfb_tasks").insert(rows);
+
+      if (error) {
+        console.error("Kunne ikke lagre agendapunkter:", error);
+        alert("Kunne ikke lagre punktene. Prøv igjen.");
+        event.target.disabled = false;
+        return;
+      }
+
+      clear();
+      await loadTasksFromSupabase();
+      renderTaskLists();
+      preview.innerHTML = `<p class="muted">✓ Lagt til ${rows.length} ${rows.length === 1 ? "punkt" : "punkter"} i ${escapeHtml(taskSelectedProject)}.</p>`;
+    });
+  });
+}
+
 async function initializeTasks() {
   const container = document.getElementById("taskActiveList");
   if (!container) return;
@@ -15181,6 +15329,7 @@ async function initializeTasks() {
 }
 
 initializeTasks();
+initializeAgendaPaste();
 
 /* ---------- FILARKIV (filarkiv.html) ----------
    Admin laster opp flere filer om gangen til en privat bucket; alle

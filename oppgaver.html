@@ -105,6 +105,23 @@
         <button type="button" class="secondary-btn" data-project="SU-møte">SU-møte</button>
       </div>
 
+      <details class="card" id="agendaPasteCard">
+        <summary class="section-heading">
+          <div>
+            <span class="details-toggle-icon">▸</span>
+            <p class="eyebrow">Hurtig</p>
+            <h2 style="display: inline;">Lim inn en agenda</h2>
+          </div>
+        </summary>
+        <p class="muted">Lim inn agendaen du har skrevet (fra e-posten din), så blir hvert punkt en oppgave i <strong id="agendaPasteTarget">Inbox</strong>. Underpunkter blir notat på punktet over.</p>
+        <textarea id="agendaPasteText" rows="8" placeholder="1. Godkjenning av referat&#10;2. Økonomi&#10;   - Regnskap pr. november&#10;   - Budsjett 2027&#10;3. Eventuelt"></textarea>
+        <div class="agenda-paste-actions">
+          <button type="button" class="primary-btn" id="agendaPasteParse">Lag punkter</button>
+          <button type="button" class="secondary-btn" id="agendaPasteClear">Tøm</button>
+        </div>
+        <div id="agendaPastePreview"></div>
+      </details>
+
       <section class="card">
         <form id="taskForm" class="form-grid">
           <label class="wide-field">
