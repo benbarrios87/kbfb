@@ -424,6 +424,12 @@ function renderChildCounts() {
   bar.style.display = "";
   bar.innerHTML = `
     <div class="child-count-title">Påmeldte barn og åpningstid denne uka</div>
+    ${canEdit ? `
+      <div class="child-count-all">
+        Samme åpningstid alle dagene:
+        <input type="time" id="ohAllFrom" aria-label="Åpner">–<input type="time" id="ohAllTo" aria-label="Stenger">
+        <button type="button" class="secondary-btn" id="ohAllApply">Bruk på alle dagene</button>
+      </div>` : ""}
     <div class="child-count-days">
       ${days.map(day => {
         const count = childCountCache[day.key];
@@ -447,6 +453,29 @@ function renderChildCounts() {
       }).join("")}
     </div>
   `;
+
+  // Samme åpningstid på alle dagene i uka (f.eks. sommeruke eller påske).
+  bar.querySelector("#ohAllApply")?.addEventListener("click", async () => {
+    const from = bar.querySelector("#ohAllFrom").value;
+    const to = bar.querySelector("#ohAllTo").value;
+    if (!from || !to) {
+      alert("Fyll inn både når dere åpner og når dere stenger.");
+      return;
+    }
+
+    const rows = days.map(day => ({ date: day.key, open_from: from, open_to: to }));
+    const { error } = await supabaseClient.from("kbfb_opening_hours").upsert(rows, { onConflict: "date" });
+
+    if (error) {
+      console.error("Kunne ikke lagre åpningstid:", error);
+      alert("Kunne ikke lagre. Har du kjørt siste SQL-steg (STEP 77) i Supabase?");
+      return;
+    }
+
+    rows.forEach(row => { openingCache[row.date] = { from, to }; });
+    applyChildCountsToHeads();
+    renderChildCounts();
+  });
 
   // Åpningstid: lagres når begge klokkeslett er fylt inn (tomme felt fjerner den).
   bar.querySelectorAll("input[data-oh-date]").forEach(input => {

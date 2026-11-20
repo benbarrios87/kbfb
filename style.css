@@ -6896,3 +6896,15 @@ button.standby-chip {
 .child-count-open { font-size: 0.8rem; display: inline-flex; align-items: center; gap: 3px; }
 .child-count-open input { width: 5.4rem; padding: 2px 4px; font-size: 0.85rem; }
 .child-count-open.reduced { font-weight: 800; color: #6f4b00; }
+
+
+.child-count-all {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 0.82rem;
+}
+
+.child-count-all input { width: 5.4rem; padding: 2px 4px; font-size: 0.85rem; }
