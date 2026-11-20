@@ -6908,3 +6908,14 @@ button.standby-chip {
 }
 
 .child-count-all input { width: 5.4rem; padding: 2px 4px; font-size: 0.85rem; }
+
+
+/* Vaktplan: valgene skal holde seg inni sin egen dag-celle. Alle select har
+   ellers min-width 220px, som er bredere enn en celle og får de røde rutene
+   til å flyte sammen og skyte ut i nabokolonnen. */
+.shift-table td.shift-cell select.shift-select {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
